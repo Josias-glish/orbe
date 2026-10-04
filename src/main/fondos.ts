@@ -31,6 +31,23 @@ export interface OpcionesFondos {
   azar?: () => number
 }
 
+/**
+ * Qué carpeta de imágenes usar: la que el usuario indique en ORBE_FONDOS y, si no hay ninguna, la que venga incluida
+ * en la instalación (resources/fondos), siempre que exista y tenga imágenes.
+ */
+export function elegirCarpetaFondos(configurada: string, incluida: string, tieneImagenes: (carpeta: string) => boolean): string | null {
+  if (configurada) return configurada
+  return tieneImagenes(incluida) ? incluida : null
+}
+
+export function carpetaTieneImagenes(carpeta: string): boolean {
+  try {
+    return readdirSync(carpeta).some((n) => EXTENSIONES_IMAGEN.has(extname(n).toLowerCase()))
+  } catch {
+    return false
+  }
+}
+
 export const limitarVisibilidad = (v: number): number =>
   Number.isFinite(v) ? Math.round(Math.min(VISIBILIDAD_MAX, Math.max(VISIBILIDAD_MIN, v)) * 100) / 100 : VISIBILIDAD_POR_DEFECTO
 

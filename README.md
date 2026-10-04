@@ -83,7 +83,9 @@ Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonne
 Las preferencias de voz se guardan en la ventana de Orbe, no en el `.env`.
 
 ## Fondo del chat
-Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable no hay fondo ni botón.
+Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable, Orbe usa los fondos **incluidos en la instalación** (carpeta `resources/fondos`); si tampoco hay, no hay fondo ni botón.
+
+Para incluir tus imágenes en el instalador: `npm run fondos -- "C:\ruta\a\tus\imagenes"` las reduce y las copia a `resources/fondos/`, y el siguiente `npm run dist` las mete en el `.exe`. Esa carpeta está en `.gitignore`: son tus imágenes (con derechos de autor, si son de una serie) y no se suben al repositorio, así que el instalador que genera GitHub Actions no las lleva; el que construyes en tu PC, sí.
 
 ## Memoria
 Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversación que dejaste a medias**.

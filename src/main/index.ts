@@ -9,7 +9,7 @@ import { registrarChat } from './chat/ipc'
 import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
-import { ServicioFondos } from './fondos'
+import { ServicioFondos, carpetaTieneImagenes, elegirCarpetaFondos } from './fondos'
 import { procesarConElectron } from './fondos-electron'
 import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
 import { registrarFondos } from './fondos-ipc'
@@ -117,7 +117,13 @@ app.whenReady().then(() => {
 
   // Fondos del chat: imágenes de la carpeta que indique ORBE_FONDOS (en la prueba de humo, de mentira).
   const fondos = new ServicioFondos({
-    carpeta: modoHumo ? prepararFondosDeMentira(app.getPath('temp')) : config.fondosCarpeta || null,
+    carpeta: modoHumo
+      ? prepararFondosDeMentira(app.getPath('temp'))
+      : elegirCarpetaFondos(
+          config.fondosCarpeta,
+          app.isPackaged ? join(process.resourcesPath, 'fondos') : join(app.getAppPath(), 'resources', 'fondos'),
+          carpetaTieneImagenes
+        ),
     archivoEstado: join(datos, 'fondo.json'),
     carpetaCache: join(datos, 'fondos-cache'),
     procesar: modoHumo ? procesarDeMentira : procesarConElectron

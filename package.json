@@ -15,7 +15,8 @@
     "humo:real": "electron-vite build && electron . --smoke --real",
     "probar-uia": "node scripts/probar-uia.mjs",
     "iconos": "node scripts/generar-iconos.mjs",
-    "dist:dir": "electron-vite build && electron-builder --win --dir"
+    "dist:dir": "electron-vite build && electron-builder --win --dir",
+    "fondos": "electron scripts/preparar-fondos.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

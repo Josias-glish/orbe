@@ -19,6 +19,9 @@ extraResources:
       - '*.ps1'
   - from: resources/tray.png
     to: tray.png
+  # Fondos del chat incluidos en la instalación (si existe resources/fondos; ver «npm run fondos»).
+  - from: resources/fondos
+    to: fondos
 
 win:
   target:
