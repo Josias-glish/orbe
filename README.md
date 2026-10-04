@@ -90,7 +90,7 @@ Las preferencias de voz se guardan en la ventana de Orbe, no en el `.env`.
 ## Fondo del chat
 Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable, Orbe usa los fondos **incluidos en la instalación** (carpeta `resources/fondos`); si tampoco hay, no hay fondo ni botón.
 
-Para incluir tus imágenes en el instalador: `npm run fondos -- "C:\ruta\a\tus\imagenes"` las reduce y las copia a `resources/fondos/`, y el siguiente `npm run dist` las mete en el `.exe`. Esa carpeta está en `.gitignore`: son tus imágenes (con derechos de autor, si son de una serie) y no se suben al repositorio, así que el instalador que genera GitHub Actions no las lleva; el que construyes en tu PC, sí.
+Los fondos que vienen en `resources/fondos/` (26 imágenes de Solo Leveling reducidas, unos 5 MB) se incluyen en el instalador. Son imágenes con derechos de autor de sus titulares, incluidas aquí para uso personal: si quieres otras, `npm run fondos -- "C:utaa	usimagenes"` las reduce y las copia a esa carpeta, y el siguiente `npm run dist` las mete en el `.exe`. Con `ORBE_FONDOS` se usa tu propia carpeta en su lugar.
 
 ## Memoria
 Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversación que dejaste a medias**.

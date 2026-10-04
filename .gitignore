@@ -5,5 +5,3 @@ dist/
 *.log
 humo/
 
-# Fondos personales que se incluyen en el instalador (ver npm run fondos): no se suben a git
-resources/fondos/
