@@ -2,9 +2,20 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Estado: **fase 4 de 5 + voz** (chat, lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos y voz). Quedan la bandeja del sistema y el empaquetado.
+> Versión 1.0: chat con Claude (o con otras IA), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema e instalador de Windows.
 
-## Requisitos
+## Instalar (usuarios)
+Descarga `Orbe-Setup-<versión>.exe` de la sección **Releases** del repositorio y ejecútalo.
+
+- Windows mostrará **«Windows protegió su PC»** (SmartScreen): el instalador **no está firmado** (un certificado de firma cuesta dinero cada año). Pulsa **Más información → Ejecutar de todos modos**. Si prefieres comprobarlo, el código completo está en este repositorio y el instalador se genera con el flujo de GitHub Actions de `.github/workflows/release.yml`.
+- Se instala solo para tu usuario (sin permisos de administrador) y crea accesos directos.
+- Para configurarlo, crea el archivo `%APPDATA%\orbe\.env` (copia `.env.example` y cambia lo que quieras). Todo es opcional.
+- Para hablar con Claude necesitas el **CLI de Claude** con la sesión iniciada, o una API key (ver más abajo).
+
+## Bandeja del sistema
+Orbe deja un icono junto al reloj: clic para **mostrar u ocultar**, clic derecho para el menú (abrir el chat, nueva conversación, leer la pantalla, **Iniciar con Windows** —solo en la versión instalada— y **Salir**). Cerrar el panel no cierra Orbe: se sale desde ahí.
+
+## Requisitos (para desarrollar)
 - Windows 11
 - Node.js 22.12 o superior (probado con 24)
 - Una de estas dos formas de hablar con Claude:
@@ -118,6 +129,34 @@ La imagen entera vive solo en memoria del proceso principal (caduca a los 5 minu
 Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando tiene sentido y los detalles técnicos plegados:
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.
 
+## Crear el instalador
+```bash
+npm ci
+npm run iconos     # solo si cambias el diseño del icono (resources/ ya los trae)
+npm run dist       # genera dist/Orbe-Setup-<versión>.exe
+npm run dist:dir   # solo la carpeta dist/win-unpacked/ (más rápido, para probar Orbe.exe)
+```
+La primera vez, electron-builder descarga unos paquetes (NSIS, 7-Zip). Comprueba la aplicación empaquetada con `dist\win-unpacked\Orbe.exe --smoke` (la prueba de humo, que no toca tu pantalla ni tus ajustes).
+
+## Publicarlo en GitHub
+Nada de esto se hace solo: lo ejecutas tú, con tu cuenta.
+
+1. Instala la [CLI de GitHub](https://cli.github.com/) y entra: `gh auth login`.
+2. Antes de subir nada, **mira el correo de tus commits**: Git lo guarda en cada uno y en un repositorio público lo verá cualquiera. Con `git log --format="%an <%ae>"` ves cuál es. Si no quieres enseñarlo, usa el correo privado de GitHub (`ID+usuario@users.noreply.github.com`, en *Settings → Emails*) y reescribe los commits antes de subirlos.
+3. Crea el repositorio y sube el código (cámbialo a `--private` si no quieres que sea público):
+   ```bash
+   gh repo create orbe --public --source . --remote origin --push
+   ```
+   Sube también la rama con la que trabajes; el flujo `ci.yml` ejecuta el tipado y las pruebas en cada subida a `main` y en cada pull request.
+4. Publica una versión. Sube una etiqueta y el flujo `release.yml` compila el instalador en un Windows de GitHub, pasa las pruebas y crea la release con el `.exe` adjunto:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+   (La versión de la etiqueta debe coincidir con la de `package.json`: el nombre del instalador sale de ahí.) También puedes subirlo a mano: `gh release create v1.0.0 dist/Orbe-Setup-1.0.0.exe --generate-notes`.
+
+No hay secretos en el repositorio: `.env` está en `.gitignore` y el flujo solo usa el `GITHUB_TOKEN` que GitHub da a cada ejecución. Orbe no incluye actualizaciones automáticas: para actualizar, instala el nuevo `.exe` encima.
+
 ## Pruebas
 `npm test` ejecuta unas 770 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
 
@@ -132,7 +171,7 @@ Para ver qué leería Orbe de una ventana concreta: pon en primer plano el Bloc 
 
 ## Estructura
 ```
-src/main           proceso principal (ventana, atajos, ajustes)
+src/main           proceso principal (ventana, atajos, bandeja, ajustes)
 src/main/chat      proveedores (CLI, API de Anthropic y compatibles con OpenAI), errores, servicio, IPC
 src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
@@ -142,6 +181,9 @@ helper             lector de pantalla de Windows (PowerShell + C#, UI Automation
 src/preload        puente seguro hacia la interfaz
 src/renderer       interfaz: orbe (WebGL2 + GLSL con ruido simplex), panel de chat y chips de contexto
 src/shared         tipos compartidos
-scripts            herramientas (probar-uia)
+scripts            herramientas (probar-uia, generar-iconos)
+resources          iconos (icon.ico, icon.png, tray.png)
+.github/workflows  integración continua y publicación del instalador
+electron-builder.yml  configuración del instalador
 tests              pruebas unitarias (vitest) e integración opcional
 ```
