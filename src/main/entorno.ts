@@ -172,7 +172,8 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
       idioma: leer('ORBE_STT_IDIOMA') || 'es'
     },
     voz: {
-      disponible: Boolean(claveVoz) || Boolean(urlVoz),
+      // La clave de otro servicio (p. ej. Groq en ORBE_OPENAI_KEY) no vale para la voz de OpenAI: sin ORBE_TTS_*, solo cuenta con el OpenAI de verdad.
+      disponible: Boolean(urlVoz) || (Boolean(claveVoz) && (Boolean(leer('ORBE_TTS_KEY')) || openaiUrl === URL_OPENAI_POR_DEFECTO)),
       url: urlVoz || openaiUrl,
       clave: claveVoz,
       modelo: leer('ORBE_TTS_MODELO') || 'gpt-4o-mini-tts',

@@ -187,6 +187,11 @@ describe('configuración de la voz neuronal', () => {
     expect(c).toEqual({ disponible: true, url: 'http://localhost:8880/v1', clave: 'k2', modelo: 'kokoro', voz: 'bm_george', instrucciones: 'Habla rápido.' })
   })
 
+  it('la clave de otro servicio (Groq en ORBE_OPENAI_KEY) no activa la voz neuronal de OpenAI', () => {
+    expect(resolverConfig({ ORBE_OPENAI_URL: 'https://api.groq.com/openai/v1', ORBE_OPENAI_KEY: 'k1' }, {}).voz.disponible).toBe(false)
+    expect(resolverConfig({ ORBE_OPENAI_URL: 'https://api.groq.com/openai/v1', ORBE_OPENAI_KEY: 'k1', ORBE_TTS_KEY: 'k2' }, {}).voz.disponible).toBe(true)
+  })
+
   it('un servidor propio no necesita clave', () => {
     expect(resolverConfig({ ORBE_TTS_URL: 'http://localhost:8880/v1' }, {}).voz).toMatchObject({ disponible: true, clave: '' })
   })
