@@ -7,6 +7,10 @@ import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
 import { ejecutarHumo } from './humo'
+import { FuenteHelper, type FuenteUia } from './pantalla/contexto'
+import { FuenteDemo } from './pantalla/fuente-demo'
+import { ClienteHelper } from './pantalla/helper-uia'
+import { registrarPantalla } from './pantalla/ipc'
 import { VentanaOrbe } from './ventana'
 
 const modoHumo = process.argv.includes('--smoke')
@@ -23,12 +27,18 @@ if (!app.requestSingleInstanceLock()) {
 
 let ventanaOrbe: VentanaOrbe | null = null
 let servicioChat: ServicioChat | null = null
+let helper: ClienteHelper | null = null
 
 /** Dónde buscar el .env: junto al proyecto en desarrollo, junto al .exe al instalar, y en los datos del usuario. */
 function rutasEnv(): string[] {
   const rutas = app.isPackaged ? [join(dirname(process.execPath), '.env')] : [join(app.getAppPath(), '.env')]
   rutas.push(join(app.getPath('userData'), '.env'))
   return rutas
+}
+
+/** Carpeta del lector de pantalla (PowerShell + C#): fuera del asar al empaquetar. */
+function carpetaHelper(): string {
+  return app.isPackaged ? join(process.resourcesPath, 'helper') : join(app.getAppPath(), 'helper')
 }
 
 app.whenReady().then(() => {
@@ -38,14 +48,43 @@ app.whenReady().then(() => {
 
   const urlDev = process.env['ELECTRON_RENDERER_URL'] ?? null
   ventanaOrbe = new VentanaOrbe(urlDev, join(__dirname, '../renderer/index.html'))
+  const orbe = ventanaOrbe
+
+  // Lector de pantalla: arranca ya (compilar el helper la primera vez tarda ~1 s) pero no lee nada hasta que se le pide.
+  // La prueba de humo usa una fuente de mentira: nunca toca la pantalla real del usuario.
+  const fuenteDemo = modoHumo ? new FuenteDemo() : null
+  let fuente: FuenteUia
+  if (fuenteDemo) {
+    fuente = fuenteDemo
+  } else {
+    helper = new ClienteHelper({
+      pidOrbe: process.pid,
+      carpetaHelper: carpetaHelper(),
+      cacheDir: join(app.getPath('userData'), 'uia-cache')
+    })
+    helper.precalentar()
+    fuente = new FuenteHelper(helper)
+  }
+  const pantalla = registrarPantalla({
+    ventana: orbe,
+    fuente,
+    contextoMax: config.contextoMax
+  })
 
   const proveedor = modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, app.getPath('userData'))
   const info = modoHumo && !humoReal ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo' } : infoChat(config)
-  servicioChat = registrarChat(ventanaOrbe.ventana, proveedor, info)
+  servicioChat = registrarChat(orbe.ventana, proveedor, info, {
+    consumir: () => pantalla.pendiente.consumir(),
+    restaurar: (c) => pantalla.pendiente.restaurar(c),
+    emitir: pantalla.emitir
+  })
 
-  registrarAtajos({ alternarPanel: () => ventanaOrbe?.alternar() })
+  registrarAtajos(
+    { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo() },
+    { panel: config.atajoPanel, leer: config.atajoLeer }
+  )
 
-  if (modoHumo) void ejecutarHumo(ventanaOrbe, humoReal)
+  if (fuenteDemo) void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo })
 })
 
 app.on('second-instance', () => {
@@ -58,4 +97,5 @@ app.on('window-all-closed', () => {})
 app.on('will-quit', () => {
   liberarAtajos()
   servicioChat?.cerrar()
+  helper?.cerrar()
 })

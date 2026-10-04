@@ -1,11 +1,11 @@
 import type { ErrorOrbe, EventoChat, PeticionChat } from '../../shared/tipos'
 import type { TurnoEntrada } from './contenido'
-import { ErrorChat, crearError, errorDesdeApi } from './errores'
+import { aErrorOrbe, crearError } from './errores'
 import type { ProveedorChat } from './proveedor'
 
 export const MAX_TEXTO = 20_000
 
-export type ResultadoEnvio = { ok: true } | { ok: false; error: ErrorOrbe }
+export type ResultadoInicio = { ok: true } | { ok: false; error: ErrorOrbe }
 
 /** Orquesta los turnos del chat: valida la petición, lanza el turno y traduce todo a eventos. */
 export class ServicioChat {
@@ -17,7 +17,7 @@ export class ServicioChat {
   ) {}
 
   /** Valida y arranca el turno; el contenido de la respuesta llega después por eventos. */
-  iniciar(peticion: unknown, contexto?: TurnoEntrada['contexto']): ResultadoEnvio {
+  iniciar(peticion: unknown, contexto?: TurnoEntrada['contexto']): ResultadoInicio {
     const valida = validarPeticion(peticion)
     if (!valida) {
       return { ok: false, error: crearError('solicitud_invalida', { mensaje: 'El mensaje no es válido.' }) }
@@ -77,9 +77,4 @@ function validarPeticion(peticion: unknown): PeticionChat | null {
   const limpio = texto.trim()
   if (limpio.length === 0 || limpio.length > MAX_TEXTO) return null
   return { id, texto: limpio }
-}
-
-function aErrorOrbe(e: unknown): ErrorOrbe {
-  if (e instanceof ErrorChat) return e.error
-  return errorDesdeApi(e)
 }

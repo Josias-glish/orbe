@@ -73,11 +73,29 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
     mensaje: 'Claude ha tardado demasiado en responder. Inténtalo de nuevo.',
     reintentable: true
   },
+  lector_no_disponible: {
+    titulo: 'No puedo leer la pantalla',
+    mensaje:
+      'El lector de pantalla de Windows no está disponible. Reinicia Orbe y, si sigue igual, mira los detalles técnicos.',
+    reintentable: true
+  },
+  sin_ventana: {
+    titulo: 'No hay nada que leer',
+    mensaje:
+      'No encuentro ninguna ventana que leer. Pon en primer plano la aplicación que quieres que mire y vuelve a pulsar el botón.',
+    reintentable: true
+  },
   desconocido: {
     titulo: 'Algo ha fallado',
     mensaje: 'Ha ocurrido un error inesperado al hablar con Claude.',
     reintentable: true
   }
+}
+
+/** Convierte cualquier cosa lanzada por un proveedor o servicio en un error para el usuario. */
+export function aErrorOrbe(e: unknown): ErrorOrbe {
+  if (e instanceof ErrorChat) return e.error
+  return errorDesdeApi(e)
 }
 
 export function crearError(

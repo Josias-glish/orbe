@@ -12,7 +12,8 @@
     "test": "vitest run",
     "humo": "electron-vite build && electron . --smoke",
     "dist": "electron-vite build && electron-builder --win",
-    "humo:real": "electron-vite build && electron . --smoke --real"
+    "humo:real": "electron-vite build && electron . --smoke --real",
+    "probar-uia": "node scripts/probar-uia.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

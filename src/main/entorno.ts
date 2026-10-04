@@ -49,6 +49,9 @@ export function leerArchivosEnv(rutas: string[]): LecturaEnv {
 }
 
 export const MODELO_POR_DEFECTO = 'claude-sonnet-5-5'
+export const CONTEXTO_MAX_POR_DEFECTO = 8000
+export const ATAJO_PANEL_POR_DEFECTO = 'CommandOrControl+Shift+Space'
+export const ATAJO_LEER_POR_DEFECTO = 'CommandOrControl+Shift+Alt+Space'
 export const ESFUERZO_POR_DEFECTO: Esfuerzo = 'medium'
 const ESFUERZOS: readonly Esfuerzo[] = ['low', 'medium', 'high', 'xhigh', 'max']
 
@@ -59,6 +62,10 @@ export interface Config {
   /** Solo se rellena si el proveedor es la API. Nunca debe salir del proceso principal. */
   apiKey: string
   rutaCli: string
+  /** Máximo de caracteres de contexto de pantalla que se envían (selección o contenido de la ventana). */
+  contextoMax: number
+  atajoPanel: string
+  atajoLeer: string
   avisos: string[]
 }
 
@@ -80,6 +87,14 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else avisos.push(`ORBE_ESFUERZO="${esfuerzoLeido}" no es válido (${ESFUERZOS.join(', ')}); uso ${esfuerzo}.`)
   }
 
+  let contextoMax = CONTEXTO_MAX_POR_DEFECTO
+  const maxLeido = leer('ORBE_CONTEXTO_MAX')
+  if (maxLeido) {
+    const n = Number(maxLeido)
+    if (Number.isInteger(n) && n >= 500 && n <= 60_000) contextoMax = n
+    else avisos.push(`ORBE_CONTEXTO_MAX="${maxLeido}" no es válido (un entero entre 500 y 60000); uso ${contextoMax}.`)
+  }
+
   const claveEnArchivo = (delEnv['ANTHROPIC_API_KEY'] ?? '').trim()
   const eleccion = leer('ORBE_PROVEEDOR').toLowerCase() || 'auto'
   let proveedor: 'cli' | 'api'
@@ -96,6 +111,9 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     esfuerzo,
     apiKey: proveedor === 'api' ? claveEnArchivo || leer('ANTHROPIC_API_KEY') : '',
     rutaCli: leer('CLAUDE_CLI_PATH'),
+    contextoMax,
+    atajoPanel: leer('ORBE_ATAJO_PANEL') || ATAJO_PANEL_POR_DEFECTO,
+    atajoLeer: leer('ORBE_ATAJO_LEER') || ATAJO_LEER_POR_DEFECTO,
     avisos
   }
 }

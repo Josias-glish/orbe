@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { CANALES, type ApiOrbe, type EstadoVentana, type EventoChat } from '../shared/tipos'
+import {
+  CANALES,
+  type ApiOrbe,
+  type EstadoVentana,
+  type EventoChat,
+  type EventoPantalla
+} from '../shared/tipos'
 
 /** Suscripción a un canal que devuelve la función para cancelarla. */
 function suscribir<T>(canal: string, cb: (valor: T) => void): () => void {
@@ -22,7 +28,12 @@ const api: ApiOrbe = {
   chatCancelar: (id) => ipcRenderer.send(CANALES.chatCancelar, id),
   chatNueva: () => ipcRenderer.invoke(CANALES.chatNueva),
   chatPrecalentar: () => ipcRenderer.send(CANALES.chatPrecalentar),
-  alEventoChat: (cb) => suscribir<EventoChat>(CANALES.chatEvento, cb)
+  alEventoChat: (cb) => suscribir<EventoChat>(CANALES.chatEvento, cb),
+
+  pantallaLeer: () => ipcRenderer.invoke(CANALES.pantallaLeer),
+  pantallaQuitar: (clave) => ipcRenderer.invoke(CANALES.pantallaQuitar, clave),
+  pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
+  alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb)
 }
 
 contextBridge.exposeInMainWorld('orbe', api)

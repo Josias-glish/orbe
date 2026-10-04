@@ -34,10 +34,12 @@ export function describirContexto(contexto: ContextoPantalla | undefined): strin
     partes.push(`<ventana ${atributos.join(' ')}/>`)
   }
   if (contexto.seleccion) {
-    partes.push(`<seleccion>\n${neutralizarEtiquetas(contexto.seleccion)}\n</seleccion>`)
+    const recortada = contexto.seleccionRecortada ? ' recortada="true"' : ''
+    partes.push(`<seleccion${recortada}>\n${neutralizarEtiquetas(contexto.seleccion)}\n</seleccion>`)
   }
   if (contexto.contenido) {
-    partes.push(`<contenido_ventana>\n${neutralizarEtiquetas(contexto.contenido)}\n</contenido_ventana>`)
+    const recortado = contexto.contenidoRecortado ? ' recortado="true"' : ''
+    partes.push(`<contenido_ventana${recortado}>\n${neutralizarEtiquetas(contexto.contenido)}\n</contenido_ventana>`)
   }
   if (contexto.imagen) {
     partes.push('<captura>Se adjunta una captura de la pantalla del usuario.</captura>')

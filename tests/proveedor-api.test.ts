@@ -23,6 +23,12 @@ let proveedores: ProveedorApi[]
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+/** Espera a que se cumpla algo, en vez de a que pase un tiempo fijo (la máquina puede ir más lenta de lo previsto). */
+async function esperarHasta(condicion: () => boolean, maximoMs = 5000): Promise<void> {
+  const limite = Date.now() + maximoMs
+  while (!condicion() && Date.now() < limite) await esperar(10)
+}
+
 function escribirEvento(res: ServerResponse, nombre: string, datos: unknown): void {
   res.write(`event: ${nombre}\ndata: ${JSON.stringify(datos)}\n\n`)
 }
@@ -277,7 +283,7 @@ describe('ProveedorApi', () => {
     const p = crear()
     const m = recolector()
     const envio = p.enviar({ texto: 'cuenta' }, m)
-    await esperar(150)
+    await esperarHasta(() => m.textos.length > 0)
     p.cancelar()
     const r = await envio
     expect(r.motivo).toBe('cancelado')

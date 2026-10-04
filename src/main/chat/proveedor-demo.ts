@@ -20,6 +20,17 @@ function saludar(nombre: string): string {
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+/** Frase con la que la demo confirma qué contexto de pantalla le llegó, para poder comprobarlo en las pruebas visuales. */
+function acuseContexto(contexto: TurnoEntrada['contexto']): string {
+  if (!contexto) return ''
+  const recibido: string[] = []
+  if (contexto.ventana) recibido.push('ventana')
+  if (contexto.seleccion) recibido.push('selección')
+  if (contexto.contenido) recibido.push('contenido')
+  if (contexto.imagen) recibido.push('captura')
+  return recibido.length > 0 ? `*(Recibí contexto de pantalla: ${recibido.join(', ')}.)*\n\n` : ''
+}
+
 /** Proveedor de mentira para las pruebas visuales (--smoke): emite un texto fijo con ritmo de streaming. */
 export class ProveedorDemo implements ProveedorChat {
   readonly nombre = 'cli' as const
@@ -32,8 +43,9 @@ export class ProveedorDemo implements ProveedorChat {
     this.cancelado = false
     await esperar(this.ritmo.pensarMs)
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
-    for (let i = 0; i < RESPUESTA_DEMO.length && !this.cancelado; i += this.ritmo.trozo) {
-      m.alTexto(RESPUESTA_DEMO.slice(i, i + this.ritmo.trozo))
+    const respuesta = acuseContexto(turno.contexto) + RESPUESTA_DEMO
+    for (let i = 0; i < respuesta.length && !this.cancelado; i += this.ritmo.trozo) {
+      m.alTexto(respuesta.slice(i, i + this.ritmo.trozo))
       await esperar(this.ritmo.trozoMs)
     }
     return { motivo: this.cancelado ? 'cancelado' : 'completo' }

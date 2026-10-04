@@ -558,6 +558,218 @@ kbd {
   display: block;
 }
 
+/* ---- Contexto de pantalla ---- */
+.boton-leer {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition:
+    color 120ms,
+    border-color 120ms,
+    background 120ms;
+}
+.boton-leer:hover:not(:disabled) {
+  color: var(--cian);
+  border-color: rgba(34, 211, 238, 0.55);
+}
+.boton-leer:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 2px;
+}
+.boton-leer:disabled {
+  cursor: default;
+}
+.boton-leer.leyendo {
+  color: var(--cian);
+  border-color: rgba(34, 211, 238, 0.7);
+  animation: latido 1s ease-in-out infinite;
+}
+@keyframes latido {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(34, 211, 238, 0);
+  }
+}
+
+.pendiente {
+  margin: 0 12px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pendiente[hidden] {
+  display: none;
+}
+.pendiente-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--texto-suave);
+}
+.pendiente-descartar {
+  padding: 1px 6px;
+  font-size: 11.5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pendiente-descartar:hover {
+  color: var(--texto);
+}
+.pendiente-fila,
+.adjuntos-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.pendiente-aviso {
+  margin: 0;
+  font-size: 11.5px;
+  color: #fcd34d;
+}
+
+.chip-con-quitar {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  border-radius: 999px;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  color: var(--texto);
+  cursor: pointer;
+  text-align: left;
+}
+.chip:hover,
+.chip[aria-expanded='true'] {
+  border-color: rgba(34, 211, 238, 0.55);
+}
+.chip:focus-visible,
+.chip-quitar:focus-visible,
+.pendiente-descartar:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 2px;
+}
+.chip svg {
+  flex: none;
+  color: var(--cian);
+}
+.chip-etiqueta {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip-resumen {
+  color: var(--texto-suave);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.chip-con-quitar .chip {
+  /* Si el título es largo, se trunca el chip; el botón de quitar conserva siempre su ancho. */
+  min-width: 0;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-right-width: 0;
+}
+.chip-quitar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  padding: 0;
+  border: 1px solid var(--linea);
+  border-radius: 4px 999px 999px 4px;
+  background: var(--superficie);
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+.chip-quitar:hover {
+  color: var(--error);
+  border-color: rgba(251, 113, 133, 0.5);
+}
+.chip-vista {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--linea);
+  padding: 6px 8px;
+}
+.chip-vista-texto {
+  margin: 0;
+  max-height: 120px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.chip-vista-texto::-webkit-scrollbar {
+  width: 8px;
+}
+.chip-vista-texto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.chip-vista-nota {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  color: var(--texto-suave);
+}
+
+/* Chips de solo lectura bajo el mensaje del usuario */
+.adjuntos {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.adjuntos-titulo {
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: rgba(232, 234, 255, 0.7);
+}
+.adjuntos-vista:empty {
+  display: none;
+}
+.adjuntos .chip {
+  background: rgba(0, 0, 0, 0.22);
+}
+
 /* ---- Selector de estados (solo en desarrollo, Ctrl+Alt+D) ---- */
 .depuracion {
   position: absolute;

@@ -1,4 +1,5 @@
-import type { ErrorOrbe, MotivoFin } from '../../shared/tipos'
+import type { ErrorOrbe, MotivoFin, ParteContexto } from '../../shared/tipos'
+import { crearChipsAdjuntos } from './contexto-ui'
 import { renderizarMarkdown } from './markdown'
 
 /** Distancia al final (px) a la que se considera que la persona sigue «pegada» al último mensaje. */
@@ -133,10 +134,19 @@ export class ListaMensajes {
     this.desplazarAlFinal()
   }
 
-  agregarUsuario(texto: string): void {
+  agregarUsuario(texto: string): HTMLElement {
     const el = elemento('div', 'msg usuario')
     el.append(elemento('div', 'contenido-plano', texto))
     this.anadir(el)
+    return el
+  }
+
+  /** Muestra bajo el mensaje qué contexto de pantalla viajó con él. */
+  adjuntarChips(burbuja: HTMLElement, partes: ParteContexto[]): void {
+    if (partes.length === 0) return
+    const pegado = this.pegado
+    burbuja.append(crearChipsAdjuntos(partes))
+    if (pegado) this.desplazarAlFinal()
   }
 
   iniciarRespuesta(): RespuestaEnCurso {

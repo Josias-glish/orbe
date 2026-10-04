@@ -66,6 +66,12 @@ async function errorDe(promesa: Promise<unknown>): Promise<ErrorChat> {
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+/** Espera a que se cumpla algo, en vez de a que pase un tiempo fijo: arrancar el CLI de mentira tarda lo que tarde la máquina. */
+async function esperarHasta(condicion: () => boolean, maximoMs = 5000): Promise<void> {
+  const limite = Date.now() + maximoMs
+  while (!condicion() && Date.now() < limite) await esperar(10)
+}
+
 beforeEach(() => {
   lanzamientos = []
   proveedores = []
@@ -232,7 +238,7 @@ describe('ProveedorCli', () => {
     const p = crear()
     const m = recolector()
     const envio = p.enviar({ texto: 'LARGO' }, m)
-    await esperar(150)
+    await esperarHasta(() => m.textos.length > 0)
     expect(m.textos.length).toBeGreaterThan(0)
     p.cancelar()
     const r = await envio
@@ -303,8 +309,9 @@ describe('ProveedorCli', () => {
 
   it('reiniciar en mitad de una respuesta la da por cancelada', async () => {
     const p = crear()
-    const envio = p.enviar({ texto: 'LARGO' }, recolector())
-    await esperar(100)
+    const m = recolector()
+    const envio = p.enviar({ texto: 'LARGO' }, m)
+    await esperarHasta(() => m.textos.length > 0)
     p.reiniciar()
     expect((await envio).motivo).toBe('cancelado')
   })

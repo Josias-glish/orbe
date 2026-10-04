@@ -35,9 +35,23 @@
             </div>
           </div>
 
+          <div id="pendiente" class="pendiente" aria-label="Contexto de pantalla que se enviará" hidden></div>
+
           <div id="estado-linea" class="estado-linea" role="status" hidden></div>
 
           <form id="compositor" class="compositor" autocomplete="off">
+            <button
+              id="leer"
+              class="boton-leer"
+              type="button"
+              title="Leer la pantalla y adjuntarla a tu próximo mensaje (Ctrl+Mayús+Alt+Espacio)"
+              aria-label="Leer la pantalla"
+            >
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
             <textarea id="entrada" class="entrada" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" spellcheck="true"></textarea>
             <button id="enviar" class="boton-enviar" type="button" aria-label="Enviar" disabled>
               <svg class="icono-enviar" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

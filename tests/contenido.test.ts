@@ -35,6 +35,29 @@ describe('construirBloques', () => {
     expect((bloques[1] as { text: string }).text).toContain('<captura>')
   })
 
+  it('marca como recortado lo que se cortó para que el modelo lo sepa', () => {
+    const texto = describirContexto({
+      seleccion: 'principio de la selección',
+      seleccionRecortada: true,
+      contenido: 'principio del contenido',
+      contenidoRecortado: true
+    })
+    expect(texto).toContain('<seleccion recortada="true">')
+    expect(texto).toContain('<contenido_ventana recortado="true">')
+  })
+
+  it('sin recorte no añade el atributo', () => {
+    const texto = describirContexto({ seleccion: 'a', contenido: 'b', seleccionRecortada: false, contenidoRecortado: false })
+    expect(texto).toContain('<seleccion>')
+    expect(texto).toContain('<contenido_ventana>')
+    expect(texto).not.toContain('recortad')
+  })
+
+  it('solo la ventana también es un contexto válido (por ejemplo, tras quitar el resto)', () => {
+    const texto = describirContexto({ ventana: { aplicacion: 'Bloc de notas', titulo: 'Sin título' } })
+    expect(texto).toBe('<contexto_pantalla>\n<ventana aplicacion="Bloc de notas" titulo="Sin título"/>\n</contexto_pantalla>')
+  })
+
   it('un contexto vacío no añade bloque alguno', () => {
     expect(describirContexto({})).toBe('')
     expect(describirContexto(undefined)).toBe('')

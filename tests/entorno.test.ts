@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  ATAJO_LEER_POR_DEFECTO,
+  ATAJO_PANEL_POR_DEFECTO,
+  CONTEXTO_MAX_POR_DEFECTO,
   ESFUERZO_POR_DEFECTO,
   MODELO_POR_DEFECTO,
   leerArchivosEnv,
@@ -103,6 +106,35 @@ describe('resolverConfig', () => {
     expect(c.esfuerzo).toBe(ESFUERZO_POR_DEFECTO)
     expect(c.proveedor).toBe('cli')
     expect(c.avisos).toHaveLength(2)
+  })
+})
+
+describe('resolverConfig: contexto de pantalla y atajos', () => {
+  it('por defecto: 8000 caracteres de contexto y los atajos de siempre', () => {
+    const c = resolverConfig({}, {})
+    expect(c.contextoMax).toBe(CONTEXTO_MAX_POR_DEFECTO)
+    expect(c.contextoMax).toBe(8000)
+    expect(c.atajoPanel).toBe(ATAJO_PANEL_POR_DEFECTO)
+    expect(c.atajoLeer).toBe(ATAJO_LEER_POR_DEFECTO)
+    expect(c.avisos).toEqual([])
+  })
+
+  it('lee ORBE_CONTEXTO_MAX y los atajos del .env', () => {
+    const c = resolverConfig({ ORBE_CONTEXTO_MAX: '12000', ORBE_ATAJO_PANEL: 'Ctrl+Alt+O', ORBE_ATAJO_LEER: 'Ctrl+Alt+L' }, {})
+    expect(c.contextoMax).toBe(12000)
+    expect(c.atajoPanel).toBe('Ctrl+Alt+O')
+    expect(c.atajoLeer).toBe('Ctrl+Alt+L')
+  })
+
+  it.each(['abc', '100', '499', '60001', '8000.5', '-5'])('ORBE_CONTEXTO_MAX=%s es inválido: avisa y usa el valor por defecto', (v) => {
+    const c = resolverConfig({ ORBE_CONTEXTO_MAX: v }, {})
+    expect(c.contextoMax).toBe(CONTEXTO_MAX_POR_DEFECTO)
+    expect(c.avisos).toHaveLength(1)
+    expect(c.avisos[0]).toContain('ORBE_CONTEXTO_MAX')
+  })
+
+  it.each(['500', '60000'])('ORBE_CONTEXTO_MAX=%s está en el límite y vale', (v) => {
+    expect(resolverConfig({ ORBE_CONTEXTO_MAX: v }, {}).contextoMax).toBe(Number(v))
   })
 })
 
