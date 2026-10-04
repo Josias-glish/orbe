@@ -7,6 +7,8 @@ export interface Ajustes {
   posicion?: { x: number; y: number }
   /** Tamaño del panel de chat que eligió el usuario. */
   panel?: { ancho: number; alto: number }
+  /** El panel abierto se queda por encima de las demás ventanas (por defecto sí). */
+  fijada?: boolean
 }
 
 const ruta = (): string => join(app.getPath('userData'), 'ajustes.json')

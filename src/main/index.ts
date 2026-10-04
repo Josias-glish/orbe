@@ -1,5 +1,6 @@
 import { app, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
+import { registrarConfiguracion } from './configuracion'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -136,7 +137,7 @@ app.whenReady().then(() => {
   const dictado = new ServicioDictado(
     modoHumo
       ? {
-          ...config.dictado,
+          ...resolverConfig({}, {}).dictado,
           disponible: true,
           clave: 'de-mentira',
           fetch: async () => new Response(JSON.stringify({ text: 'Texto dictado de prueba' }), { headers: { 'content-type': 'application/json' } })
@@ -146,7 +147,7 @@ app.whenReady().then(() => {
   const sintesis = new ServicioSintesis(
     modoHumo
       ? {
-          ...config.voz,
+          ...resolverConfig({}, {}).voz,
           disponible: true,
           clave: 'de-mentira',
           fetch: async () => new Response(wavSilencioso(300), { headers: { 'content-type': 'audio/wav' } })
@@ -154,6 +155,24 @@ app.whenReady().then(() => {
       : config.voz
   )
   registrarVoz(orbe.ventana, dictado, sintesis)
+
+  // Pantalla de configuración: cambia el .env (proveedor, claves, dictado y voz) y reinicia Orbe. En la prueba de humo
+  // escribe solo en la carpeta temporal y no reinicia.
+  registrarConfiguracion({
+    ventana: orbe.ventana,
+    // La prueba de humo parte de una configuración vacía: nunca enseña ni toca la real.
+    config: modoHumo ? resolverConfig({}, {}) : config,
+    valores: modoHumo ? {} : lectura.valores,
+    archivoEnv: modoHumo ? join(datos, '.env') : (lectura.usados[0] ?? join(datos, '.env')),
+    reiniciar: () => {
+      if (modoHumo) return
+      app.relaunch()
+      app.exit(0)
+    },
+    salir: () => {
+      if (!modoHumo) app.quit()
+    }
+  })
 
   const proveedor =
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt())

@@ -25,6 +25,10 @@ export const CANALES = {
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
   appOrden: 'app:orden',
+  appSalir: 'app:salir',
+  ventanaFijar: 'ventana:fijar',
+  configLeer: 'config:leer',
+  configGuardar: 'config:guardar',
   vozInfo: 'voz:info',
   vozTranscribir: 'voz:transcribir',
   vozSintetizar: 'voz:sintetizar',
@@ -248,6 +252,32 @@ export interface EstadoFondo {
   imagen: string | null
 }
 
+/** La configuración que enseña la pantalla de ajustes: los valores del .env y qué claves existen, nunca las claves. */
+export interface ConfigVista {
+  proveedor: 'cli' | 'api' | 'openai'
+  modelo: string
+  openaiUrl: string
+  tieneClaveOpenai: boolean
+  tieneClaveAnthropic: boolean
+  dictado: { url: string; modelo: string; idioma: string; tieneClave: boolean }
+  voz: { url: string; modelo: string; voz: string; tieneClave: boolean }
+}
+
+/** Una clave nueva (texto), mantener la que hay (undefined o vacía) o quitarla (null). */
+export type ClaveNueva = string | null | undefined
+
+export interface PeticionConfig {
+  proveedor: 'cli' | 'api' | 'openai'
+  modelo: string
+  openaiUrl: string
+  openaiKey: ClaveNueva
+  anthropicKey: ClaveNueva
+  dictado: { url: string; modelo: string; idioma: string; clave: ClaveNueva }
+  voz: { url: string; modelo: string; voz: string; clave: ClaveNueva }
+}
+
+export type ResultadoConfig = { ok: true } | { ok: false; error: string }
+
 /** Órdenes que el proceso principal (la bandeja) da a la interfaz. */
 export type OrdenApp = 'nueva-conversacion'
 
@@ -278,6 +308,11 @@ export interface ApiOrbe {
   pantallaCapturar(): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
   alOrdenApp(cb: (orden: OrdenApp) => void): () => void
+  /** Fija el panel por encima de las demás ventanas (o lo suelta). Sin argumento, solo dice cómo está. */
+  fijarPanel(fijar?: boolean): Promise<boolean>
+  salirDeOrbe(): Promise<void>
+  configLeer(): Promise<ConfigVista>
+  configGuardar(peticion: PeticionConfig): Promise<ResultadoConfig>
 
   vozInfo(): Promise<InfoVoz>
   /** Pasa a texto una grabación del micrófono (solo tras pulsar grabar y terminar). */

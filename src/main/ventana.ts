@@ -30,6 +30,8 @@ export class VentanaOrbe {
    * devuelve redondeado (380 → 381) y, si se volviera a leer, cada redimensión desviaría un píxel más.
    */
   private tamanoFijado: { width: number; height: number } | null = null
+  /** El panel abierto se queda por encima de las demás ventanas. El orbe colapsado siempre lo está, para no perderlo. */
+  private fijada = leerAjustes().fijada !== false
 
   constructor(
     private readonly urlRenderer: string | null,
@@ -97,6 +99,23 @@ export class VentanaOrbe {
     return posicionPorDefecto(primaria)
   }
 
+  get estaFijada(): boolean {
+    return this.fijada
+  }
+
+  /** 'screen-saver' lo mantiene por encima de casi todo; suelto, el panel abierto se comporta como una ventana normal. */
+  private aplicarNivel(): void {
+    if (this.ventana.isDestroyed()) return
+    if (!this.expandido || this.fijada) this.ventana.setAlwaysOnTop(true, 'screen-saver')
+    else this.ventana.setAlwaysOnTop(false)
+  }
+
+  fijar(valor: boolean): void {
+    this.fijada = valor
+    guardarAjustes({ fijada: valor })
+    this.aplicarNivel()
+  }
+
   private estado(): EstadoVentana {
     return { expandido: this.expandido, ancla: this.ancla }
   }
@@ -136,6 +155,7 @@ export class VentanaOrbe {
       this.tamanoFijado = null
       this.ventana.setBounds(this.colapsado)
     }
+    this.aplicarNivel()
     this.avisarEstado()
   }
 
@@ -196,6 +216,12 @@ export class VentanaOrbe {
 
   private registrarIpc(): void {
     const propia = (evento: Electron.IpcMainEvent): boolean => evento.sender === this.ventana.webContents
+
+    ipcMain.handle(CANALES.ventanaFijar, (evento, valor: unknown): boolean => {
+      if (!propia(evento as unknown as Electron.IpcMainEvent)) throw new Error('Remitente no autorizado')
+      if (typeof valor === 'boolean') this.fijar(valor)
+      return this.fijada
+    })
 
     ipcMain.on(CANALES.alternar, (evento) => {
       if (propia(evento)) this.alternar()

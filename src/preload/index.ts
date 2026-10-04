@@ -4,8 +4,11 @@ import {
   type ApiOrbe,
   type EstadoVentana,
   type EventoChat,
+  type ConfigVista,
   type EventoPantalla,
-  type OrdenApp
+  type OrdenApp,
+  type PeticionConfig,
+  type ResultadoConfig
 } from '../shared/tipos'
 
 /** Suscripción a un canal que devuelve la función para cancelarla. */
@@ -40,6 +43,10 @@ const api: ApiOrbe = {
   pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
   alOrdenApp: (cb) => suscribir<OrdenApp>(CANALES.appOrden, cb),
+  fijarPanel: (fijar) => ipcRenderer.invoke(CANALES.ventanaFijar, fijar),
+  salirDeOrbe: () => ipcRenderer.invoke(CANALES.appSalir),
+  configLeer: (): Promise<ConfigVista> => ipcRenderer.invoke(CANALES.configLeer),
+  configGuardar: (peticion: PeticionConfig): Promise<ResultadoConfig> => ipcRenderer.invoke(CANALES.configGuardar, peticion),
 
   vozInfo: () => ipcRenderer.invoke(CANALES.vozInfo),
   vozTranscribir: (audio, mime) => ipcRenderer.invoke(CANALES.vozTranscribir, audio, mime),

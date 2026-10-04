@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { CANALES } from '../shared/tipos'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { leerAjustes } from './ajustes'
 import { ALTO_EXTRA_ORBE, TAM_PANEL_MIN, panelDeVentana } from './geometria'
@@ -666,6 +666,78 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('la orden «nueva conversación» de la bandeja limpia el chat', v.mensajes === 0, v.mensajes)
   }
 
+  /** Configuración (proveedor, claves, dictado y voz), botón de fijar y botón de cerrar. */
+  const pasosAjustes = async (): Promise<void> => {
+    const v: Record<string, unknown> = (informe.ajustes = {})
+    const poner = (selector: string, valor: string): Promise<unknown> =>
+      js(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); e.value = ${JSON.stringify(valor)}; e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })) })()`)
+    const archivoEnv = join(app.getPath('userData'), '.env')
+
+    await pulsar('#ajustes-boton')
+    await esperarSelector('#ajustes:not([hidden]) .ajuste-seccion', 3000)
+    comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
+    comprobar('tiene las tres secciones', (await textosDe('#ajustes .ajuste-titulo')).length === 3, await textosDe('#ajustes .ajuste-titulo'))
+    comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
+    await capturar('11a-ajustes')
+
+    // Cambiar a otra IA con el preajuste de Groq y poner una clave
+    await poner('#ajustes select[aria-label="Quién responde"]', 'openai')
+    await esperar(150)
+    await poner('#ajustes select[aria-label="Servicio"]', 'groq')
+    await esperar(150)
+    v.url = await js<string>(`document.querySelector('#ajustes input[aria-label="Dirección del servicio"]').value`)
+    v.modelo = await js<string>(`document.querySelector('#ajustes input[aria-label="Modelo"]').value`)
+    comprobar('el preajuste de Groq rellena la dirección y el modelo', v.url === 'https://api.groq.com/openai/v1' && v.modelo === 'llama-3.3-70b-versatile', v)
+    await poner('#ajustes input[aria-label="Clave del servicio"]', 'gsk_clave-de-prueba')
+    const claveVisible = await js<boolean>(`document.querySelector('#ajustes input[aria-label="Clave del servicio"]').type === 'password'`)
+    comprobar('la clave se escribe oculta', claveVisible)
+
+    // Dictado con Groq y voz con un servidor local
+    await poner('#ajustes select[aria-label="Servicio de dictado"]', 'groq')
+    await esperar(150)
+    await poner('#ajustes select[aria-label="Servicio de voz"]', 'kokoro')
+    await esperar(150)
+    v.voz = await js<string>(`document.querySelector('#ajustes input[aria-label="Voz"]').value`)
+    comprobar('el preajuste de la voz local pone una voz en español', v.voz === 'em_alex', v.voz)
+    await capturar('11b-ajustes-rellenos')
+
+    // Guardar: el .env recibe los cambios y la clave nunca vuelve a la pantalla
+    await js(`document.querySelector('#ajustes .boton-memoria.primario').click()`)
+    await esperar(800)
+    v.mensaje = await textoDe('#ajustes .memoria-cuerpo')
+    comprobar('avisa de que se guarda y reinicia', String(v.mensaje).includes('Orbe se está reiniciando'), v.mensaje)
+    const env = readFileSync(archivoEnv, 'utf8')
+    v.env = env.replace(/^(ORBE_[A-Z_]*KEY)=.+$/gm, '$1=<oculta>')
+    comprobar('el .env tiene el proveedor, el modelo y la dirección', env.includes('ORBE_PROVEEDOR=openai') && env.includes('ORBE_MODELO=llama-3.3-70b-versatile') && env.includes('ORBE_OPENAI_URL=https://api.groq.com/openai/v1'), v.env)
+    comprobar('y la clave', /ORBE_OPENAI_KEY=gsk_clave-de-prueba/.test(env))
+    comprobar('y el dictado y la voz', /ORBE_STT_MODELO=whisper-large-v3-turbo/.test(env) && /ORBE_TTS_VOZ=em_alex/.test(env), v.env)
+    comprobar('la clave no queda en el DOM como texto visible', !(await js<string>(`document.getElementById('ajustes').innerText`)).includes('gsk_clave-de-prueba'))
+    comprobar('hay un botón para cerrar Orbe por completo', /Cerrar Orbe por completo/.test(await textoDe('#ajustes')))
+    await capturar('11c-ajustes-guardado')
+
+    // Esc vuelve al chat sin cerrar el panel
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(300)
+    comprobar('Esc cierra la configuración y no el panel', !(await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && orbe.estaExpandido)
+
+    // Fijar el panel por encima de las demás ventanas
+    comprobar('arranca fijado', (await existe('#fijar-boton[aria-pressed="true"]')) && orbe.ventana.isAlwaysOnTop())
+    await pulsar('#fijar-boton')
+    await esperar(300)
+    comprobar('soltarlo lo baja del nivel de siempre-encima', (await existe('#fijar-boton[aria-pressed="false"]')) && !orbe.ventana.isAlwaysOnTop())
+    await capturar('11d-suelto')
+    await pulsar('#fijar-boton')
+    await esperar(300)
+    comprobar('fijarlo otra vez lo sube', (await existe('#fijar-boton[aria-pressed="true"]')) && orbe.ventana.isAlwaysOnTop())
+
+    // El botón de cerrar solo recoge el panel
+    await pulsar('#cerrar-boton')
+    await esperar(500)
+    comprobar('cerrar recoge el panel al orbe', !orbe.estaExpandido && orbe.estaVisible)
+    orbe.establecerExpandido(true)
+    await esperar(500)
+  }
+
   const pasosVoz = async (): Promise<void> => {
     const v: Record<string, unknown> = {}
     informe.voz = v
@@ -938,6 +1010,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosPanel()
         await pasosVoz()
         await pasosBandeja()
+        await pasosAjustes()
       }
 
       orbe.establecerExpandido(false)

@@ -1,6 +1,7 @@
 import type { ClaveParte, ErrorOrbe, EventoChat, EventoPantalla, InfoChat, LecturaPantalla, ResultadoEnvio } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
+import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
 import type { Orbe } from '../orbe/orbe'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
@@ -45,6 +46,9 @@ export class PanelChat {
   private sugerenciaDescartada = false
   private readonly cuerpoPanel: HTMLElement
   private readonly memoria: VistaMemoria
+  private readonly ajustes: VistaAjustes
+  private readonly botonAjustes: HTMLButtonElement
+  private readonly botonFijar: HTMLButtonElement
   private readonly lineaEstado: HTMLElement
   private turno: TurnoEnCurso | null = null
   private temporizadorReposo = 0
@@ -66,6 +70,9 @@ export class PanelChat {
     this.botonMemoria = porId('memoria-boton')
     this.cuerpoPanel = raiz.querySelector('.panel-cuerpo') as HTMLElement
     this.memoria = new VistaMemoria(porId('memoria'), () => this.cerrarMemoria())
+    this.ajustes = new VistaAjustes(porId('ajustes'), () => this.cerrarAjustes())
+    this.botonAjustes = porId('ajustes-boton')
+    this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
     this.botonMicro = porId('microfono')
@@ -119,6 +126,10 @@ export class PanelChat {
     this.botonCapturar.addEventListener('click', () => void this.pedirCaptura())
     this.botonMicro.addEventListener('click', () => void this.dictado.alternar())
     this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
+    this.botonAjustes.addEventListener('click', () => void this.alternarAjustes())
+    porId('cerrar-boton').addEventListener('click', () => window.orbe.alternar())
+    this.botonFijar.addEventListener('click', () => void this.alternarFijado())
+    void this.mostrarFijado()
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
 
     // Los enlaces de las respuestas se abren en el navegador, nunca dentro de Orbe.
@@ -152,7 +163,54 @@ export class PanelChat {
   }
 
   enfocar(): void {
-    if (!this.memoria.visible) this.entrada.enfocar()
+    if (!this.memoria.visible && !this.ajustes.visible) this.entrada.enfocar()
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Configuración y fijado del panel
+  // -------------------------------------------------------------------------------------------
+
+  private async alternarAjustes(): Promise<void> {
+    if (this.ajustes.visible) {
+      this.cerrarAjustes()
+      return
+    }
+    this.cerrarMemoria()
+    this.cuerpoPanel.hidden = true
+    this.botonAjustes.setAttribute('aria-pressed', 'true')
+    await this.ajustes.abrir()
+  }
+
+  private cerrarAjustes(): void {
+    if (!this.ajustes.visible) return
+    this.ajustes.cerrar()
+    this.cuerpoPanel.hidden = false
+    this.botonAjustes.setAttribute('aria-pressed', 'false')
+    this.entrada.enfocar()
+  }
+
+  private pintarFijado(fijado: boolean): void {
+    this.botonFijar.setAttribute('aria-pressed', String(fijado))
+    this.botonFijar.title = fijado
+      ? 'Fijado: el panel se queda por encima de las demás ventanas (pulsa para soltarlo)'
+      : 'Suelto: otras ventanas pueden taparlo (pulsa para fijarlo encima)'
+  }
+
+  private async mostrarFijado(): Promise<void> {
+    try {
+      this.pintarFijado(await window.orbe.fijarPanel())
+    } catch {
+      // sin el dato, el botón se queda como está
+    }
+  }
+
+  private async alternarFijado(): Promise<void> {
+    try {
+      const ahora = this.botonFijar.getAttribute('aria-pressed') === 'true'
+      this.pintarFijado(await window.orbe.fijarPanel(!ahora))
+    } catch {
+      // no se pudo cambiar: el botón conserva su estado
+    }
   }
 
   // -------------------------------------------------------------------------------------------
@@ -164,6 +222,7 @@ export class PanelChat {
       this.cerrarMemoria()
       return
     }
+    this.cerrarAjustes()
     this.cuerpoPanel.hidden = true
     this.botonMemoria.setAttribute('aria-pressed', 'true')
     await this.memoria.abrir()
@@ -190,6 +249,10 @@ export class PanelChat {
     }
     if (this.confirmacion.visible) {
       this.confirmacion.cancelar()
+      return true
+    }
+    if (this.ajustes.visible) {
+      this.cerrarAjustes()
       return true
     }
     if (!this.memoria.visible) return false
@@ -469,6 +532,7 @@ export class PanelChat {
 
   async nuevaConversacion(): Promise<void> {
     this.cerrarMemoria()
+    this.cerrarAjustes()
     this.confirmacion.cancelar()
     this.dictado.cancelar()
     this.lector.parar()

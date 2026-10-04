@@ -52,6 +52,8 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - El botón de la **imagen** de la cabecera (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
 - El **altavoz** de la cabecera abre el menú de **voz**: leer las respuestas en voz alta, «Estilo Jarvis», motor, voz, velocidad y tono.
 - El **micrófono** junto al campo de texto **dicta**: púlsalo, habla y vuelve a pulsarlo (máximo 60 s; **Esc** cancela). El texto se añade al campo para que lo revises; en el menú de voz puedes activar que se envíe solo.
+- El botón de los **controles deslizantes** abre la **configuración**: elegir quién responde (CLI de Claude, API de Anthropic u otra IA compatible con OpenAI), el dictado y la voz neuronal, sin tocar el `.env` a mano.
+- La **chincheta** fija el panel por encima de las demás ventanas (activada por defecto); soltada, otras ventanas pueden taparlo. La **X** cierra el panel y deja a Orbe en la esquina; para salir del todo, usa la bandeja o «Cerrar Orbe por completo» de la configuración.
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
 - El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
@@ -73,10 +75,13 @@ El CLI se lanza sin `ANTHROPIC_API_KEY` en su entorno, para que no te cobre por 
 
 Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_FONDOS` (carpeta con imágenes para el fondo del chat), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
 
+## Configuración
+El botón de los controles deslizantes de la cabecera guarda los cambios en el archivo `.env` (el del proyecto, o `%APPDATA%orbe.env` en la versión instalada), conserva tus comentarios y reinicia Orbe para aplicarlos. Tiene preajustes para Groq, NVIDIA, OpenRouter, OpenAI, Ollama y LM Studio. Las claves se escriben ocultas, solo las ve el proceso principal y la pantalla nunca las vuelve a mostrar (solo si hay una guardada); se pueden mantener, cambiar o quitar.
+
 ## Voz
 **Leer en voz alta.** Orbe lee las respuestas frase a frase según llegan, se salta los bloques de código (dice que hay uno) y se calla en cuanto empieza otra respuesta, pulsas Esc o la apagas. Por defecto usa las **voces de Windows** (gratis, sin conexión). El botón **Estilo Jarvis** elige la voz masculina en español, la baja de tono y la pone pausada; si has configurado una voz neuronal, la usa. No se puede copiar la voz del actor original: es una voz grave, serena y elegante, no un clon.
 
-**Voz neuronal** (opcional, mucho más natural): con `ORBE_TTS_KEY` (o `ORBE_OPENAI_KEY`) Orbe usa `/audio/speech` de un servicio compatible con OpenAI. Ojo: **el texto de las respuestas viaja a ese servicio**. Si falla, sigue con la voz de Windows.
+**Voz neuronal** (opcional, mucho más natural; se configura en la pantalla de configuración): con `ORBE_TTS_KEY` (o `ORBE_OPENAI_KEY`) Orbe usa `/audio/speech` de un servicio compatible con OpenAI. Ojo: **el texto de las respuestas viaja a ese servicio**. Si falla, sigue con la voz de Windows.
 
 **Dictado**: con `ORBE_STT_KEY` (o `ORBE_OPENAI_KEY`, o solo `ORBE_STT_URL` con un Whisper local) el micrófono graba y, al terminar, envía el audio a `/audio/transcriptions`. Nada se envía mientras grabas ni sin que pulses el micrófono. Orbe solo concede a su ventana el permiso del micrófono (y el de copiar al portapapeles); cualquier otro lo deniega.
 
