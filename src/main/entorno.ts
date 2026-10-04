@@ -151,9 +151,12 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
   const openaiUrl = leer('ORBE_OPENAI_URL') || URL_OPENAI_POR_DEFECTO
   const openaiKey = leer('ORBE_OPENAI_KEY') || leer('OPENAI_API_KEY')
   const urlDictado = leer('ORBE_STT_URL')
-  const claveDictado = leer('ORBE_STT_KEY') || openaiKey
+  // La clave del chat solo sirve de respaldo para el mismo servicio: nunca se manda a otra dirección distinta.
+  const sinBarra = (url: string): string => url.replace(/\/+$/, '')
+  const mismoServicio = (url: string): boolean => !url || sinBarra(url) === sinBarra(openaiUrl)
+  const claveDictado = leer('ORBE_STT_KEY') || (mismoServicio(urlDictado) ? openaiKey : '')
   const urlVoz = leer('ORBE_TTS_URL')
-  const claveVoz = leer('ORBE_TTS_KEY') || openaiKey
+  const claveVoz = leer('ORBE_TTS_KEY') || (mismoServicio(urlVoz) ? openaiKey : '')
 
   return {
     proveedor,

@@ -192,6 +192,15 @@ describe('configuración de la voz neuronal', () => {
     expect(resolverConfig({ ORBE_OPENAI_URL: 'https://api.groq.com/openai/v1', ORBE_OPENAI_KEY: 'k1', ORBE_TTS_KEY: 'k2' }, {}).voz.disponible).toBe(true)
   })
 
+  it('la clave del chat no se manda a otro servicio: solo vale de respaldo para el mismo', () => {
+    const env = { ORBE_OPENAI_URL: 'https://integrate.api.nvidia.com/v1', ORBE_OPENAI_KEY: 'clave-nvidia' }
+    const c = resolverConfig({ ...env, ORBE_TTS_URL: 'http://localhost:8880/v1', ORBE_STT_URL: 'https://api.groq.com/openai/v1' }, {})
+    expect(c.voz.clave).toBe('')
+    expect(c.dictado.clave).toBe('')
+    expect(resolverConfig({ ...env, ORBE_STT_URL: 'https://integrate.api.nvidia.com/v1/' }, {}).dictado.clave).toBe('clave-nvidia')
+    expect(resolverConfig({ ...env, ORBE_TTS_URL: 'http://localhost:8880/v1', ORBE_TTS_KEY: 'propia' }, {}).voz.clave).toBe('propia')
+  })
+
   it('un servidor propio no necesita clave', () => {
     expect(resolverConfig({ ORBE_TTS_URL: 'http://localhost:8880/v1' }, {}).voz).toMatchObject({ disponible: true, clave: '' })
   })
