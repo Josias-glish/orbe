@@ -9,8 +9,6 @@
   --linea: rgba(255, 255, 255, 0.08);
   --error: #fb7185;
   --caja-orbe: 120px;
-  --panel-ancho: 380px;
-  --panel-alto: 520px;
   --mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
 }
 
@@ -80,8 +78,9 @@ input {
 /* ---- Panel de chat ---- */
 .panel {
   position: absolute;
-  width: var(--panel-ancho);
-  height: var(--panel-alto);
+  /* El panel ocupa la ventana menos la parte del orbe (104 px): así sigue el tamaño que elija el usuario. */
+  width: 100%;
+  height: calc(100% - 104px);
   display: flex;
   flex-direction: column;
   background: var(--panel-fondo);
@@ -884,6 +883,171 @@ kbd {
 }
 .adjuntos .chip {
   background: rgba(0, 0, 0, 0.22);
+}
+
+/* ---- Cambiar el tamaño del panel ---- */
+.agarre {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+}
+.agarre-x {
+  top: 18px;
+  bottom: 18px;
+  width: 7px;
+  cursor: ew-resize;
+}
+.agarre-y {
+  left: 18px;
+  right: 18px;
+  height: 7px;
+  cursor: ns-resize;
+}
+.agarre-xy {
+  width: 18px;
+  height: 18px;
+}
+.ancla-derecha .agarre-x,
+.ancla-derecha .agarre-xy {
+  left: 0;
+}
+.ancla-izquierda .agarre-x,
+.ancla-izquierda .agarre-xy {
+  right: 0;
+}
+.ancla-abajo .agarre-y,
+.ancla-abajo .agarre-xy {
+  top: 0;
+}
+.ancla-arriba .agarre-y,
+.ancla-arriba .agarre-xy {
+  bottom: 0;
+}
+.ancla-derecha.ancla-abajo .agarre-xy,
+.ancla-izquierda.ancla-arriba .agarre-xy {
+  cursor: nwse-resize;
+}
+.ancla-izquierda.ancla-abajo .agarre-xy,
+.ancla-derecha.ancla-arriba .agarre-xy {
+  cursor: nesw-resize;
+}
+.colapsado .agarre {
+  display: none;
+}
+/* Una marca discreta en la esquina para que se sepa que se puede estirar. */
+.agarre-xy::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 0 solid rgba(255, 255, 255, 0.32);
+  transition: border-color 120ms;
+}
+.agarre-xy:hover::after {
+  border-color: rgba(34, 211, 238, 0.85);
+}
+.ancla-derecha.ancla-abajo .agarre-xy::after {
+  top: 6px;
+  left: 6px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  border-top-left-radius: 4px;
+}
+.ancla-izquierda.ancla-abajo .agarre-xy::after {
+  top: 6px;
+  right: 6px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  border-top-right-radius: 4px;
+}
+.ancla-derecha.ancla-arriba .agarre-xy::after {
+  bottom: 6px;
+  left: 6px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  border-bottom-left-radius: 4px;
+}
+.ancla-izquierda.ancla-arriba .agarre-xy::after {
+  bottom: 6px;
+  right: 6px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  border-bottom-right-radius: 4px;
+}
+
+/* ---- Fondo del chat ---- */
+.panel-fondo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 300ms;
+}
+/* El velo oscuro hace que el texto se lea sea cual sea la imagen. */
+.panel-fondo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 12, 28, 0.5), rgba(10, 12, 28, 0.78));
+}
+.panel > .panel-cabecera,
+.panel > .panel-cuerpo,
+.panel > .memoria {
+  position: relative;
+  z-index: 1;
+}
+.con-fondo .panel-cabecera,
+.con-fondo .compositor,
+.con-fondo .memoria-cabecera {
+  background: rgba(14, 16, 34, 0.45);
+}
+.con-fondo .msg.asistente {
+  background: rgba(16, 18, 40, 0.8);
+  backdrop-filter: blur(5px);
+}
+.con-fondo .aviso,
+.con-fondo .vacio {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+.con-fondo .aviso {
+  background: rgba(16, 18, 40, 0.7);
+}
+.fondo-menu {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  z-index: 6;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(20, 22, 46, 0.97);
+  border: 1px solid var(--panel-borde);
+  box-shadow: 0 10px 30px rgba(5, 6, 20, 0.6);
+}
+.fondo-menu[hidden] {
+  display: none;
+}
+.fondo-visibilidad {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--texto-suave);
+}
+.fondo-visibilidad input {
+  width: 100%;
+  accent-color: var(--cian);
+}
+.fondo-menu .memoria-nota {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- Memoria ---- */

@@ -7,6 +7,10 @@ import { registrarChat } from './chat/ipc'
 import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
+import { ServicioFondos } from './fondos'
+import { procesarConElectron } from './fondos-electron'
+import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
+import { registrarFondos } from './fondos-ipc'
 import { ejecutarHumo } from './humo'
 import { prepararMemoriaDeMentira } from './memoria/fuente-demo'
 import { registrarMemoria } from './memoria/ipc'
@@ -88,6 +92,9 @@ app.whenReady().then(() => {
   if (modoHumo) {
     rmSync(join(datos, 'memoria'), { recursive: true, force: true })
     rmSync(join(datos, 'conversacion.json'), { force: true })
+    rmSync(join(datos, 'fondo.json'), { force: true })
+    rmSync(join(datos, 'fondos-cache'), { recursive: true, force: true })
+    rmSync(join(datos, 'ajustes.json'), { force: true })
   }
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
@@ -97,6 +104,15 @@ app.whenReady().then(() => {
   })
   memoria.iniciar()
   registrarMemoria(orbe.ventana, memoria)
+
+  // Fondos del chat: imágenes de la carpeta que indique ORBE_FONDOS (en la prueba de humo, de mentira).
+  const fondos = new ServicioFondos({
+    carpeta: modoHumo ? prepararFondosDeMentira(app.getPath('temp')) : config.fondosCarpeta || null,
+    archivoEstado: join(datos, 'fondo.json'),
+    carpetaCache: join(datos, 'fondos-cache'),
+    procesar: modoHumo ? procesarDeMentira : procesarConElectron
+  })
+  registrarFondos(orbe.ventana, fondos)
 
   const proveedor =
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt())

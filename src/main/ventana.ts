@@ -6,8 +6,11 @@ import {
   TAM_COLAPSADO,
   dentroDe,
   disposicionExpandida,
+  panelDeVentana,
   posicionPorDefecto,
   rectColapsadoDesde,
+  redimensionar,
+  type ModoRedimension,
   type DisposicionExpandida,
   type Rect
 } from './geometria'
@@ -20,6 +23,8 @@ export class VentanaOrbe {
   /** Rectángulo de la ventana colapsada; es el que se recuerda entre sesiones. */
   private colapsado: Rect
   private arrastre: { dx: number; dy: number } | null = null
+  /** Redimensión en curso: dónde empezó el puntero, cómo era la ventana y qué ejes se mueven. */
+  private redimension: { x0: number; y0: number; inicial: Rect; modo: ModoRedimension } | null = null
 
   constructor(
     private readonly urlRenderer: string | null,
@@ -113,7 +118,7 @@ export class VentanaOrbe {
   establecerExpandido(valor: boolean): void {
     if (valor === this.expandido) return
     if (valor) {
-      const disposicion = disposicionExpandida(this.colapsado, this.areaDe(this.colapsado))
+      const disposicion = disposicionExpandida(this.colapsado, this.areaDe(this.colapsado), leerAjustes().panel)
       this.ancla = disposicion.ancla
       this.ventana.setBounds(disposicion.bounds)
       this.expandido = true
@@ -145,11 +150,48 @@ export class VentanaOrbe {
     this.ventana.focus()
   }
 
+  /** Empieza a cambiar el tamaño del panel (solo con el panel abierto). Las coordenadas son de pantalla. */
+  redimensionarInicio(x: number, y: number, modo: ModoRedimension): void {
+    if (!this.expandido) return
+    this.redimension = { x0: x, y0: y, inicial: this.ventana.getBounds(), modo }
+  }
+
+  redimensionarMover(x: number, y: number): void {
+    const r = this.redimension
+    if (!r) return
+    const centro = { x: r.inicial.x + r.inicial.width / 2, y: r.inicial.y + r.inicial.height / 2 }
+    const nuevo = redimensionar(r.inicial, this.ancla, { dx: x - r.x0, dy: y - r.y0 }, r.modo, this.areaDe(centro))
+    this.ventana.setBounds(nuevo)
+  }
+
+  /** Termina la redimensión: recuerda el tamaño elegido para la próxima vez. */
+  redimensionarFin(): void {
+    if (!this.redimension) return
+    this.redimension = null
+    const actual = this.ventana.getBounds()
+    this.colapsado = rectColapsadoDesde(actual, this.ancla)
+    guardarAjustes({ panel: panelDeVentana(actual) })
+  }
+
   private registrarIpc(): void {
     const propia = (evento: Electron.IpcMainEvent): boolean => evento.sender === this.ventana.webContents
 
     ipcMain.on(CANALES.alternar, (evento) => {
       if (propia(evento)) this.alternar()
+    })
+
+    const MODOS: readonly string[] = ['x', 'y', 'xy']
+    const numero = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+    ipcMain.on(CANALES.redimensionarInicio, (evento, x: unknown, y: unknown, modo: unknown) => {
+      if (propia(evento) && numero(x) && numero(y) && typeof modo === 'string' && MODOS.includes(modo)) {
+        this.redimensionarInicio(x, y, modo as ModoRedimension)
+      }
+    })
+    ipcMain.on(CANALES.redimensionarMover, (evento, x: unknown, y: unknown) => {
+      if (propia(evento) && numero(x) && numero(y)) this.redimensionarMover(x, y)
+    })
+    ipcMain.on(CANALES.redimensionarFin, (evento) => {
+      if (propia(evento)) this.redimensionarFin()
     })
 
     ipcMain.on(CANALES.arrastreInicio, (evento, x: number, y: number) => {

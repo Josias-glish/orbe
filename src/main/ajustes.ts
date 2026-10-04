@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path'
 export interface Ajustes {
   /** Esquina superior izquierda de la ventana colapsada, en píxeles de pantalla. */
   posicion?: { x: number; y: number }
+  /** Tamaño del panel de chat que eligió el usuario. */
+  panel?: { ancho: number; alto: number }
 }
 
 const ruta = (): string => join(app.getPath('userData'), 'ajustes.json')
@@ -17,10 +19,11 @@ export function leerAjustes(): Ajustes {
   }
 }
 
-export function guardarAjustes(ajustes: Ajustes): void {
+/** Guarda solo lo que se pasa y conserva el resto (la posición y el tamaño se guardan por separado). */
+export function guardarAjustes(cambios: Ajustes): void {
   try {
     mkdirSync(dirname(ruta()), { recursive: true })
-    writeFileSync(ruta(), JSON.stringify(ajustes, null, 2))
+    writeFileSync(ruta(), JSON.stringify({ ...leerAjustes(), ...cambios }, null, 2))
   } catch (error) {
     console.error('No se pudieron guardar los ajustes:', error)
   }

@@ -12,12 +12,20 @@
   <body>
     <div id="raiz" class="colapsado ancla-derecha ancla-abajo">
       <section id="panel" class="panel" aria-label="Chat del asistente" aria-hidden="true">
+        <div id="fondo" class="panel-fondo" aria-hidden="true"></div>
         <header id="panel-cabecera" class="panel-cabecera">
           <div class="cabecera-titulo">
             <span class="panel-titulo">Orbe</span>
             <span id="modelo" class="chip-modelo" hidden></span>
           </div>
           <div class="cabecera-acciones">
+            <button id="fondo-boton" class="boton-icono" type="button" title="Fondo del chat" aria-label="Fondo del chat" aria-expanded="false" hidden>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+                <path d="M9 10.5h.01" />
+                <path d="m21 16-5-5-9 9" />
+              </svg>
+            </button>
             <button id="memoria-boton" class="boton-icono" type="button" title="Memoria: lo que Orbe sabe de ti" aria-label="Memoria" aria-pressed="false">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -88,6 +96,13 @@
         </div>
 
         <section id="memoria" class="memoria" aria-label="Memoria" hidden></section>
+
+        <div id="fondo-menu" class="fondo-menu" role="dialog" aria-label="Opciones del fondo" hidden></div>
+
+        <!-- Agarres para cambiar el tamaño: están en los bordes libres (los opuestos al orbe, que no se mueve). -->
+        <div class="agarre agarre-x" data-modo="x" title="Cambiar el ancho"></div>
+        <div class="agarre agarre-y" data-modo="y" title="Cambiar el alto"></div>
+        <div class="agarre agarre-xy" data-modo="xy" title="Cambiar el tamaño"></div>
       </section>
 
       <div id="orbe-caja" class="orbe-caja" title="Clic para abrir o cerrar · arrastra para mover">

@@ -67,6 +67,8 @@ export interface Config {
   contextoMax: number
   atajoPanel: string
   atajoLeer: string
+  /** Carpeta con las imágenes que se usan de fondo del chat; vacía si no hay. */
+  fondosCarpeta: string
   /** Máximo de caracteres de recuerdos que viajan en cada conversación. */
   memoriaMax: number
   /** Carpetas de memoria de Claude de donde importar; null = las de Claude Code (`~/.claude/projects/*\/memory`). */
@@ -139,6 +141,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     contextoMax,
     atajoPanel: leer('ORBE_ATAJO_PANEL') || ATAJO_PANEL_POR_DEFECTO,
     atajoLeer: leer('ORBE_ATAJO_LEER') || ATAJO_LEER_POR_DEFECTO,
+    fondosCarpeta: leer('ORBE_FONDOS'),
     memoriaMax,
     memoriaOrigenes,
     avisos

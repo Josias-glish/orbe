@@ -7,6 +7,9 @@ export const CANALES = {
   arrastreInicio: 'ventana:arrastre-inicio',
   arrastreMover: 'ventana:arrastre-mover',
   arrastreFin: 'ventana:arrastre-fin',
+  redimensionarInicio: 'ventana:redimensionar-inicio',
+  redimensionarMover: 'ventana:redimensionar-mover',
+  redimensionarFin: 'ventana:redimensionar-fin',
   expandidoCambio: 'ventana:expandido-cambio',
   visibilidad: 'ventana:visibilidad',
   abrirEnlace: 'app:abrir-enlace',
@@ -21,6 +24,9 @@ export const CANALES = {
   pantallaDescartar: 'pantalla:descartar',
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
+  fondoEstado: 'fondo:estado',
+  fondoSiguiente: 'fondo:siguiente',
+  fondoAjustar: 'fondo:ajustar',
   memoriaInicio: 'memoria:inicio',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
@@ -209,11 +215,28 @@ export interface CambiosRecuerdo {
   completo?: boolean
 }
 
+/** El fondo del chat: una imagen de la carpeta que el usuario eligió, con su visibilidad. */
+export interface EstadoFondo {
+  /** Hay una carpeta con imágenes. Si no, el menú de fondos no se ofrece. */
+  disponible: boolean
+  activo: boolean
+  /** 0,1–0,9: cuánto se ve la imagen (el resto es un velo oscuro para que el texto se lea). */
+  visibilidad: number
+  nombre: string | null
+  total: number
+  /** La imagen ya reducida (data URL). Null si el fondo está apagado o si el estado no la trae (al mover la visibilidad). */
+  imagen: string | null
+}
+
 export interface ApiOrbe {
   alternar(): void
   arrastreInicio(x: number, y: number): void
   arrastreMover(x: number, y: number): void
   arrastreFin(): void
+  /** Cambiar el tamaño del panel arrastrando un borde (x, y: coordenadas de pantalla; modo: qué ejes). */
+  redimensionarInicio(x: number, y: number, modo: 'x' | 'y' | 'xy'): void
+  redimensionarMover(x: number, y: number): void
+  redimensionarFin(): void
   alCambiarExpandido(cb: (estado: EstadoVentana) => void): () => void
   alCambiarVisibilidad(cb: (visible: boolean) => void): () => void
   abrirEnlace(url: string): void
@@ -231,6 +254,10 @@ export interface ApiOrbe {
   /** Captura de respaldo: oculta Orbe, fotografía la pantalla y deja la imagen lista para el próximo mensaje. Solo tras la confirmación del usuario. */
   pantallaCapturar(): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
+
+  fondoEstado(): Promise<EstadoFondo>
+  fondoSiguiente(): Promise<EstadoFondo>
+  fondoAjustar(cambios: { activo?: boolean; visibilidad?: number }): Promise<EstadoFondo>
 
   memoriaInicio(): Promise<InicioMemoria>
   memoriaEstado(): Promise<EstadoMemoria>

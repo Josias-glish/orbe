@@ -19,6 +19,9 @@ const api: ApiOrbe = {
   arrastreInicio: (x, y) => ipcRenderer.send(CANALES.arrastreInicio, x, y),
   arrastreMover: (x, y) => ipcRenderer.send(CANALES.arrastreMover, x, y),
   arrastreFin: () => ipcRenderer.send(CANALES.arrastreFin),
+  redimensionarInicio: (x, y, modo) => ipcRenderer.send(CANALES.redimensionarInicio, x, y, modo),
+  redimensionarMover: (x, y) => ipcRenderer.send(CANALES.redimensionarMover, x, y),
+  redimensionarFin: () => ipcRenderer.send(CANALES.redimensionarFin),
   alCambiarExpandido: (cb) => suscribir<EstadoVentana>(CANALES.expandidoCambio, cb),
   alCambiarVisibilidad: (cb) => suscribir<boolean>(CANALES.visibilidad, cb),
   abrirEnlace: (url) => ipcRenderer.send(CANALES.abrirEnlace, url),
@@ -35,6 +38,10 @@ const api: ApiOrbe = {
   pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
   pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
+
+  fondoEstado: () => ipcRenderer.invoke(CANALES.fondoEstado),
+  fondoSiguiente: () => ipcRenderer.invoke(CANALES.fondoSiguiente),
+  fondoAjustar: (cambios) => ipcRenderer.invoke(CANALES.fondoAjustar, cambios),
 
   memoriaInicio: () => ipcRenderer.invoke(CANALES.memoriaInicio),
   memoriaEstado: () => ipcRenderer.invoke(CANALES.memoriaEstado),

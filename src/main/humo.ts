@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { leerAjustes } from './ajustes'
+import { ALTO_EXTRA_ORBE, TAM_PANEL_MIN, panelDeVentana } from './geometria'
 import type { ServicioMemoria } from './memoria/servicio'
 import type { CapturaDemo } from './pantalla/captura-demo'
 import type { FuenteDemo } from './pantalla/fuente-demo'
@@ -518,6 +520,134 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await escribir('')
   }
 
+  /** Tamaño del panel (se puede cambiar arrastrando un borde) y fondo del chat. */
+  const pasosPanel = async (): Promise<void> => {
+    const p: Record<string, unknown> = {}
+    informe.panel = p
+    const bounds = (): { x: number; y: number; width: number; height: number } => orbe.ventana.getBounds()
+    /** Arrastra un agarre con eventos de puntero de verdad (pulsar, mover, soltar), como haría una persona. */
+    const arrastrar = (selector: string, dx: number, dy: number): Promise<unknown> =>
+      js(`(() => {
+        const a = document.querySelector(${JSON.stringify(selector)});
+        const r = a.getBoundingClientRect();
+        const x0 = window.screenX + r.left + r.width / 2, y0 = window.screenY + r.top + r.height / 2;
+        const ev = (tipo, x, y) => a.dispatchEvent(new PointerEvent(tipo, { bubbles: true, button: 0, pointerId: 7, screenX: x, screenY: y }));
+        ev('pointerdown', x0, y0);
+        ev('pointermove', x0 + ${dx} / 2, y0 + ${dy} / 2);
+        ev('pointermove', x0 + ${dx}, y0 + ${dy});
+        ev('pointerup', x0 + ${dx}, y0 + ${dy});
+      })()`)
+    const medidasPanel = (): Promise<{ ancho: number; alto: number; ventana: number[] }> =>
+      js(`(() => { const r = document.getElementById('panel').getBoundingClientRect(); return { ancho: Math.round(r.width), alto: Math.round(r.height), ventana: [innerWidth, innerHeight] } })()`)
+
+    // 9a. Redimensionar: arrastrar la esquina libre (arriba a la izquierda) agranda el panel y el orbe no se mueve
+    await pulsar('#nueva')
+    await esperar(300)
+    comprobar('hay tres agarres en el panel abierto', (await contar('.agarre')) === 3)
+    comprobar('los agarres no estorban si el panel está cerrado', (await js<string>(`getComputedStyle(document.querySelector('.agarre')).display`)) !== 'none')
+    const antes = bounds()
+    p.antes = antes
+    // Primero se encoge (siempre hay sitio) y luego se vuelve a agrandar: así vale con cualquier tamaño de pantalla.
+    await arrastrar('.agarre-xy', 30, 100)
+    await esperar(300)
+    const pequeno = bounds()
+    comprobar('arrastrar hacia dentro encoge el ancho y el alto', pequeno.width === antes.width - 30 && pequeno.height === antes.height - 100, [antes, pequeno])
+    await arrastrar('.agarre-xy', -150, -100)
+    await esperar(400)
+    const grande = bounds()
+    p.grande = grande
+    comprobar('arrastrar hacia fuera agranda el ancho', grande.width === antes.width + 120, [antes.width, grande.width])
+    comprobar('y vuelve a crecer el alto', grande.height === antes.height, [antes.height, grande.height])
+    comprobar('el orbe no se mueve (esquina inferior derecha fija)', grande.x + grande.width === antes.x + antes.width && grande.y + grande.height === antes.y + antes.height)
+    const m = await medidasPanel()
+    p.panelGrande = m
+    comprobar('la interfaz sigue el tamaño de la ventana', m.ancho === m.ventana[0] && m.alto === m.ventana[1] - ALTO_EXTRA_ORBE, m)
+    comprobar('el tamaño se guarda', JSON.stringify(leerAjustes().panel) === JSON.stringify(panelDeVentana(grande)), leerAjustes().panel)
+    await capturar('9a-panel-grande')
+
+    // 9b. Solo el ancho o solo el alto, con los bordes
+    const antesX = bounds()
+    await arrastrar('.agarre-x', -40, 999)
+    await esperar(300)
+    comprobar('el borde lateral solo cambia el ancho', bounds().width === antesX.width + 40 && bounds().height === antesX.height, [antesX, bounds()])
+    const antesY = bounds()
+    await arrastrar('.agarre-y', 999, 60)
+    await esperar(300)
+    comprobar('el borde superior solo cambia el alto', bounds().height === antesY.height - 60 && bounds().width === antesY.width, [antesY, bounds()])
+
+    // 9c. Hay un mínimo
+    await arrastrar('.agarre-xy', 3000, 3000)
+    await esperar(300)
+    const minimo = bounds()
+    p.minimo = minimo
+    comprobar('no se encoge más del mínimo', minimo.width === TAM_PANEL_MIN.ancho && minimo.height === TAM_PANEL_MIN.alto + ALTO_EXTRA_ORBE, minimo)
+    await capturar('9c-panel-minimo')
+
+    // 9d. Recuerda el tamaño al cerrar y abrir
+    await arrastrar('.agarre-xy', -160, -100)
+    await esperar(300)
+    const elegido = bounds()
+    orbe.establecerExpandido(false)
+    await esperar(300)
+    orbe.establecerExpandido(true)
+    await esperar(500)
+    comprobar('al volver a abrir el panel conserva el tamaño', bounds().width === elegido.width && bounds().height === elegido.height, [elegido, bounds()])
+    comprobar('y el orbe colapsado sigue en su sitio', bounds().x + bounds().width === antes.x + antes.width)
+
+    // 9e. El fondo: botón, imagen aplicada, menú, otro fondo, visibilidad y apagarlo
+    const imagenDelFondo = (): Promise<string> => js(`getComputedStyle(document.getElementById('fondo')).backgroundImage`)
+    comprobar('el botón de fondo aparece al haber imágenes', !(await js<boolean>(`document.getElementById('fondo-boton').hidden`)))
+    p.imagen1 = (await imagenDelFondo()).slice(0, 30)
+    comprobar('hay una imagen de fondo aplicada', (await imagenDelFondo()).startsWith('url("data:image/jpeg;base64,'), p.imagen1)
+    comprobar('el panel lo sabe (para dar más contraste)', await existe('#panel.con-fondo'))
+    p.opacidad = await js<string>(`getComputedStyle(document.getElementById('fondo')).opacity`)
+    comprobar('empieza con la visibilidad por defecto', Math.abs(Number(p.opacidad) - 0.5) < 0.05, p.opacidad)
+
+    await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
+    await esperar(500)
+    await esperarFin(15_000)
+    await esperar(400)
+    await capturar('9e-con-fondo')
+
+    await pulsar('#fondo-boton')
+    comprobar('se abre el menú del fondo', await esperarSelector('#fondo-menu:not([hidden]) .boton-memoria', 2000))
+    p.menu = await textoDe('#fondo-menu')
+    comprobar('el menú dice cuántas imágenes hay', /3 imágenes/.test(String(p.menu)), p.menu)
+    await capturar('9f-menu-fondo')
+
+    const antesDeCambiar = await imagenDelFondo()
+    await pulsar('#fondo-menu .boton-memoria')
+    await esperar(600)
+    const despues = await imagenDelFondo()
+    comprobar('«Otro fondo» cambia la imagen', despues !== antesDeCambiar && despues.startsWith('url("data:image/jpeg'))
+
+    await js(`(() => { const r = document.querySelector('#fondo-menu input[type=range]'); r.value = '80'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await esperar(500)
+    p.opacidad2 = await js<string>(`getComputedStyle(document.getElementById('fondo')).opacity`)
+    comprobar('el control de visibilidad cambia lo que se ve', Math.abs(Number(p.opacidad2) - 0.8) < 0.05, p.opacidad2)
+    comprobar('y la imagen no se vuelve a cargar', (await imagenDelFondo()) === despues)
+    await capturar('9g-visibilidad-alta')
+
+    await js(`(() => { const c = document.querySelector('#fondo-menu input[type=checkbox]'); c.click() })()`)
+    await esperar(500)
+    comprobar('apagar el fondo lo quita', !(await existe('#panel.con-fondo')) && (await imagenDelFondo()) === 'none')
+    await js(`(() => { const c = document.querySelector('#fondo-menu input[type=checkbox]'); c.click() })()`)
+    await esperar(700)
+    comprobar('encenderlo lo devuelve', (await existe('#panel.con-fondo')) && (await imagenDelFondo()).startsWith('url("data:image/jpeg'))
+
+    // Esc cierra el menú sin cerrar el panel
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(250)
+    comprobar('Esc cierra el menú', await js<boolean>(`document.getElementById('fondo-menu').hidden`))
+    comprobar('y el panel sigue abierto', orbe.estaExpandido)
+    // Un clic fuera también lo cierra
+    await pulsar('#fondo-boton')
+    await esperarSelector('#fondo-menu:not([hidden])', 2000)
+    await js(`document.getElementById('mensajes').click()`)
+    await esperar(250)
+    comprobar('un clic fuera cierra el menú', await js<boolean>(`document.getElementById('fondo-menu').hidden`))
+  }
+
   try {
     await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
     await esperar(1200)
@@ -599,6 +729,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosPantalla(extras)
         await pasosMemoria(extras)
         await pasosCaptura(extras)
+        await pasosPanel()
       }
 
       orbe.establecerExpandido(false)

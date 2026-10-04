@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Estado: **fase 4 de 5** (chat con Claude, lectura de pantalla por texto y por captura, y memoria). La bandeja del sistema y el empaquetado (fase 5) llegan después.
+> Estado: **fase 4 de 5** (chat con Claude, lectura de pantalla por texto y por captura, memoria, panel redimensionable y fondos). La bandeja del sistema y el empaquetado (fase 5) llegan después.
 
 ## Requisitos
 - Windows 11
@@ -37,6 +37,8 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
 - La **cámara** adjunta una **captura de pantalla** (último recurso; antes te pide confirmación).
+- **Cambiar el tamaño del panel**: arrastra el borde izquierdo o el superior (los libres, opuestos al orbe), o la esquina marcada. El orbe no se mueve de su esquina, hay un mínimo y un máximo (se ajusta a tu pantalla) y Orbe recuerda el tamaño que elijas.
+- El botón de la **imagen** de la cabecera (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
 - El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
@@ -54,7 +56,10 @@ Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 
 El CLI se lanza sin `ANTHROPIC_API_KEY` en su entorno, para que no te cobre por API sin que lo hayas decidido.
 
-Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
+Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_FONDOS` (carpeta con imágenes para el fondo del chat), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
+
+## Fondo del chat
+Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable no hay fondo ni botón.
 
 ## Memoria
 Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversación que dejaste a medias**.
@@ -101,7 +106,7 @@ Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando t
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.
 
 ## Pruebas
-`npm test` ejecuta unas 590 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
+`npm test` ejecuta unas 630 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
 
 `npm run humo` arranca la aplicación con un chat, un lector de pantalla, una captura y una memoria de mentira (notas e imágenes de ejemplo, nunca tu memoria ni tu pantalla reales), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor) y la captura (sugerencias, confirmación, vista previa, envío y errores), guarda capturas en `humo/` y termina con código 1 si algo falla.
 

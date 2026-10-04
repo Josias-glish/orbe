@@ -1,5 +1,6 @@
 import './estilos.css'
 import type { EstadoOrbe, EstadoVentana } from '../shared/tipos'
+import { FondoChat } from './chat/fondo-ui'
 import { PanelChat } from './chat/panel'
 import { Orbe } from './orbe/orbe'
 
@@ -17,6 +18,13 @@ const orbe = new Orbe(canvas)
 orbe.iniciar()
 const panel = new PanelChat(orbe)
 void panel.restaurarConversacion()
+const fondo = new FondoChat(
+  document.getElementById('fondo') as HTMLElement,
+  document.getElementById('fondo-boton') as HTMLButtonElement,
+  document.getElementById('fondo-menu') as HTMLElement,
+  panelEl
+)
+void fondo.iniciar()
 
 /** Distingue clic de arrastre sobre un elemento: el arrastre mueve la ventana, el clic ejecuta `alClic`. */
 function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
@@ -55,8 +63,37 @@ function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
   elemento.addEventListener('pointercancel', terminar)
 }
 
+/** Los agarres de los bordes cambian el tamaño del panel; el orbe se queda en su esquina. */
+function hacerRedimensionable(agarre: HTMLElement): void {
+  const modo = agarre.dataset['modo'] as 'x' | 'y' | 'xy'
+  let activo = false
+  agarre.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    try {
+      agarre.setPointerCapture(e.pointerId)
+    } catch {
+      // sin captura el arrastre funciona igual mientras el puntero siga encima
+    }
+    activo = true
+    window.orbe.redimensionarInicio(e.screenX, e.screenY, modo)
+  })
+  agarre.addEventListener('pointermove', (e) => {
+    if (activo) window.orbe.redimensionarMover(e.screenX, e.screenY)
+  })
+  const terminar = (e: PointerEvent): void => {
+    if (!activo) return
+    activo = false
+    if (agarre.hasPointerCapture(e.pointerId)) agarre.releasePointerCapture(e.pointerId)
+    window.orbe.redimensionarFin()
+  }
+  agarre.addEventListener('pointerup', terminar)
+  agarre.addEventListener('pointercancel', terminar)
+}
+
 hacerArrastrable(caja, () => window.orbe.alternar())
 hacerArrastrable(cabecera)
+document.querySelectorAll<HTMLElement>('.agarre').forEach(hacerRedimensionable)
 
 let primeraApertura = true
 
@@ -86,7 +123,8 @@ window.orbe.alCambiarVisibilidad((visible) => orbe.fijarVisible(visible))
 // Escape cierra el gestor de memoria si está abierto y, si no, el panel.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || !raiz.classList.contains('expandido')) return
-  if (!panel.alPulsarEscape()) window.orbe.alternar()
+  if (fondo.cerrarMenuSiAbierto() || panel.alPulsarEscape()) return
+  window.orbe.alternar()
 })
 
 // Ganchos para la prueba de humo y el selector de estados.
