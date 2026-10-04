@@ -865,37 +865,44 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('apagarla la quita del botón', !(await existe('#voz-boton.activo')))
     await js(`document.body.click()`)
 
-    // 10h. «Estilo Jarvis»: voz masculina grave y pausada y, al haber voz neuronal, esa
+    // 10h. «Estilo Jarvis»: por defecto con las voces de Windows (voz masculina, grave y pausada); la neuronal, si se elige
     await nuevaConversacionHumo()
     await js(`(() => {
       window.__reproducidos = 0;
       const play = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function () { window.__reproducidos++; return play.call(this) };
     })()`)
+    const dichosAntes = (await js<string[]>(`window.__dicho`)).length
     await pulsar('#voz-boton')
     await esperarSelector('#voz-menu:not([hidden]) .boton-memoria.primario', 2000)
     comprobar('el menú ofrece el estilo Jarvis', /Estilo Jarvis/.test(await textoDe('#voz-menu')))
     comprobar('y la voz neuronal como motor', /Voz neuronal «onyx»/.test(await textoDe('#voz-menu')))
+    comprobar('el motor por defecto son las voces de Windows', (await js<string>(`document.querySelector('#voz-menu select[aria-label="Motor de voz"]').value`)) === 'windows')
     await js(`document.querySelector('#voz-menu .boton-memoria.primario').click()`)
     await esperar(600)
     v.prefsJarvis = await js<string>(`localStorage.getItem('orbe.voz')`)
     const prefsJarvis = JSON.parse(String(v.prefsJarvis)) as { activa: boolean; voz: string | null; velocidad: number; tono: number; motor: string }
-    comprobar('activa la lectura con voz neuronal', prefsJarvis.activa === true && prefsJarvis.motor === 'neuronal', prefsJarvis)
+    comprobar('activa la lectura con las voces de Windows', prefsJarvis.activa === true && prefsJarvis.motor === 'windows', prefsJarvis)
     comprobar('grave y pausado', prefsJarvis.tono === 0.7 && prefsJarvis.velocidad === 0.9, prefsJarvis)
-    if ((v.voces as number) > 0) comprobar('elige una voz masculina de Windows para el respaldo', /raul|pablo|jorge|david|mark/i.test(String(prefsJarvis.voz)), prefsJarvis.voz)
-    comprobar('el menú muestra la voz neuronal elegida y deshabilita lo de Windows', (await js<string>(`document.querySelector('#voz-menu select[aria-label="Motor de voz"]').value`)) === 'neuronal' && (await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
+    if ((v.voces as number) > 0) comprobar('elige una voz masculina de Windows', /raul|pablo|jorge|david|mark/i.test(String(prefsJarvis.voz)), prefsJarvis.voz)
+    comprobar('el menú deja elegir la voz de Windows', !(await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
     comprobar('pulsar «Estilo Jarvis» no cierra el menú', !(await js<boolean>(`document.getElementById('voz-menu').hidden`)))
     await capturar('10h-jarvis')
-    await js(`document.body.click()`)
-    comprobar('probar la voz (al elegir el estilo) reprodujo audio neuronal', (await js<number>(`window.__reproducidos`)) >= 1, await js(`window.__reproducidos`))
+    comprobar('probar la voz (al elegir el estilo) habló con Windows y no con la neuronal', (await js<string[]>(`window.__dicho`)).length > dichosAntes && (await js<number>(`window.__reproducidos`)) === 0)
 
+    // Y si se elige la voz neuronal, esa es la que lee
+    await js(`(() => { const s = document.querySelector('#voz-menu select[aria-label="Motor de voz"]'); s.value = 'neuronal'; s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await esperar(300)
+    comprobar('el menú muestra la voz neuronal elegida y deshabilita lo de Windows', (await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
+    await js(`document.body.click()`)
     const antesAudio = await js<number>(`window.__reproducidos`)
+    const dichosNeuronal = (await js<string[]>(`window.__dicho`)).length
     await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
     await esperarFin(15_000)
     await esperar(1500)
     v.reproducidos = (await js<number>(`window.__reproducidos`)) - antesAudio
     comprobar('la respuesta se lee con la voz neuronal, frase a frase', (v.reproducidos as number) >= 5, v.reproducidos)
-    comprobar('sin usar la voz de Windows', (await js<string[]>(`window.__dicho`)).length === (v.dicho as string[]).length)
+    comprobar('sin usar la voz de Windows', (await js<string[]>(`window.__dicho`)).length === dichosNeuronal)
 
     // Se deja todo como estaba.
     await pulsar('#voz-boton')

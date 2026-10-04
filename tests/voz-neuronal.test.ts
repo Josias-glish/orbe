@@ -224,7 +224,7 @@ describe('LectorVoz: estilo Jarvis y voz neuronal', () => {
     pitch = 1
     voice: unknown = null
     onend: (() => void) | null = null
-    onerror: (() => void) | null = null
+    onerror: ((evento?: { error?: string }) => void) | null = null
     constructor(texto: string) {
       this.text = texto
     }
@@ -273,10 +273,65 @@ describe('LectorVoz: estilo Jarvis y voz neuronal', () => {
     expect(JSON.parse(datos.get('orbe.voz')!)).toMatchObject({ voz: 'raul', tono: 0.7 })
   })
 
-  it('con voz neuronal disponible, el estilo Jarvis la elige', () => {
+  it('el estilo Jarvis respeta el motor elegido: por defecto Windows, aunque haya voz neuronal', () => {
     const { lector } = montar()
     lector.aplicarEstiloJarvis(true)
-    expect(lector.obtenerPrefs().motor).toBe('neuronal')
+    expect(lector.obtenerPrefs().motor).toBe('windows')
+    const neuronal = montar({ motor: 'neuronal' })
+    neuronal.lector.aplicarEstiloJarvis(true)
+    expect(neuronal.lector.obtenerPrefs().motor).toBe('neuronal')
+  })
+
+  it('si el motor neuronal quedó guardado pero ya no está configurado, el estilo Jarvis vuelve a Windows', () => {
+    const t = montar({ motor: 'neuronal' })
+    t.lector.aplicarEstiloJarvis(false)
+    expect(t.lector.obtenerPrefs().motor).toBe('windows')
+  })
+
+  it('si el servicio neuronal no está configurado, se habla con Windows aunque el motor guardado sea el neuronal', () => {
+    const neuronal: Neuronal = { sintetizar: async () => ({ ok: true, audio: new Uint8Array(1), mime: 'audio/mpeg' }) }
+    const t = montar({ activa: true, motor: 'neuronal' }, neuronal)
+    t.lector.fijarNeuronalConfigurado(false)
+    expect(t.lector.usaNeuronal).toBe(false)
+    t.lector.empezar()
+    t.lector.anexar('Una frase. ')
+    expect(t.dichos).toHaveLength(1)
+    expect(t.reproducidos).toHaveLength(0)
+    t.lector.fijarNeuronalConfigurado(true)
+    expect(t.lector.usaNeuronal).toBe(true)
+  })
+
+  it('un fallo real de la voz de Windows se avisa una sola vez; callarla no es un fallo', () => {
+    const t = montar({ activa: true })
+    t.lector.empezar()
+    t.lector.anexar('Primera frase. Segunda frase. ')
+    t.dichos[0].onerror?.({ error: 'synthesis-failed' })
+    t.dichos[1].onerror?.({ error: 'synthesis-failed' })
+    expect(t.errores).toHaveLength(1)
+    expect(t.errores[0]).toContain('synthesis-failed')
+    const callada = montar({ activa: true })
+    callada.lector.empezar()
+    callada.lector.anexar('Una frase. ')
+    callada.dichos[0].onerror?.({ error: 'canceled' })
+    expect(callada.errores).toHaveLength(0)
+  })
+
+  it('si Windows aún no ha cargado sus voces, el estilo Jarvis elige la masculina cuando llegan', () => {
+    let voces: VozSistema[] = []
+    let alCambiar: () => void = () => undefined
+    const sintesis = {
+      speak: () => undefined,
+      cancel: () => undefined,
+      getVoices: () => voces,
+      addEventListener: (_t: string, cb: () => void) => (alCambiar = cb)
+    } as unknown as Sintesis
+    const almacen: AlmacenPrefs = { getItem: () => null, setItem: () => undefined }
+    const lector = new LectorVoz(sintesis, almacen)
+    lector.aplicarEstiloJarvis(false)
+    expect(lector.obtenerPrefs().voz).toBeNull()
+    voces = VOCES
+    alCambiar()
+    expect(lector.obtenerPrefs().voz).toBe('raul')
   })
 
   it('las voces de Windows hablan con el tono elegido', () => {

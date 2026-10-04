@@ -93,6 +93,11 @@ export class PanelChat {
       alError: (mensaje) => this.mostrarEstadoTemporal(mensaje)
     })
     this.menuVoz = new MenuVoz(porId('voz-boton'), porId('voz-menu'), this.lector)
+    // Si no hay voz neuronal configurada, el motor neuronal que quedara guardado se ignora y se habla con Windows.
+    void window.orbe
+      .vozInfo()
+      .then((info) => this.lector.fijarNeuronalConfigurado(info.neuronal))
+      .catch(() => this.lector.fijarNeuronalConfigurado(false))
     this.dictado = new Dictado({
       alEstado: (estado, segundos) => this.alEstadoDictado(estado, segundos),
       alTexto: (texto) => this.alTextoDictado(texto),

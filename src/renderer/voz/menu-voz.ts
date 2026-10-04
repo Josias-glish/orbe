@@ -71,7 +71,7 @@ export class MenuVoz {
   private pintar(): void {
     const prefs = this.lector.obtenerPrefs()
     const neuronal = this.info?.neuronal === true
-    const usaNeuronal = prefs.motor === 'neuronal' && neuronal
+    const usaNeuronal = this.lector.usaNeuronal && neuronal
 
     const jarvis = el('button', 'boton-memoria primario', 'Estilo Jarvis')
     jarvis.type = 'button'

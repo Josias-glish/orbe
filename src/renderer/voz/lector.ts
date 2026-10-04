@@ -40,13 +40,15 @@ export interface Dicho {
   rate: number
   pitch: number
   onend: (() => void) | null
-  onerror: (() => void) | null
+  onerror: ((evento?: { error?: string }) => void) | null
 }
 
 /** Lo que se necesita de `speechSynthesis`. */
 export interface Sintesis {
   speak(dicho: Dicho): void
   cancel(): void
+  /** Windows a veces deja el motor de voz en pausa: se reanuda antes de hablar. */
+  resume?(): void
   getVoices(): VozSistema[]
   addEventListener?(tipo: string, cb: () => void): void
 }
@@ -110,6 +112,12 @@ export class LectorVoz {
   private cadena: Promise<void> = Promise.resolve()
   /** La voz neuronal falló en esta respuesta: el resto se dice con la de Windows. */
   private neuronalCaida = false
+  /** El servicio de voz neuronal está configurado (lo dice el proceso principal). Si no lo está, se habla con Windows. */
+  private neuronalConfigurado: boolean
+  /** Se pidió el estilo Jarvis antes de que Windows cargara sus voces: se elige la masculina en cuanto lleguen. */
+  private jarvisPendiente = false
+  /** Ya se avisó de un fallo de la voz de Windows en esta respuesta. */
+  private avisadoFalloWindows = false
 
   constructor(
     private readonly sintesis: Sintesis | null,
@@ -117,7 +125,17 @@ export class LectorVoz {
     private readonly extras: ExtrasLector = {}
   ) {
     this.prefs = this.cargar()
-    sintesis?.addEventListener?.('voiceschanged', () => this.avisar())
+    this.neuronalConfigurado = extras.neuronal !== undefined
+    sintesis?.addEventListener?.('voiceschanged', () => {
+      if (this.jarvisPendiente) this.elegirVozJarvis()
+      this.avisar()
+    })
+    // Windows carga sus voces la primera vez que se le piden: se piden ya, para tenerlas cuando haga falta.
+    try {
+      sintesis?.getVoices()
+    } catch {
+      // sin voces todavía; se reintenta al hablar
+    }
   }
 
   private cargar(): PrefsVoz {
@@ -170,12 +188,33 @@ export class LectorVoz {
    * el tono; con voz neuronal (si está configurada) la usa, que es la que más se parece.
    */
   aplicarEstiloJarvis(neuronalDisponible: boolean): void {
+    const masculina = elegirVozMasculina(this.voces())
+    this.jarvisPendiente = this.voces().length === 0
     this.fijarPrefs({
       activa: true,
-      voz: elegirVozMasculina(this.voces())?.voiceURI ?? this.prefs.voz,
+      voz: masculina?.voiceURI ?? this.prefs.voz,
       ...ESTILO_JARVIS,
-      motor: neuronalDisponible ? 'neuronal' : 'windows'
+      // Se respeta el motor que haya elegido el usuario (por defecto, las voces de Windows); la neuronal solo si existe.
+      motor: neuronalDisponible && this.prefs.motor === 'neuronal' ? 'neuronal' : 'windows'
     })
+  }
+
+  private elegirVozJarvis(): void {
+    const masculina = elegirVozMasculina(this.voces())
+    if (!masculina) return
+    this.jarvisPendiente = false
+    this.fijarPrefs({ voz: masculina.voiceURI })
+  }
+
+  /** El proceso principal dice si hay un servicio de voz neuronal configurado; si no, el motor neuronal se ignora. */
+  fijarNeuronalConfigurado(configurado: boolean): void {
+    this.neuronalConfigurado = configurado && this.extras.neuronal !== undefined
+    this.avisar()
+  }
+
+  /** Se habla con la voz neuronal solo si está elegida y existe; en cualquier otro caso, con las voces de Windows. */
+  get usaNeuronal(): boolean {
+    return this.prefs.motor === 'neuronal' && this.neuronalConfigurado && this.extras.reproductor !== undefined
   }
 
   /** Las voces de Windows instaladas, con las de español primero. */
@@ -227,6 +266,7 @@ export class LectorVoz {
     this.pendiente = ''
     this.estado = estadoLecturaInicial()
     this.neuronalCaida = false
+    this.avisadoFalloWindows = false
     this.avisar()
   }
 
@@ -244,7 +284,7 @@ export class LectorVoz {
   }
 
   private hablar(frase: string): void {
-    if (this.prefs.motor === 'neuronal' && this.extras.neuronal && this.extras.reproductor && !this.neuronalCaida) {
+    if (this.usaNeuronal && !this.neuronalCaida) {
       this.hablarNeuronal(frase)
     } else {
       this.hablarWindows(frase)
@@ -291,14 +331,25 @@ export class LectorVoz {
     dicho.rate = this.prefs.velocidad
     dicho.pitch = this.prefs.tono
     const generacion = this.generacion
-    const alTerminar = (): void => {
+    const alTerminar = (evento?: { error?: string }): void => {
       if (generacion !== this.generacion) return
       this.enCola = Math.max(0, this.enCola - 1)
+      // «canceled» e «interrupted» son los que provoca el propio Orbe al callarse; los demás son fallos reales.
+      const error = evento?.error
+      if (error && error !== 'canceled' && error !== 'interrupted' && !this.avisadoFalloWindows) {
+        this.avisadoFalloWindows = true
+        this.extras.alError?.(`La voz de Windows ha fallado (${error}). Prueba otra voz en el menú del altavoz.`)
+      }
       this.avisar()
     }
-    dicho.onend = alTerminar
-    dicho.onerror = alTerminar
+    dicho.onend = () => alTerminar()
+    dicho.onerror = (e) => alTerminar(e)
     this.enCola++
+    try {
+      this.sintesis.resume?.()
+    } catch {
+      // si no se puede reanudar, se intenta hablar igualmente
+    }
     this.sintesis.speak(dicho)
     this.avisar()
   }
