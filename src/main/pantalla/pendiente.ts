@@ -1,4 +1,5 @@
 import type { ClaveParte, ContextoPantalla, LecturaPantalla } from '../../shared/tipos'
+import type { CapturaHecha } from './captura'
 import type { ResultadoLectura } from './contexto'
 
 /** Un contexto sacado de la reserva para enviarlo; se puede devolver si el envío falla. */
@@ -14,6 +15,8 @@ export const CADUCIDAD_POR_DEFECTO_MS = 5 * 60_000
 export class ContextoPendiente {
   private actual: ResultadoLectura | null = null
   private temporizador: NodeJS.Timeout | null = null
+  /** Avisos que vienen de la captura (p. ej. «ha salido negra»): se van con ella si se quita. */
+  private avisosImagen: string[] = []
 
   constructor(
     private readonly alCaducar: () => void,
@@ -30,8 +33,26 @@ export class ContextoPendiente {
 
   establecer(resultado: ResultadoLectura): LecturaPantalla {
     this.actual = { contexto: { ...resultado.contexto }, lectura: copiar(resultado.lectura) }
+    this.avisosImagen = []
     this.armar()
     return copiar(this.actual.lectura)
+  }
+
+  /**
+   * Añade (o sustituye) la captura de pantalla a lo que ya haya leído, o crea un contexto solo con la imagen.
+   * Una vez hay captura ya no se sugiere hacer otra.
+   */
+  agregarImagen(captura: CapturaHecha): LecturaPantalla {
+    const actual = this.actual ?? { contexto: {}, lectura: { partes: [], avisos: [], sugerirCaptura: false } }
+    actual.lectura.avisos = actual.lectura.avisos.filter((a) => !this.avisosImagen.includes(a))
+    actual.contexto.imagen = captura.imagen
+    actual.lectura.partes = [...actual.lectura.partes.filter((p) => p.clave !== 'imagen'), { ...captura.parte }]
+    this.avisosImagen = [...captura.avisos]
+    actual.lectura.avisos.push(...captura.avisos)
+    actual.lectura.sugerirCaptura = false
+    this.actual = actual
+    this.armar()
+    return copiar(actual.lectura)
   }
 
   /** Quita un trozo (el usuario no quiere enviarlo). Si no queda nada, descarta todo. */
@@ -52,6 +73,10 @@ export class ContextoPendiente {
       imagen: (c) => delete c.imagen
     }
     campos[clave](contexto)
+    if (clave === 'imagen') {
+      lectura.avisos = lectura.avisos.filter((a) => !this.avisosImagen.includes(a))
+      this.avisosImagen = []
+    }
     if (lectura.partes.length === 0) {
       this.descartar()
       return null
@@ -61,6 +86,7 @@ export class ContextoPendiente {
 
   descartar(): void {
     this.actual = null
+    this.avisosImagen = []
     this.desarmar()
   }
 

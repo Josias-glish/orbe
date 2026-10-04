@@ -33,6 +33,7 @@ const api: ApiOrbe = {
   pantallaLeer: () => ipcRenderer.invoke(CANALES.pantallaLeer),
   pantallaQuitar: (clave) => ipcRenderer.invoke(CANALES.pantallaQuitar, clave),
   pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
+  pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
 
   memoriaInicio: () => ipcRenderer.invoke(CANALES.memoriaInicio),

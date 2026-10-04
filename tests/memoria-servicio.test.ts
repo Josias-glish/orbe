@@ -189,7 +189,7 @@ describe('ServicioMemoria: notas del usuario', () => {
       almacen.guardar({ id: `n-${i}`, tipo: 'nota', descripcion: `Recuerdo ${i}`, cuerpo: `Recuerdo ${i}`, origen: 'usuario', usar: true, completo: true, modificado: '2026-10-01T00:00:00.000Z' })
     }
     expect(servicio.guardarNota('Uno más')).toMatchObject({ ok: false, error: expect.stringContaining(String(MAX_RECUERDOS)) })
-  })
+  }, 30_000) // escribe 200 archivos: con el disco ocupado puede tardar más de los 5 s por defecto
 
   it('no guarda contraseñas ni claves, salvo que el usuario insista', () => {
     const { servicio } = limpio()

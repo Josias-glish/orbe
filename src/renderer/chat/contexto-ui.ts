@@ -3,7 +3,7 @@ import type { ClaveParte, LecturaPantalla, ParteContexto } from '../../shared/ti
 const NS = 'http://www.w3.org/2000/svg'
 
 /** Trazos (estilo Lucide, dibujados a mano) de cada icono. */
-const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca', string[]> = {
+const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca' | 'camara', string[]> = {
   ventana: ['M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 9h18'],
   seleccion: ['M9 4h6', 'M9 20h6', 'M12 4v16'],
   contenido: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6'],
@@ -12,7 +12,8 @@ const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca
   cerrar: ['M18 6 6 18', 'm6 6 12 12'],
   libro: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
   volver: ['M19 12H5', 'm12 19-7-7 7-7'],
-  marca: ['M20 6 9 17l-5-5']
+  marca: ['M20 6 9 17l-5-5'],
+  camara: ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']
 }
 
 export function crearIcono(nombre: keyof typeof ICONOS, tamano = 14): SVGElement {
@@ -41,9 +42,16 @@ function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, 
   return e
 }
 
-/** Panel con el texto exacto (recortado) que lleva un trozo de contexto. */
+/** Panel con el texto exacto (recortado) que lleva un trozo de contexto, o la miniatura si es una captura. */
 function crearVista(parte: ParteContexto): HTMLElement {
   const caja = el('div', 'chip-vista')
+  if (parte.miniatura) {
+    const imagen = el('img', 'chip-miniatura')
+    imagen.src = parte.miniatura
+    imagen.alt = 'Vista previa de la captura de pantalla'
+    caja.append(imagen, el('p', 'chip-vista-nota', parte.vista))
+    return caja
+  }
   caja.append(el('pre', 'chip-vista-texto', parte.vista))
   if (parte.caracteres && parte.caracteres > parte.vista.length) {
     caja.append(el('p', 'chip-vista-nota', 'Vista previa. Se envía el texto completo.'))
@@ -103,6 +111,11 @@ export class BarraContexto {
 
   hay(): boolean {
     return this.lectura !== null
+  }
+
+  /** Deja desplegada la vista previa de un trozo la próxima vez que se pinte (p. ej. la captura recién hecha). */
+  abrir(clave: ClaveParte): void {
+    this.abierta = clave
   }
 
   mostrar(lectura: LecturaPantalla): void {

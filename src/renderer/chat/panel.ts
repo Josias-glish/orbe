@@ -1,7 +1,9 @@
 import type { ClaveParte, ErrorOrbe, EventoChat, EventoPantalla, InfoChat, LecturaPantalla, ResultadoEnvio } from '../../shared/tipos'
+import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaMemoria } from '../memoria/vista-memoria'
 import type { Orbe } from '../orbe/orbe'
+import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
 
@@ -25,6 +27,12 @@ export class PanelChat {
   private readonly botonEnviar: HTMLButtonElement
   private readonly botonLeer: HTMLButtonElement
   private readonly botonMemoria: HTMLButtonElement
+  private readonly botonCapturar: HTMLButtonElement
+  private readonly confirmacion: ConfirmacionCaptura
+  private readonly sugerencia: SugerenciaCaptura
+  private capturando = false
+  /** El usuario cerró la sugerencia de captura: no se vuelve a ofrecer hasta su próximo mensaje. */
+  private sugerenciaDescartada = false
   private readonly cuerpoPanel: HTMLElement
   private readonly memoria: VistaMemoria
   private readonly lineaEstado: HTMLElement
@@ -49,7 +57,20 @@ export class PanelChat {
     this.cuerpoPanel = raiz.querySelector('.panel-cuerpo') as HTMLElement
     this.memoria = new VistaMemoria(porId('memoria'), () => this.cerrarMemoria())
     this.lineaEstado = porId('estado-linea')
-    this.entrada = new EntradaTeclado(porId<HTMLTextAreaElement>('entrada'), () => this.actualizarBoton())
+    this.botonCapturar = porId('capturar')
+    this.confirmacion = new ConfirmacionCaptura(porId('confirmacion'))
+    this.sugerencia = new SugerenciaCaptura(
+      porId('sugerencia'),
+      () => void this.pedirCaptura(),
+      () => {
+        this.sugerenciaDescartada = true
+        this.sugerencia.ocultar()
+      }
+    )
+    this.entrada = new EntradaTeclado(porId<HTMLTextAreaElement>('entrada'), () => {
+      this.actualizarBoton()
+      this.evaluarSugerencia()
+    })
     this.barra = new BarraContexto(
       porId('pendiente'),
       (clave) => void this.quitarParte(clave),
@@ -62,6 +83,7 @@ export class PanelChat {
       else this.entrada.enviar()
     })
     this.botonLeer.addEventListener('click', () => void this.leerPantalla())
+    this.botonCapturar.addEventListener('click', () => void this.pedirCaptura())
     this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
 
@@ -117,8 +139,12 @@ export class PanelChat {
     this.entrada.enfocar()
   }
 
-  /** Esc: si el gestor de memoria está abierto, lo cierra y devuelve true (el panel se queda abierto). */
+  /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
   alPulsarEscape(): boolean {
+    if (this.confirmacion.visible) {
+      this.confirmacion.cancelar()
+      return true
+    }
     if (!this.memoria.visible) return false
     this.cerrarMemoria()
     return true
@@ -195,6 +221,7 @@ export class PanelChat {
     this.lectura = lectura
     this.barra.mostrar(lectura)
     this.actualizarBoton()
+    this.evaluarSugerencia()
     this.entrada.enfocar()
   }
 
@@ -202,6 +229,62 @@ export class PanelChat {
     this.lectura = null
     this.barra.limpiar()
     this.actualizarBoton()
+    this.evaluarSugerencia()
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Captura de pantalla (último recurso, siempre con confirmación)
+  // -------------------------------------------------------------------------------------------
+
+  /** Pide confirmación y, si el usuario acepta, hace la captura y la deja pendiente con su vista previa. */
+  async pedirCaptura(): Promise<void> {
+    if (this.capturando || this.leyendo || this.confirmacion.visible) return
+    this.sugerencia.ocultar()
+    if (!(await this.confirmacion.pedir())) {
+      this.evaluarSugerencia()
+      this.entrada.enfocar()
+      return
+    }
+
+    this.capturando = true
+    this.botonCapturar.disabled = true
+    this.botonCapturar.classList.add('leyendo')
+    if (!this.turno) this.cambiarEstadoOrbe('leyendo')
+    try {
+      const respuesta = await window.orbe.pantallaCapturar()
+      if (respuesta.ok) {
+        // La vista previa queda desplegada: así se ve exactamente lo que se enviará antes de enviarlo.
+        this.barra.abrir('imagen')
+        this.fijarLectura({ partes: respuesta.partes, avisos: respuesta.avisos, sugerirCaptura: respuesta.sugerirCaptura })
+      } else {
+        this.lista.agregarError(respuesta.error, () => void this.pedirCaptura())
+      }
+    } catch (e) {
+      this.lista.agregarError(this.errorLocal(e))
+    } finally {
+      this.capturando = false
+      this.botonCapturar.disabled = false
+      this.botonCapturar.classList.remove('leyendo')
+      if (!this.turno && !this.leyendo) this.cambiarEstadoOrbe('reposo')
+      this.evaluarSugerencia()
+    }
+  }
+
+  /**
+   * Propone una captura cuando puede ayudar: la ventana leída casi no tenía texto, o lo que se está escribiendo
+   * parece una pregunta sobre cómo se ve algo. Es solo una sugerencia; nunca captura por su cuenta.
+   */
+  private evaluarSugerencia(): void {
+    const hayImagen = this.lectura?.partes.some((p) => p.clave === 'imagen') ?? false
+    if (hayImagen || this.sugerenciaDescartada || this.capturando || this.confirmacion.visible) {
+      this.sugerencia.ocultar()
+    } else if (this.lectura?.sugerirCaptura) {
+      this.sugerencia.mostrar('¿Adjuntas una captura? Puede ayudar a Claude a entender esa ventana.')
+    } else if (esPreguntaVisual(this.entrada.texto())) {
+      this.sugerencia.mostrar('Parece una pregunta sobre cómo se ve algo. Puedes adjuntar una captura.')
+    } else {
+      this.sugerencia.ocultar()
+    }
   }
 
   private async quitarParte(clave: ClaveParte): Promise<void> {
@@ -254,6 +337,7 @@ export class PanelChat {
 
   private alPedirEnvio(texto: string): void {
     if (this.turno) return
+    this.sugerenciaDescartada = false
     this.entrada.limpiar()
     const burbuja = this.lista.agregarUsuario(texto)
     void this.iniciarTurno(texto, burbuja)
@@ -304,6 +388,8 @@ export class PanelChat {
 
   async nuevaConversacion(): Promise<void> {
     this.cerrarMemoria()
+    this.confirmacion.cancelar()
+    this.sugerenciaDescartada = false
     const turno = this.turno
     this.turno = null
     turno?.respuesta.descartarSiVacia()

@@ -750,6 +750,121 @@ kbd {
   color: var(--texto-suave);
 }
 
+/* ---- Captura de pantalla ---- */
+.chip-miniatura {
+  display: block;
+  width: 100%;
+  max-height: 190px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.confirmacion {
+  margin: 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.45);
+}
+.confirmacion[hidden],
+.sugerencia[hidden] {
+  display: none;
+}
+.confirmacion-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-weight: 650;
+}
+.confirmacion-titulo svg {
+  color: var(--cian);
+}
+.confirmacion-texto {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--texto-suave);
+}
+.confirmacion-botones {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.confirmacion-capturar,
+.confirmacion-cancelar {
+  padding: 5px 14px;
+  font-size: 12.5px;
+  border-radius: 9px;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  cursor: pointer;
+}
+.confirmacion-capturar {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.28), rgba(139, 92, 246, 0.4));
+  border-color: rgba(150, 160, 255, 0.5);
+}
+.confirmacion-capturar:hover,
+.confirmacion-cancelar:hover {
+  border-color: rgba(34, 211, 238, 0.65);
+}
+.confirmacion-capturar:focus-visible,
+.confirmacion-cancelar:focus-visible,
+.sugerencia-accion:focus-visible,
+.sugerencia-cerrar:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 2px;
+}
+.sugerencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 5px 6px 5px 10px;
+  font-size: 12px;
+  color: var(--texto-suave);
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px dashed rgba(34, 211, 238, 0.35);
+}
+.sugerencia svg {
+  flex: none;
+  color: var(--cian);
+}
+.sugerencia-texto {
+  flex: 1;
+  min-width: 0;
+}
+.sugerencia-accion {
+  flex: none;
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  background: transparent;
+  color: var(--texto);
+  cursor: pointer;
+}
+.sugerencia-accion:hover {
+  background: rgba(34, 211, 238, 0.12);
+}
+.sugerencia-cerrar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+.sugerencia-cerrar:hover {
+  color: var(--texto);
+  background: var(--superficie);
+}
+
 /* Chips de solo lectura bajo el mensaje del usuario */
 .adjuntos {
   margin-top: 7px;

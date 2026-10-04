@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANALES, type EventoPantalla, type LecturaPantalla } from '../src/shared/tipos'
+import { ServicioCaptura, dimensionesReducidas, type DepsCaptura, type ImagenNativa } from '../src/main/pantalla/captura'
 import type { ContenidoUia, FuenteUia, TextoUia, VentanaUia } from '../src/main/pantalla/contexto'
 import { CADUCIDAD_POR_DEFECTO_MS } from '../src/main/pantalla/pendiente'
 import type { VentanaOrbe } from '../src/main/ventana'
@@ -42,7 +43,7 @@ interface Escenario {
   contenido: string | null
 }
 
-function montar(inicial: Partial<Escenario> = {}) {
+function montar(inicial: Partial<Escenario> = {}, captura?: ServicioCaptura) {
   electron.manejadores.clear()
   electron.escuchas.clear()
   const escenario: Escenario = { ventana: VENTANA, seleccion: null, contenido: TEXTO, ...inicial }
@@ -72,7 +73,7 @@ function montar(inicial: Partial<Escenario> = {}) {
       return { texto: escenario.contenido, metodo: escenario.contenido ? 'documento' : null, parcial: false }
     }
   }
-  const pantalla = registrarPantalla({ ventana: ventanaOrbe as unknown as VentanaOrbe, fuente, contextoMax: 8000 })
+  const pantalla = registrarPantalla({ ventana: ventanaOrbe as unknown as VentanaOrbe, fuente, contextoMax: 8000, captura })
   const invocar = (canal: string, propio: boolean, ...args: unknown[]): unknown =>
     (electron.manejadores.get(canal) as Manejador)({ sender: propio ? webContents : {} }, ...args)
   const emitirDesde = (canal: string, propio: boolean, ...args: unknown[]): unknown =>
@@ -186,5 +187,99 @@ describe('caducidad del contexto pendiente', () => {
     vi.advanceTimersByTime(CADUCIDAD_POR_DEFECTO_MS + 10)
     expect(t.pantalla.pendiente.hay()).toBe(false)
     expect(t.eventos()).toEqual([{ tipo: 'vacio', motivo: 'caducado' }])
+  })
+})
+
+describe('pantalla:capturar', () => {
+  /** Una imagen de mentira cuyo JPEG tiene un contenido reconocible para comprobar que no llega a la interfaz. */
+  const IMAGEN_SECRETA = 'IMAGEN-QUE-NO-DEBE-SALIR-DEL-PROCESO-PRINCIPAL'
+  function imagen(ancho: number, alto: number): ImagenNativa {
+    return {
+      tamano: () => ({ ancho, alto }),
+      reducir: (maxLado) => {
+        const d = dimensionesReducidas(ancho, alto, maxLado)
+        return imagen(d.ancho, d.alto)
+      },
+      // La imagen entera lleva el texto reconocible; la miniatura (más pequeña), otro distinto.
+      aJpeg: () => new TextEncoder().encode(Math.max(ancho, alto) > 500 ? IMAGEN_SECRETA : 'MINIATURA-PEQUENA'),
+      esNegra: () => false
+    }
+  }
+  function capturador(extra: Partial<DepsCaptura> = {}): { servicio: ServicioCaptura; eventos: string[] } {
+    const eventos: string[] = []
+    const servicio = new ServicioCaptura({
+      elegirPantalla: async () => undefined,
+      ocultar: () => eventos.push('ocultar'),
+      restaurar: () => eventos.push('restaurar'),
+      esperar: async () => undefined,
+      tomar: async () => imagen(1920, 1080),
+      ...extra
+    })
+    return { servicio, eventos }
+  }
+
+  it('hace la captura, la deja pendiente en el proceso principal y a la interfaz solo le da el chip con su miniatura', async () => {
+    const { servicio, eventos } = capturador()
+    const t = montar({}, servicio)
+    const r = (await t.invocar(CANALES.pantallaCapturar, true)) as { ok: true } & LecturaPantalla
+    expect(r.ok).toBe(true)
+    expect(r.partes.map((p) => p.clave)).toEqual(['imagen'])
+    expect(r.partes[0].miniatura).toMatch(/^data:image\/jpeg;base64,/)
+    expect(eventos).toEqual(['ocultar', 'restaurar'])
+
+    // La imagen entera nunca viaja a la interfaz.
+    const crudo = Buffer.from(IMAGEN_SECRETA).toString('base64')
+    expect(JSON.stringify(r)).not.toContain(crudo)
+    // Pero sí está lista en el proceso principal para el próximo mensaje.
+    expect(t.pantalla.pendiente.consumir()!.contexto.imagen?.base64).toBe(crudo)
+  })
+
+  it('se suma a lo que ya se había leído, sin perderlo', async () => {
+    const { servicio } = capturador()
+    const t = montar({}, servicio)
+    await t.invocar(CANALES.pantallaLeer, true)
+    const r = (await t.invocar(CANALES.pantallaCapturar, true)) as { ok: true } & LecturaPantalla
+    expect(r.partes.map((p) => p.clave)).toEqual(['ventana', 'contenido', 'imagen'])
+    const c = t.pantalla.pendiente.consumir()!.contexto
+    expect(c.contenido).toBeDefined()
+    expect(c.imagen).toBeDefined()
+  })
+
+  it('quitar el chip de la captura la borra del contexto pendiente', async () => {
+    const { servicio } = capturador()
+    const t = montar({}, servicio)
+    await t.invocar(CANALES.pantallaLeer, true)
+    await t.invocar(CANALES.pantallaCapturar, true)
+    const l = (await t.invocar(CANALES.pantallaQuitar, true, 'imagen')) as LecturaPantalla
+    expect(l.partes.map((p) => p.clave)).toEqual(['ventana', 'contenido'])
+    expect(t.pantalla.pendiente.consumir()!.contexto.imagen).toBeUndefined()
+  })
+
+  it('si la captura falla devuelve el error (sin lanzarlo), Orbe vuelve y no queda nada pendiente', async () => {
+    const { servicio, eventos } = capturador({
+      tomar: async () => {
+        throw new Error('Acceso denegado')
+      }
+    })
+    const t = montar({}, servicio)
+    const r = (await t.invocar(CANALES.pantallaCapturar, true)) as { ok: false; error: { codigo: string; detalle?: string } }
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatchObject({ codigo: 'captura_no_disponible', detalle: 'Acceso denegado' })
+    expect(eventos.at(-1)).toBe('restaurar')
+    expect(t.pantalla.pendiente.hay()).toBe(false)
+  })
+
+  it('sin servicio de captura configurado, dice que no está disponible', async () => {
+    const t = montar()
+    const r = (await t.invocar(CANALES.pantallaCapturar, true)) as { ok: false; error: { codigo: string } }
+    expect(r).toMatchObject({ ok: false, error: { codigo: 'captura_no_disponible' } })
+  })
+
+  it('solo atiende a la ventana de Orbe: un remitente ajeno no oculta nada ni captura nada', async () => {
+    const { servicio, eventos } = capturador()
+    const t = montar({}, servicio)
+    await expect(Promise.resolve().then(() => t.invocar(CANALES.pantallaCapturar, false))).rejects.toThrow(/no autorizado/i)
+    expect(eventos).toEqual([])
+    expect(t.pantalla.pendiente.hay()).toBe(false)
   })
 })

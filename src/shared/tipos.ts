@@ -20,6 +20,7 @@ export const CANALES = {
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
   pantallaEvento: 'pantalla:evento',
+  pantallaCapturar: 'pantalla:capturar',
   memoriaInicio: 'memoria:inicio',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
@@ -55,6 +56,7 @@ export type CodigoError =
   | 'tiempo_agotado'
   | 'lector_no_disponible'
   | 'sin_ventana'
+  | 'captura_no_disponible'
   | 'desconocido'
 
 /** Error ya traducido a algo que se le puede mostrar al usuario. */
@@ -115,6 +117,8 @@ export interface ParteContexto {
   vista: string
   caracteres?: number
   recortado?: boolean
+  /** Solo en la captura: una versión pequeña de la imagen (data URL) para la vista previa. La imagen entera nunca llega a la interfaz. */
+  miniatura?: string
 }
 
 export interface LecturaPantalla {
@@ -224,6 +228,8 @@ export interface ApiOrbe {
   pantallaLeer(): Promise<RespuestaLectura>
   pantallaQuitar(clave: ClaveParte): Promise<LecturaPantalla | null>
   pantallaDescartar(): void
+  /** Captura de respaldo: oculta Orbe, fotografía la pantalla y deja la imagen lista para el próximo mensaje. Solo tras la confirmación del usuario. */
+  pantallaCapturar(): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
 
   memoriaInicio(): Promise<InicioMemoria>

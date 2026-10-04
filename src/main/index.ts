@@ -11,6 +11,9 @@ import { ejecutarHumo } from './humo'
 import { prepararMemoriaDeMentira } from './memoria/fuente-demo'
 import { registrarMemoria } from './memoria/ipc'
 import { ServicioMemoria } from './memoria/servicio'
+import { ServicioCaptura } from './pantalla/captura'
+import { CapturaDemo } from './pantalla/captura-demo'
+import { crearDepsReales } from './pantalla/captura-electron'
 import { FuenteHelper, type FuenteUia } from './pantalla/contexto'
 import { FuenteDemo } from './pantalla/fuente-demo'
 import { ClienteHelper } from './pantalla/helper-uia'
@@ -69,10 +72,14 @@ app.whenReady().then(() => {
     helper.precalentar()
     fuente = new FuenteHelper(helper)
   }
+  // Captura de respaldo: en la prueba de humo es de mentira (ni fotografía la pantalla real ni oculta la ventana).
+  const capturaDemo = modoHumo ? new CapturaDemo() : null
+  const captura = new ServicioCaptura(capturaDemo ?? crearDepsReales(orbe, () => fuente.ventana()))
   const pantalla = registrarPantalla({
     ventana: orbe,
     fuente,
-    contextoMax: config.contextoMax
+    contextoMax: config.contextoMax,
+    captura
   })
 
   // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.
@@ -111,7 +118,9 @@ app.whenReady().then(() => {
     { panel: config.atajoPanel, leer: config.atajoLeer }
   )
 
-  if (fuenteDemo) void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria })
+  if (fuenteDemo && capturaDemo) {
+    void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo })
+  }
 })
 
 app.on('second-instance', () => {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CapturaHecha } from '../src/main/pantalla/captura'
 import type { ResultadoLectura } from '../src/main/pantalla/contexto'
 import { CADUCIDAD_POR_DEFECTO_MS, ContextoPendiente } from '../src/main/pantalla/pendiente'
 
@@ -174,5 +175,75 @@ describe('ContextoPendiente: caducidad', () => {
     vi.advanceTimersByTime(1001)
     expect(corto.hay()).toBe(false)
     expect(caducadas).toBe(1)
+  })
+})
+
+describe('ContextoPendiente con captura de pantalla', () => {
+  const captura = (extra: { avisos?: string[]; base64?: string } = {}): CapturaHecha => ({
+    imagen: { tipoMime: 'image/jpeg', base64: extra.base64 ?? 'AAAA', ancho: 1500, alto: 844 },
+    parte: { clave: 'imagen', etiqueta: 'Captura', resumen: '1500×844 · 200 KB', vista: 'Esta captura viajará con tu próximo mensaje si lo envías.', miniatura: 'data:image/jpeg;base64,BBBB' },
+    avisos: extra.avisos ?? []
+  })
+
+  it('sin nada leído antes, crea un contexto solo con la imagen', () => {
+    const l = pendiente.agregarImagen(captura())
+    expect(l.partes.map((p) => p.clave)).toEqual(['imagen'])
+    expect(l.partes[0].miniatura).toBe('data:image/jpeg;base64,BBBB')
+    expect(pendiente.hay()).toBe(true)
+    const consumido = pendiente.consumir()!
+    expect(consumido.contexto).toEqual({ imagen: { tipoMime: 'image/jpeg', base64: 'AAAA', ancho: 1500, alto: 844 } })
+  })
+
+  it('con texto ya leído, la imagen se suma al final y deja de sugerirse otra captura', () => {
+    const poca = lectura()
+    poca.lectura.sugerirCaptura = true
+    pendiente.establecer(poca)
+    const l = pendiente.agregarImagen(captura())
+    expect(l.partes.map((p) => p.clave)).toEqual(['ventana', 'seleccion', 'contenido', 'imagen'])
+    expect(l.sugerirCaptura).toBe(false)
+    expect(l.avisos).toEqual(['un aviso'])
+    const c = pendiente.consumir()!.contexto
+    expect(c.imagen?.base64).toBe('AAAA')
+    expect(c.contenido).toBe('contenido de la ventana')
+  })
+
+  it('una captura nueva sustituye a la anterior', () => {
+    pendiente.agregarImagen(captura({ base64: 'VIEJA' }))
+    const l = pendiente.agregarImagen(captura({ base64: 'NUEVA' }))
+    expect(l.partes.filter((p) => p.clave === 'imagen')).toHaveLength(1)
+    expect(pendiente.consumir()!.contexto.imagen?.base64).toBe('NUEVA')
+  })
+
+  it('los avisos de la captura (salió negra) se van con ella si se quita', () => {
+    pendiente.establecer(lectura())
+    pendiente.agregarImagen(captura({ avisos: ['salió negra'] }))
+    expect(pendiente.lectura()!.avisos).toEqual(['un aviso', 'salió negra'])
+    const l = pendiente.quitar('imagen')!
+    expect(l.avisos).toEqual(['un aviso'])
+    expect(l.partes.map((p) => p.clave)).toEqual(['ventana', 'seleccion', 'contenido'])
+    expect(pendiente.consumir()!.contexto.imagen).toBeUndefined()
+  })
+
+  it('quitar la única parte (la captura) descarta todo el contexto', () => {
+    pendiente.agregarImagen(captura())
+    expect(pendiente.quitar('imagen')).toBeNull()
+    expect(pendiente.hay()).toBe(false)
+  })
+
+  it('al hacer una captura se reinicia la caducidad', () => {
+    pendiente.establecer(lectura())
+    vi.advanceTimersByTime(CADUCIDAD_POR_DEFECTO_MS - 1000)
+    pendiente.agregarImagen(captura())
+    vi.advanceTimersByTime(CADUCIDAD_POR_DEFECTO_MS - 1000)
+    expect(pendiente.hay()).toBe(true)
+    vi.advanceTimersByTime(1500)
+    expect(pendiente.hay()).toBe(false)
+    expect(caducadas).toBe(1)
+  })
+
+  it('lo que devuelve no deja tocar el estado interno', () => {
+    const l = pendiente.agregarImagen(captura())
+    l.partes[0].miniatura = 'manipulada'
+    expect(pendiente.lectura()!.partes[0].miniatura).toBe('data:image/jpeg;base64,BBBB')
   })
 })

@@ -85,6 +85,11 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
       'No encuentro ninguna ventana que leer. Pon en primer plano la aplicación que quieres que mire y vuelve a pulsar el botón.',
     reintentable: true
   },
+  captura_no_disponible: {
+    titulo: 'No he podido hacer la captura',
+    mensaje: 'Windows no me ha dejado capturar la pantalla. Inténtalo de nuevo; si sigue igual, mira los detalles técnicos.',
+    reintentable: true
+  },
   desconocido: {
     titulo: 'Algo ha fallado',
     mensaje: 'Ha ocurrido un error inesperado al hablar con Claude.',

@@ -18,6 +18,8 @@ export interface VentanaUia {
   primerPlano: boolean
   /** No se pudo inspeccionar el proceso (normalmente porque se ejecuta como administrador). */
   restringida: boolean
+  /** Posición de la ventana en píxeles de pantalla (para saber en qué monitor está). */
+  rect?: { x: number; y: number; ancho: number; alto: number } | null
 }
 
 export interface TextoUia {

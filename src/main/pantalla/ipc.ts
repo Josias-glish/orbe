@@ -6,8 +6,9 @@ import {
   type LecturaPantalla,
   type RespuestaLectura
 } from '../../shared/tipos'
-import { aErrorOrbe } from '../chat/errores'
+import { aErrorOrbe, crearError } from '../chat/errores'
 import type { VentanaOrbe } from '../ventana'
+import type { ServicioCaptura } from './captura'
 import { ServicioPantalla, type FuenteUia } from './contexto'
 import { ContextoPendiente } from './pendiente'
 
@@ -30,6 +31,8 @@ export function registrarPantalla(opciones: {
   ventana: VentanaOrbe
   fuente: FuenteUia
   contextoMax: number
+  /** Captura de respaldo; sin ella el botón de la cámara devuelve un error. */
+  captura?: ServicioCaptura
 }): PantallaRegistrada {
   const { ventana } = opciones
   const emitir = (evento: EventoPantalla): void => {
@@ -45,6 +48,19 @@ export function registrarPantalla(opciones: {
     try {
       const lectura = pendiente.establecer(await servicio.leer())
       return { ok: true, ...lectura }
+    } catch (error) {
+      return { ok: false, error: aErrorOrbe(error) }
+    }
+  })
+
+  // La interfaz ya ha pedido confirmación al usuario; aquí solo se acepta de la ventana de Orbe. La imagen entera
+  // se queda en este proceso: a la interfaz solo vuelve el chip con una miniatura.
+  ipcMain.handle(CANALES.pantallaCapturar, async (e): Promise<RespuestaLectura> => {
+    if (!propia(e)) throw new Error('Remitente no autorizado')
+    if (!opciones.captura) return { ok: false, error: crearError('captura_no_disponible') }
+    try {
+      const hecha = await opciones.captura.capturar()
+      return { ok: true, ...pendiente.agregarImagen(hecha) }
     } catch (error) {
       return { ok: false, error: aErrorOrbe(error) }
     }

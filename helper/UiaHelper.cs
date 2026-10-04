@@ -27,6 +27,10 @@ namespace Orbe
         [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT { public int Left, Top, Right, Bottom; }
+        [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     }
 
     /// Resultado parcial de una operación que puede agotar su tiempo: lo ya leído no se pierde.
@@ -257,6 +261,16 @@ namespace Orbe
                 if (direcciones != null) { url = direcciones[0]; barra = direcciones[1]; }
             }
 
+            // Posición en píxeles de pantalla: sirve para saber en qué monitor está (captura de respaldo).
+            Dictionary<string, object> rect = null;
+            Win32.RECT r;
+            if (Win32.GetWindowRect(h, out r))
+            {
+                rect = new Dictionary<string, object> {
+                    { "x", r.Left }, { "y", r.Top }, { "ancho", r.Right - r.Left }, { "alto", r.Bottom - r.Top }
+                };
+            }
+
             var ventana = new Dictionary<string, object> {
                 { "hwnd", h.ToInt64() },
                 { "pid", pid },
@@ -267,7 +281,8 @@ namespace Orbe
                 { "url", url },
                 { "barra", barra },
                 { "primerPlano", primerPlano },
-                { "restringida", restringida }
+                { "restringida", restringida },
+                { "rect", rect }
             };
             return new Dictionary<string, object> { { "ventana", ventana } };
         }

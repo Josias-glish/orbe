@@ -107,6 +107,7 @@ async function principal() {
   console.log(`  Título:     ${ventana.titulo || '(sin título)'}`)
   if (ventana.esNavegador) console.log(`  Dirección:  ${ventana.url ? sinParametros(ventana.url) : `(barra: ${ventana.barra ?? 'no encontrada'})`}`)
   console.log(`  En primer plano: ${ventana.primerPlano ? 'sí' : 'no (es la última que estuvo)'}${ventana.restringida ? ' · RESTRINGIDA (¿administrador?)' : ''}`)
+  if (ventana.rect) console.log(`  Posición:   x=${ventana.rect.x}, y=${ventana.rect.y}, ${ventana.rect.ancho}×${ventana.rect.alto} px (sirve para elegir el monitor de la captura)`)
 
   const seleccion = await pedir('seleccion', { hwnd: ventana.hwnd, max })
   console.log('\n— Selección —')

@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ServicioMemoria } from './memoria/servicio'
+import type { CapturaDemo } from './pantalla/captura-demo'
 import type { FuenteDemo } from './pantalla/fuente-demo'
 import type { VentanaOrbe } from './ventana'
 
@@ -14,6 +15,8 @@ export interface ExtrasHumo {
   leerConAtajo: () => Promise<void>
   /** La memoria de la prueba (con notas de mentira), para comprobar también por el lado del proceso principal. */
   memoria: ServicioMemoria
+  /** La captura de mentira de la prueba (para hacerla fallar a propósito y contar cuántas veces se ocultó la ventana). */
+  captura: CapturaDemo
 }
 
 /**
@@ -380,6 +383,141 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('se cierra el gestor', !(await gestorAbierto()))
   }
 
+  /** Captura de respaldo (fase 4): sugerencia, confirmación, vista previa, envío, poco texto, errores. */
+  const pasosCaptura = async ({ fuente, captura }: ExtrasHumo): Promise<void> => {
+    const c: Record<string, unknown> = {}
+    informe.captura = c
+    const base = captura.ocultadas
+    const escribir = (texto: string): Promise<unknown> =>
+      js(`(() => { const t = document.getElementById('entrada'); t.value = ${JSON.stringify(texto)}; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    const oculto = (selector: string): Promise<boolean> => js(`document.querySelector(${JSON.stringify(selector)}).hidden`)
+    const chipsPendientes = (): Promise<string[]> => textosDe('#pendiente .chip .chip-etiqueta')
+    const ultimaRespuesta = (): Promise<string> => js(`[...document.querySelectorAll('.msg.asistente .contenido')].at(-1)?.textContent ?? ''`)
+    const nueva = async (): Promise<void> => {
+      await pulsar('#nueva')
+      await esperar(400)
+    }
+    /** Pulsa la cámara y confirma, como haría una persona. */
+    const capturarConfirmando = async (): Promise<void> => {
+      await pulsar('#capturar')
+      await esperarSelector('#confirmacion:not([hidden]) .confirmacion-capturar', 2000)
+      await pulsar('.confirmacion-capturar')
+    }
+
+    // 8a. Una pregunta que suena visual sugiere la captura, pero no la hace
+    await nueva()
+    fuente.escenario = 'contenido'
+    await escribir('¿Cómo se ve este diseño?')
+    await esperar(250)
+    c.sugerenciaVisual = await textoDe('#sugerencia .sugerencia-texto')
+    comprobar('una pregunta visual sugiere la captura', /cómo se ve algo/.test(String(c.sugerenciaVisual)), c.sugerenciaVisual)
+    comprobar('pero no la hace sola', captura.ocultadas === base)
+    await capturar('8a-sugerencia')
+
+    // 8b. La cámara pide confirmación explicando qué va a pasar; cancelar no captura nada
+    await pulsar('#capturar')
+    comprobar('pide confirmación', await esperarSelector('#confirmacion:not([hidden]) .confirmacion-capturar', 2000))
+    c.textoConfirmacion = await textoDe('#confirmacion')
+    comprobar('explica que oculta Orbe y que se verá antes de enviar', /Ocultaré Orbe/.test(String(c.textoConfirmacion)) && /antes de enviarla/.test(String(c.textoConfirmacion)), c.textoConfirmacion)
+    comprobar('todavía no ha capturado', captura.ocultadas === base)
+    await capturar('8b-confirmacion')
+    await pulsar('.confirmacion-cancelar')
+    await esperar(200)
+    comprobar('cancelar no captura nada', captura.ocultadas === base && (await oculto('#confirmacion')))
+
+    // 8c. Esc también cancela la confirmación, sin cerrar el panel
+    await pulsar('#capturar')
+    await esperarSelector('#confirmacion:not([hidden])', 2000)
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(250)
+    comprobar('Esc cancela la confirmación', await oculto('#confirmacion'))
+    comprobar('y el panel sigue abierto', orbe.estaExpandido)
+    comprobar('sin capturar', captura.ocultadas === base)
+
+    // 8d. Al confirmar, la captura queda pendiente con su vista previa ya desplegada
+    await capturarConfirmando()
+    comprobar('aparece el chip de la captura', await esperarSelector('#pendiente:not([hidden]) .chip-imagen', 5000))
+    await esperar(400)
+    c.chips = await chipsPendientes()
+    c.resumenCaptura = await textoDe('#pendiente .chip-imagen .chip-resumen')
+    c.miniatura = await js(`(() => { const i = document.querySelector('#pendiente .chip-miniatura'); return i ? [i.naturalWidth, i.naturalHeight] : null })()`)
+    comprobar('es una sola captura', mismos(c.chips, ['Captura']), c.chips)
+    comprobar('el resumen dice las medidas reducidas', /^1500×844 · [\d.]+ KB$/.test(String(c.resumenCaptura)), c.resumenCaptura)
+    comprobar('la vista previa se despliega sola y carga', Array.isArray(c.miniatura) && (c.miniatura as number[])[0] > 100, c.miniatura)
+    comprobar('Orbe se ocultó y volvió una vez', captura.ocultadas === base + 1 && captura.restauradas === base + 1, [captura.ocultadas, captura.restauradas])
+    comprobar('la sugerencia desaparece', await oculto('#sugerencia'))
+    await capturar('8d-captura')
+
+    // 8e. Se envía con la captura: el modelo la recibe y el chip cuelga del mensaje
+    await escribirYEnviar('¿Cómo se ve este diseño?')
+    await esperar(500)
+    comprobar('la barra se vacía al enviar', await oculto('#pendiente'))
+    c.adjuntos = await textosDe('.msg.usuario .adjuntos .chip .chip-etiqueta')
+    comprobar('el chip cuelga del mensaje', mismos(c.adjuntos, ['Captura']), c.adjuntos)
+    await esperarFin(15_000)
+    await esperar(400)
+    c.acuse = (await ultimaRespuesta()).slice(0, 70)
+    comprobar('el modelo recibió la captura', String(c.acuse).includes('captura'), c.acuse)
+    await pulsar('.msg.usuario .adjuntos .chip-imagen')
+    await esperar(300)
+    c.miniaturaEnMensaje = await js(`(() => { const i = document.querySelector('.msg.usuario .adjuntos .chip-miniatura'); return i ? i.naturalWidth : 0 })()`)
+    comprobar('la miniatura se ve en el mensaje enviado', (c.miniaturaEnMensaje as number) > 100, c.miniaturaEnMensaje)
+    await capturar('8e-enviada')
+
+    // 8f. Poco texto en la ventana: lo sugiere; se hace la captura desde la sugerencia y se puede quitar
+    await nueva()
+    fuente.escenario = 'poco'
+    await pulsar('#leer')
+    await esperarSelector('#pendiente:not([hidden]) .chip', 4000)
+    await esperar(300)
+    c.sugerenciaPoco = await textoDe('#sugerencia .sugerencia-texto')
+    comprobar('con poco texto sugiere la captura', /¿Adjuntas una captura\?/.test(String(c.sugerenciaPoco)), c.sugerenciaPoco)
+    comprobar('y la barra explica por qué', /muy poco texto/.test(await textoDe('#pendiente .pendiente-aviso')))
+    await capturar('8f-poco-texto')
+    await pulsar('#sugerencia .sugerencia-accion')
+    await esperarSelector('#confirmacion:not([hidden]) .confirmacion-capturar', 2000)
+    await pulsar('.confirmacion-capturar')
+    comprobar('la captura se suma a lo leído', await esperarSelector('#pendiente .chip-imagen', 5000))
+    await esperar(400)
+    c.chipsConCaptura = await chipsPendientes()
+    comprobar('ventana, contenido y captura', mismos(c.chipsConCaptura, ['Ventana', 'Contenido', 'Captura']), c.chipsConCaptura)
+    comprobar('ya no sugiere otra', await oculto('#sugerencia'))
+    await pulsar('#pendiente .chip-imagen + .chip-quitar')
+    await esperar(400)
+    c.chipsSinCaptura = await chipsPendientes()
+    comprobar('quitar la captura deja lo demás', mismos(c.chipsSinCaptura, ['Ventana', 'Contenido']), c.chipsSinCaptura)
+    await pulsar('.pendiente-descartar')
+
+    // 8g. Si la captura falla: mensaje claro con «Reintentar», y Orbe vuelve
+    await nueva()
+    captura.falla = true
+    const antes = captura.restauradas
+    await capturarConfirmando()
+    comprobar('sale la tarjeta de error', await esperarSelector('.tarjeta-error', 5000))
+    c.errorCaptura = { titulo: await textoDe('.tarjeta-error .error-titulo'), detalle: await textoDe('.tarjeta-error .error-detalle code') }
+    comprobar('es el error de captura', (c.errorCaptura as { titulo: string }).titulo === 'No he podido hacer la captura', c.errorCaptura)
+    comprobar('con «Reintentar»', await existe('.tarjeta-error .boton-secundario'))
+    comprobar('Orbe volvió a su sitio', captura.restauradas === antes + 1, [captura.restauradas, antes])
+    await capturar('8g-error')
+    captura.falla = false
+    await pulsar('.tarjeta-error .boton-secundario')
+    comprobar('«Reintentar» vuelve a pedir confirmación', await esperarSelector('#confirmacion:not([hidden])', 2000))
+    await pulsar('.confirmacion-cancelar')
+    await esperar(200)
+
+    // 8h. Cerrar la sugerencia la silencia hasta el siguiente mensaje
+    await nueva()
+    await escribir('Mira esta imagen')
+    await esperar(250)
+    comprobar('la sugerencia aparece', !(await oculto('#sugerencia')))
+    await pulsar('#sugerencia .sugerencia-cerrar')
+    await esperar(150)
+    await escribir('Mira esta imagen, por favor')
+    await esperar(250)
+    comprobar('cerrada, no vuelve mientras sigues escribiendo', await oculto('#sugerencia'))
+    await escribir('')
+  }
+
   try {
     await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
     await esperar(1200)
@@ -460,6 +598,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       if (extras) {
         await pasosPantalla(extras)
         await pasosMemoria(extras)
+        await pasosCaptura(extras)
       }
 
       orbe.establecerExpandido(false)

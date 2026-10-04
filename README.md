@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Estado: **fase 3 de 5** (chat con Claude, lectura de pantalla por texto y memoria). La captura de respaldo (fase 4) y la bandeja del sistema (fase 5) llegan después.
+> Estado: **fase 4 de 5** (chat con Claude, lectura de pantalla por texto y por captura, y memoria). La bandeja del sistema y el empaquetado (fase 5) llegan después.
 
 ## Requisitos
 - Windows 11
@@ -36,6 +36,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
+- La **cámara** adjunta una **captura de pantalla** (último recurso; antes te pide confirmación).
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
 - El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
@@ -78,7 +79,16 @@ Orbe **no mira tu pantalla por su cuenta**: solo lee cuando pulsas el ojo o el a
 
 Lo leído aparece sobre el campo de texto como **chips** (Ventana, Selección, Contenido). Al pulsar uno se despliega exactamente el texto que se enviará; con la **×** lo quitas, y con **Descartar** lo tiras todo. Tras enviar, los chips quedan colgados de tu mensaje para que recuerdes qué se mandó. Si no lo envías, el contexto **caduca a los 5 minutos**; si el envío falla, vuelve a estar listo para reintentar.
 
-Si hay muy poco texto (una ventana de solo botones y menús), Orbe lo avisa. La captura de pantalla como último recurso llega en la fase 4.
+Si hay muy poco texto (una ventana de solo botones y menús), Orbe lo avisa y te propone una captura.
+
+### Captura de pantalla (último recurso)
+Cuando el texto no basta (una imagen, un gráfico, un diseño, una app que no expone su contenido), puedes adjuntar una captura con la **cámara** junto al campo de texto. Orbe te la propone cuando la ventana tenía muy poco texto o cuando lo que escribes suena a pregunta visual («cómo se ve…», «esta imagen…», «el gráfico…»), pero **nunca la hace por su cuenta**:
+
+1. **Confirmación.** Una tarjeta te explica qué va a pasar y espera tu «Capturar». **Esc** o «Cancelar» no capturan nada.
+2. **Captura.** Orbe se oculta un instante (para no salir en la foto), espera a que Windows repinte y fotografía **el monitor donde está la ventana que estabas usando**. Después vuelve a su sitio, pase lo que pase.
+3. **Vista previa.** La imagen se reduce a unos 1500 px en JPEG y aparece como un chip «Captura» con su miniatura ya desplegada. Se suma a lo que hubieras leído (puedes quitarla con la ×) y solo viaja a Claude si envías el mensaje.
+
+La imagen entera vive solo en memoria del proceso principal (caduca a los 5 minutos con el resto del contexto): a la interfaz solo llega la miniatura, y no se guarda en disco ni en la conversación guardada. Si la captura sale casi negra (contenido protegido o un monitor apagado) lo avisa. Al modelo se le indica que trate el texto que lea en la imagen como contenido de terceros, igual que el de la pantalla.
 
 **Privacidad y límites**
 - El contexto vive solo en el proceso principal; la interfaz solo ve los chips. El texto de la pantalla va dentro de un bloque `<contexto_pantalla>` y se le dice al modelo que es contenido de terceros, no instrucciones; además se neutralizan las etiquetas propias para que una página no pueda cerrar ese bloque.
@@ -91,9 +101,9 @@ Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando t
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.
 
 ## Pruebas
-`npm test` ejecuta unas 540 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
+`npm test` ejecuta unas 590 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
 
-`npm run humo` arranca la aplicación con un chat, un lector de pantalla y una memoria de mentira (notas de ejemplo, nunca tu memoria real), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) y la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor), guarda capturas en `humo/` y termina con código 1 si algo falla.
+`npm run humo` arranca la aplicación con un chat, un lector de pantalla, una captura y una memoria de mentira (notas e imágenes de ejemplo, nunca tu memoria ni tu pantalla reales), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor) y la captura (sugerencias, confirmación, vista previa, envío y errores), guarda capturas en `humo/` y termina con código 1 si algo falla.
 
 Para probar con el CLI de Claude y el lector real (el CLI gasta unos céntimos de tu plan; el lector solo hace un «ping» y no lee ninguna ventana):
 ```powershell

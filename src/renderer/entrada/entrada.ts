@@ -68,6 +68,11 @@ export class EntradaTeclado implements FuenteEntrada {
     return this.campo.value.trim().length > 0
   }
 
+  /** Lo que hay escrito ahora mismo (sin enviar). */
+  texto(): string {
+    return this.campo.value
+  }
+
   bloquear(bloqueado: boolean): void {
     this.campo.readOnly = bloqueado
   }
