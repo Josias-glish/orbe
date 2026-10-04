@@ -117,6 +117,8 @@ export class VentanaOrbe {
       this.ancla = disposicion.ancla
       this.ventana.setBounds(disposicion.bounds)
       this.expandido = true
+      // Con el panel abierto se va a escribir: la ventana necesita el foco (también al abrir con el atajo).
+      this.ventana.focus()
     } else {
       this.expandido = false
       this.ventana.setBounds(this.colapsado)

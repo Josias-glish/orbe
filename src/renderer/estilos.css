@@ -1,13 +1,17 @@
 :root {
   --cian: #22d3ee;
   --violeta: #8b5cf6;
-  --panel-fondo: rgba(14, 16, 34, 0.82);
+  --panel-fondo: rgba(14, 16, 34, 0.84);
   --panel-borde: rgba(139, 150, 255, 0.22);
   --texto: #e8eaff;
   --texto-suave: #98a0c8;
+  --superficie: rgba(255, 255, 255, 0.055);
+  --linea: rgba(255, 255, 255, 0.08);
+  --error: #fb7185;
   --caja-orbe: 120px;
   --panel-ancho: 380px;
   --panel-alto: 520px;
+  --mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
 }
 
 * {
@@ -24,8 +28,15 @@ body {
   color: var(--texto);
   font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
+  line-height: 1.45;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+}
+
+button,
+textarea {
+  font: inherit;
+  color: inherit;
 }
 
 #raiz {
@@ -118,40 +129,436 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 12px;
+  padding: 10px 12px 10px 16px;
   cursor: grab;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--linea);
   touch-action: none;
 }
 .panel-cabecera.arrastrando {
   cursor: grabbing;
 }
+.cabecera-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .panel-titulo {
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--cian), var(--violeta));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-.panel-atajo {
+.chip-modelo {
   font-size: 11px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
   color: var(--texto-suave);
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  white-space: nowrap;
+}
+.chip-modelo[hidden] {
+  display: none;
+}
+
+.boton-icono {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition:
+    background 120ms,
+    color 120ms;
+}
+.boton-icono:hover {
+  background: var(--superficie);
+  color: var(--texto);
+}
+.boton-icono:focus-visible,
+.boton-enviar:focus-visible,
+.boton-secundario:focus-visible,
+.boton-copiar:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 2px;
 }
 
 .panel-cuerpo {
   flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-}
-.panel-vacio {
-  margin: 0;
-  color: var(--texto-suave);
-  text-align: center;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ---- Selector de estados (solo en desarrollo) ---- */
+/* ---- Mensajes ---- */
+.mensajes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  user-select: text;
+}
+.mensajes::-webkit-scrollbar {
+  width: 8px;
+}
+.mensajes::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.mensajes::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
+  background-clip: content-box;
+}
+
+.vacio {
+  margin: auto;
+  text-align: center;
+  padding: 0 12px;
+}
+.vacio[hidden] {
+  display: none;
+}
+.vacio-titulo {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.vacio-ayuda {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--texto-suave);
+}
+kbd {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+}
+
+.msg {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  overflow-wrap: anywhere;
+}
+.msg.usuario {
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.38), rgba(34, 211, 238, 0.2));
+  border: 1px solid rgba(150, 160, 255, 0.28);
+}
+.contenido-plano {
+  white-space: pre-wrap;
+}
+.msg.asistente {
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  position: relative;
+}
+
+/* Contenido en Markdown */
+.contenido > :first-child {
+  margin-top: 0;
+}
+.contenido > :last-child {
+  margin-bottom: 0;
+}
+.contenido p {
+  margin: 0 0 0.6em;
+}
+.contenido ul,
+.contenido ol {
+  margin: 0.2em 0 0.6em;
+  padding-left: 1.3em;
+}
+.contenido li {
+  margin: 0.15em 0;
+}
+.contenido h1,
+.contenido h2,
+.contenido h3,
+.contenido h4 {
+  font-size: 1em;
+  font-weight: 650;
+  margin: 0.8em 0 0.3em;
+}
+.contenido a {
+  color: var(--cian);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.contenido code {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.contenido pre {
+  margin: 0.5em 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--linea);
+}
+.contenido pre code {
+  padding: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.contenido code,
+.contenido pre code {
+  font-weight: 400;
+}
+/* Barras de desplazamiento horizontales discretas (código y tablas anchas). */
+.contenido pre::-webkit-scrollbar,
+.contenido table::-webkit-scrollbar {
+  height: 8px;
+}
+.contenido pre::-webkit-scrollbar-track,
+.contenido table::-webkit-scrollbar-track {
+  background: transparent;
+}
+.contenido pre::-webkit-scrollbar-thumb,
+.contenido table::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+.contenido blockquote {
+  margin: 0.5em 0;
+  padding: 0.1em 0.8em;
+  border-left: 3px solid var(--violeta);
+  color: var(--texto-suave);
+}
+.contenido table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin: 0.5em 0;
+}
+.contenido th,
+.contenido td {
+  padding: 4px 8px;
+  border: 1px solid var(--linea);
+}
+.contenido hr {
+  border: 0;
+  border-top: 1px solid var(--linea);
+  margin: 0.8em 0;
+}
+
+.nota {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--texto-suave);
+}
+.aviso {
+  align-self: center;
+  margin: 0;
+  max-width: 90%;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--texto-suave);
+  background: var(--superficie);
+  border-radius: 999px;
+}
+
+/* El botón de copiar flota sobre el borde inferior de la burbuja y solo aparece al pasar el ratón. */
+.boton-copiar {
+  position: absolute;
+  bottom: -11px;
+  right: 10px;
+  z-index: 1;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  background: rgba(24, 26, 48, 0.92);
+  color: var(--texto-suave);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.msg.asistente:hover .boton-copiar,
+.boton-copiar:focus-visible {
+  opacity: 1;
+}
+.boton-copiar:hover {
+  color: var(--texto);
+}
+
+/* Indicador de «pensando» */
+.escribiendo {
+  display: flex;
+  gap: 4px;
+  padding: 5px 2px;
+}
+.escribiendo span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--texto-suave);
+  animation: punto 1.1s ease-in-out infinite;
+}
+.escribiendo span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.escribiendo span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes punto {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ---- Errores ---- */
+.tarjeta-error {
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(251, 113, 133, 0.38);
+}
+.error-titulo {
+  margin: 0 0 2px;
+  font-weight: 650;
+  color: var(--error);
+}
+.error-mensaje {
+  margin: 0;
+  font-size: 13px;
+}
+.error-detalle {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--texto-suave);
+}
+.error-detalle summary {
+  cursor: pointer;
+}
+.error-detalle code {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.boton-secundario {
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  border-radius: 9px;
+  border: 1px solid rgba(251, 113, 133, 0.5);
+  background: transparent;
+  cursor: pointer;
+}
+.boton-secundario:hover {
+  background: rgba(251, 113, 133, 0.15);
+}
+
+/* ---- Compositor ---- */
+.estado-linea {
+  padding: 4px 16px;
+  font-size: 12px;
+  color: var(--texto-suave);
+}
+.estado-linea[hidden] {
+  display: none;
+}
+.compositor {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--linea);
+}
+.entrada {
+  flex: 1;
+  min-height: 38px;
+  max-height: 120px;
+  padding: 8px 12px;
+  resize: none;
+  border-radius: 14px;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  outline: none;
+  user-select: text;
+  line-height: 1.4;
+}
+.entrada::placeholder {
+  color: var(--texto-suave);
+}
+.entrada:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14);
+}
+.boton-enviar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--cian), var(--violeta));
+  cursor: pointer;
+  transition:
+    opacity 120ms,
+    transform 120ms;
+}
+.boton-enviar:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+.boton-enviar:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.boton-enviar .icono-detener {
+  display: none;
+}
+.boton-enviar.detener .icono-enviar {
+  display: none;
+}
+.boton-enviar.detener .icono-detener {
+  display: block;
+}
+
+/* ---- Selector de estados (solo en desarrollo, Ctrl+Alt+D) ---- */
 .depuracion {
   position: absolute;
   left: 0;
@@ -162,17 +569,15 @@ body {
   flex-wrap: wrap;
   padding: 4px;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.7);
   border-radius: 8px;
 }
 .depuracion[hidden] {
   display: none;
 }
 .depuracion button {
-  font: inherit;
   font-size: 11px;
   padding: 2px 8px;
-  color: var(--texto);
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
@@ -183,4 +588,14 @@ body {
 }
 .colapsado .depuracion {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
+  .escribiendo span {
+    animation: none;
+    opacity: 0.6;
+  }
 }

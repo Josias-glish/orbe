@@ -11,9 +11,14 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "humo": "electron-vite build && electron . --smoke",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win",
+    "humo:real": "electron-vite build && electron . --smoke --real"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "dompurify": "^3.4.16",
+    "marked": "^18.0.14"
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "electron": "^44.5.1",
