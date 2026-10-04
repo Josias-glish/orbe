@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbe</title>
+  </head>
+  <body>
+    <div id="raiz" class="colapsado ancla-derecha ancla-abajo">
+      <section id="panel" class="panel" aria-label="Chat del asistente" aria-hidden="true">
+        <header id="panel-cabecera" class="panel-cabecera">
+          <span class="panel-titulo">Orbe</span>
+          <span class="panel-atajo">Ctrl + Mayús + Espacio</span>
+        </header>
+        <div class="panel-cuerpo">
+          <p class="panel-vacio">El chat llega en la fase 2.</p>
+        </div>
+      </section>
+
+      <div id="orbe-caja" class="orbe-caja" title="Clic para abrir o cerrar · arrastra para mover">
+        <canvas id="orbe-canvas" class="orbe-canvas"></canvas>
+      </div>
+
+      <div id="depuracion" class="depuracion" hidden></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

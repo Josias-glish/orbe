@@ -1,0 +1,186 @@
+:root {
+  --cian: #22d3ee;
+  --violeta: #8b5cf6;
+  --panel-fondo: rgba(14, 16, 34, 0.82);
+  --panel-borde: rgba(139, 150, 255, 0.22);
+  --texto: #e8eaff;
+  --texto-suave: #98a0c8;
+  --caja-orbe: 120px;
+  --panel-ancho: 380px;
+  --panel-alto: 520px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: var(--texto);
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#raiz {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Orbe: ocupa una esquina del contenedor según el ancla ---- */
+.orbe-caja {
+  position: absolute;
+  width: var(--caja-orbe);
+  height: var(--caja-orbe);
+  cursor: grab;
+  touch-action: none;
+}
+.orbe-caja.arrastrando {
+  cursor: grabbing;
+}
+.orbe-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.ancla-derecha .orbe-caja {
+  right: 0;
+}
+.ancla-izquierda .orbe-caja {
+  left: 0;
+}
+.ancla-abajo .orbe-caja {
+  bottom: 0;
+}
+.ancla-arriba .orbe-caja {
+  top: 0;
+}
+
+/* ---- Panel de chat ---- */
+.panel {
+  position: absolute;
+  width: var(--panel-ancho);
+  height: var(--panel-alto);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-fondo);
+  border: 1px solid var(--panel-borde);
+  border-radius: 20px;
+  box-shadow:
+    0 10px 40px rgba(5, 6, 20, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  backdrop-filter: blur(18px);
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
+}
+.ancla-derecha .panel {
+  right: 0;
+  transform-origin: bottom right;
+}
+.ancla-izquierda .panel {
+  left: 0;
+  transform-origin: bottom left;
+}
+.ancla-abajo .panel {
+  top: 0;
+}
+.ancla-arriba .panel {
+  bottom: 0;
+}
+.ancla-arriba.ancla-derecha .panel {
+  transform-origin: top right;
+}
+.ancla-arriba.ancla-izquierda .panel {
+  transform-origin: top left;
+}
+
+.expandido .panel {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.panel-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  cursor: grab;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  touch-action: none;
+}
+.panel-cabecera.arrastrando {
+  cursor: grabbing;
+}
+.panel-titulo {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, var(--cian), var(--violeta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.panel-atajo {
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+
+.panel-cuerpo {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.panel-vacio {
+  margin: 0;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+/* ---- Selector de estados (solo en desarrollo) ---- */
+.depuracion {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 4px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+}
+.depuracion[hidden] {
+  display: none;
+}
+.depuracion button {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  color: var(--texto);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.depuracion button.activo {
+  background: var(--violeta);
+}
+.colapsado .depuracion {
+  display: none;
+}
