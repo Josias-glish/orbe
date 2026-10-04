@@ -1,5 +1,5 @@
-import type { ErrorOrbe, MotivoFin, ParteContexto } from '../../shared/tipos'
-import { crearChipsAdjuntos } from './contexto-ui'
+import type { AvisoMemoria, ErrorOrbe, MotivoFin, ParteContexto } from '../../shared/tipos'
+import { crearChipsAdjuntos, crearIcono } from './contexto-ui'
 import { renderizarMarkdown } from './markdown'
 
 /** Distancia al final (px) a la que se considera que la persona sigue «pegada» al último mensaje. */
@@ -149,14 +149,60 @@ export class ListaMensajes {
     if (pegado) this.desplazarAlFinal()
   }
 
+  /**
+   * Cuelga del mensaje del usuario lo que pasó con una orden de «recuerda que…»: si se guardó (con un botón
+   * para deshacerlo) o por qué no. `alDeshacer` borra el recuerdo y dice si lo consiguió.
+   */
+  adjuntarAvisoMemoria(burbuja: HTMLElement, aviso: AvisoMemoria, alDeshacer: (id: string) => Promise<boolean>): void {
+    const pegado = this.pegado
+    const nota = elemento('div', `nota-memoria ${aviso.tipo === 'guardado' ? 'guardada' : 'no-guardada'}`)
+    nota.setAttribute('role', 'status')
+    if (aviso.tipo === 'guardado') {
+      const texto = elemento('span', 'nota-memoria-texto', 'Guardado en la memoria')
+      nota.append(crearIcono('marca', 13), texto)
+      const deshacer = elemento('button', 'nota-memoria-deshacer', 'Deshacer')
+      deshacer.type = 'button'
+      deshacer.addEventListener('click', () => {
+        deshacer.disabled = true
+        void alDeshacer(aviso.id).then((ok) => {
+          if (ok) {
+            nota.classList.replace('guardada', 'deshecha')
+            texto.textContent = 'Recuerdo borrado'
+            deshacer.remove()
+          } else {
+            deshacer.disabled = false
+            texto.textContent = 'No se pudo borrar'
+          }
+        })
+      })
+      nota.append(deshacer)
+    } else {
+      nota.append(elemento('span', 'nota-memoria-texto', `No se guardó: ${aviso.motivo}`))
+    }
+    burbuja.append(nota)
+    if (pegado) this.desplazarAlFinal()
+  }
+
   iniciarRespuesta(): RespuestaEnCurso {
     const respuesta = new RespuestaEnCurso(this)
     this.anadir(respuesta.el)
     return respuesta
   }
 
+  /** Pinta una respuesta ya terminada (al restaurar la conversación guardada). */
+  agregarRespuestaGuardada(texto: string): void {
+    const respuesta = this.iniciarRespuesta()
+    respuesta.anexar(texto)
+    respuesta.finalizar('completo')
+  }
+
   agregarAviso(texto: string): void {
     this.anadir(elemento('p', 'aviso', texto))
+  }
+
+  /** Un aviso al abrir Orbe que no esconde la pantalla de bienvenida (todavía no hay mensajes). */
+  agregarAvisoInicial(texto: string): void {
+    this.contenedor.append(elemento('p', 'aviso', texto))
   }
 
   /** Tarjeta de error con detalles técnicos plegados y, si tiene sentido, un botón para reintentar. */

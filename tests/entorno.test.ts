@@ -7,6 +7,7 @@ import {
   ATAJO_PANEL_POR_DEFECTO,
   CONTEXTO_MAX_POR_DEFECTO,
   ESFUERZO_POR_DEFECTO,
+  MEMORIA_MAX_POR_DEFECTO,
   MODELO_POR_DEFECTO,
   leerArchivosEnv,
   nombreLegibleModelo,
@@ -135,6 +136,35 @@ describe('resolverConfig: contexto de pantalla y atajos', () => {
 
   it.each(['500', '60000'])('ORBE_CONTEXTO_MAX=%s está en el límite y vale', (v) => {
     expect(resolverConfig({ ORBE_CONTEXTO_MAX: v }, {}).contextoMax).toBe(Number(v))
+  })
+})
+
+describe('resolverConfig: memoria', () => {
+  it('por defecto: 6000 caracteres de recuerdos y la memoria de Claude Code como origen', () => {
+    const c = resolverConfig({}, {})
+    expect(c.memoriaMax).toBe(MEMORIA_MAX_POR_DEFECTO)
+    expect(c.memoriaMax).toBe(6000)
+    expect(c.memoriaOrigenes).toBeNull()
+  })
+
+  it('lee ORBE_MEMORIA_MAX del .env', () => {
+    expect(resolverConfig({ ORBE_MEMORIA_MAX: '9000' }, {}).memoriaMax).toBe(9000)
+    expect(resolverConfig({ ORBE_MEMORIA_MAX: '1000' }, {}).memoriaMax).toBe(1000)
+    expect(resolverConfig({ ORBE_MEMORIA_MAX: '12000' }, {}).memoriaMax).toBe(12000)
+  })
+
+  it.each(['abc', '999', '12001', '6000.5', '-1'])('ORBE_MEMORIA_MAX=%s es inválido: avisa y usa el valor por defecto', (v) => {
+    const c = resolverConfig({ ORBE_MEMORIA_MAX: v }, {})
+    expect(c.memoriaMax).toBe(MEMORIA_MAX_POR_DEFECTO)
+    expect(c.avisos).toHaveLength(1)
+    expect(c.avisos[0]).toContain('ORBE_MEMORIA_MAX')
+  })
+
+  it('ORBE_MEMORIA_CLAUDE admite varias carpetas separadas por «;» y «ninguna» para no importar', () => {
+    expect(resolverConfig({ ORBE_MEMORIA_CLAUDE: 'C:\\a\\memory; D:\\b\\memory ;;' }, {}).memoriaOrigenes).toEqual(['C:\\a\\memory', 'D:\\b\\memory'])
+    for (const v of ['ninguna', 'NONE', 'off', 'ninguno']) {
+      expect(resolverConfig({ ORBE_MEMORIA_CLAUDE: v }, {}).memoriaOrigenes).toEqual([])
+    }
   })
 })
 

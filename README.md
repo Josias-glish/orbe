@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Estado: **fase 3 de 5** (chat con Claude y lectura de pantalla por texto). La captura de respaldo (fase 4) y la bandeja del sistema (fase 5) llegan después.
+> Estado: **fase 3 de 5** (chat con Claude, lectura de pantalla por texto y memoria). La captura de respaldo (fase 4) y la bandeja del sistema (fase 5) llegan después.
 
 ## Requisitos
 - Windows 11
@@ -38,7 +38,9 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
-- El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior).
+- El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
+- El **libro** de la cabecera abre la **memoria**: qué sabe Orbe de ti, con control total.
+- Escribe **«Recuerda que…»** (también «Apunta que…», «Anota que…», «Ten en cuenta que…») en un mensaje con solo ese dato y Orbe lo guarda, con un botón para deshacerlo.
 - Con `npm run dev`, **Ctrl + Alt + D** muestra una barra para forzar los estados del orbe.
 
 ## Cómo habla con Claude
@@ -51,7 +53,21 @@ Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 
 El CLI se lanza sin `ANTHROPIC_API_KEY` en su entorno, para que no te cobre por API sin que lo hayas decidido.
 
-Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
+Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
+
+## Memoria
+Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversación que dejaste a medias**.
+
+**Recuerdos.** Son notas en `%APPDATA%\orbe\memoria`, un `.md` por recuerdo y con el mismo formato que la memoria de Claude Code, así que puedes leerlas y editarlas con cualquier editor. Vienen de tres sitios:
+- **Importadas de la memoria de Claude.** La primera vez que arranca, Orbe trae las notas de Claude Code de este equipo (`~/.claude/projects/*/memory`: quién eres, tus gustos, tus proyectos) y te avisa una vez. Solo las lee, no toca nada de Claude. El perfil viaja entero; los proyectos y preferencias, resumidos en una línea (puedes marcar «texto completo» en cada uno). Se dejan fuera las notas de tipo `reference` (apuntes para Claude Code, no sobre ti) y cualquiera que parezca llevar una clave o un dato delicado. «Importar de Claude» repite la importación: actualiza lo que cambió allí, salvo lo que hayas editado aquí o borrado a propósito. La memoria de claude.ai (la web) no es accesible desde el equipo.
+- **«Recuerda que…».** Lo guarda la propia aplicación, no el modelo: solo lo que tecleas tú puede entrar en la memoria, nunca el texto de una página o documento que Orbe haya leído. Solo se interpreta como orden si el mensaje entero es una frase sin preguntas; si mezclas una orden con una pregunta, es una conversación normal y no se guarda nada. El modelo recibe una nota de la aplicación con lo que pasó, y no puede afirmar que apuntó algo si la aplicación no lo hizo.
+- **A mano**, desde el gestor de memoria (libro de la cabecera): añadir, editar, activar o desactivar cada recuerdo, borrar, importar, abrir la carpeta y ver cuánto ocupa cada uno.
+
+**Qué viaja a Claude.** Al empezar cada conversación, los recuerdos activos (hasta `ORBE_MEMORIA_MAX` caracteres, primero el perfil, luego tus notas, preferencias y proyectos) van en el prompt, junto con la fecha de hoy. Cambiar la memoria afecta a la siguiente conversación, no a la que está en curso. El gestor muestra en cada momento cuánto se envía. **Todo lo que haya en la memoria activa se envía a Claude** (al servicio que ya uses con Orbe). Antes de guardar, Orbe rechaza contraseñas, claves de API, tarjetas, cuentas bancarias y documentos de identidad; en el gestor puedes forzarlo si de verdad lo quieres. El interruptor «Activa/Apagada» desactiva todo: no se envía nada y no se guarda la conversación.
+
+**Conversación guardada.** Orbe guarda en `%APPDATA%\orbe\conversacion.json` el texto de lo que habláis (sin capturas ni contenido de pantalla; los últimos 40 mensajes) y, al volver a abrirlo, repone la conversación en el panel y le cuenta al modelo lo último que se dijo, para que puedas seguir. El lápiz (**Nueva conversación**) la borra.
+
+**Privacidad.** Todo se guarda en claro en tu carpeta de datos; nada sale de tu equipo salvo lo que viaja a Claude como se explica arriba. «Borrar todo» en el gestor vacía los recuerdos.
 
 ## Contexto de pantalla
 Orbe **no mira tu pantalla por su cuenta**: solo lee cuando pulsas el ojo o el atajo, y nada sale hacia Claude hasta que envías un mensaje. Lee la ventana en la que estabas justo antes de abrir Orbe (sin contar al propio Orbe), por este orden:
@@ -75,9 +91,9 @@ Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando t
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.
 
 ## Pruebas
-`npm test` ejecuta unas 300 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla), el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
+`npm test` ejecuta unas 540 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
 
-`npm run humo` arranca la aplicación con un chat y un lector de mentira, recorre el orbe, el chat y la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo), guarda capturas en `humo/` y termina con código 1 si algo falla.
+`npm run humo` arranca la aplicación con un chat, un lector de pantalla y una memoria de mentira (notas de ejemplo, nunca tu memoria real), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) y la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor), guarda capturas en `humo/` y termina con código 1 si algo falla.
 
 Para probar con el CLI de Claude y el lector real (el CLI gasta unos céntimos de tu plan; el lector solo hace un «ping» y no lee ninguna ventana):
 ```powershell
@@ -91,6 +107,7 @@ Para ver qué leería Orbe de una ventana concreta: pon en primer plano el Bloc 
 src/main           proceso principal (ventana, atajos, ajustes)
 src/main/chat      proveedores (CLI y API), errores, servicio, IPC
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, contexto pendiente, IPC
+src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
 helper             lector de pantalla de Windows (PowerShell + C#, UI Automation)
 src/preload        puente seguro hacia la interfaz
 src/renderer       interfaz: orbe (WebGL2 + GLSL con ruido simplex), panel de chat y chips de contexto

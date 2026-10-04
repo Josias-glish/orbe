@@ -5,17 +5,21 @@ import type { ProveedorChat } from './proveedor'
 import { ProveedorApi } from './proveedor-api'
 import { ProveedorCli } from './proveedor-cli'
 
-/** Crea el proveedor que indica la configuración. `datosApp` es la carpeta de datos del usuario. */
-export function crearProveedor(config: Config, datosApp: string): ProveedorChat {
+/**
+ * Crea el proveedor que indica la configuración. `datosApp` es la carpeta de datos del usuario y `memoria`
+ * da el bloque de memoria del usuario para el prompt de cada conversación nueva.
+ */
+export function crearProveedor(config: Config, datosApp: string, memoria?: () => string | undefined): ProveedorChat {
   if (config.proveedor === 'api') {
-    return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo })
+    return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria })
   }
   return new ProveedorCli({
     modelo: config.modelo,
     esfuerzo: config.esfuerzo,
     rutaCli: config.rutaCli || undefined,
     // Carpeta vacía: así el CLI no encuentra ningún CLAUDE.md ni proyecto que cargar.
-    directorioTrabajo: join(datosApp, 'cli-vacio')
+    directorioTrabajo: join(datosApp, 'cli-vacio'),
+    memoria
   })
 }
 

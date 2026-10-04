@@ -7,6 +7,9 @@ export const MAX_TEXTO = 20_000
 
 export type ResultadoInicio = { ok: true } | { ok: false; error: ErrorOrbe }
 
+/** Lo que la aplicación añade al mensaje del usuario además de su texto y del contexto de pantalla. */
+export type ExtraTurno = Pick<TurnoEntrada, 'historialPrevio' | 'notaApp'>
+
 /** Orquesta los turnos del chat: valida la petición, lanza el turno y traduce todo a eventos. */
 export class ServicioChat {
   private turnoActivo: string | null = null
@@ -16,8 +19,8 @@ export class ServicioChat {
     private readonly emitir: (evento: EventoChat) => void
   ) {}
 
-  /** Valida y arranca el turno; el contenido de la respuesta llega después por eventos. */
-  iniciar(peticion: unknown, contexto?: TurnoEntrada['contexto']): ResultadoInicio {
+  /** ¿Se puede empezar un turno con esta petición? No lo empieza: sirve para decidir antes de gastar contexto o memoria. */
+  comprobar(peticion: unknown): { ok: true; peticion: PeticionChat } | { ok: false; error: ErrorOrbe } {
     const valida = validarPeticion(peticion)
     if (!valida) {
       return { ok: false, error: crearError('solicitud_invalida', { mensaje: 'El mensaje no es válido.' }) }
@@ -28,11 +31,18 @@ export class ServicioChat {
         error: crearError('solicitud_invalida', { mensaje: 'Todavía estoy respondiendo al mensaje anterior.' })
       }
     }
+    return { ok: true, peticion: valida }
+  }
 
-    const { id, texto } = valida
+  /** Valida y arranca el turno; el contenido de la respuesta llega después por eventos. */
+  iniciar(peticion: unknown, contexto?: TurnoEntrada['contexto'], extra: ExtraTurno = {}): ResultadoInicio {
+    const comprobada = this.comprobar(peticion)
+    if (!comprobada.ok) return comprobada
+
+    const { id, texto } = comprobada.peticion
     this.turnoActivo = id
     this.emitir({ tipo: 'inicio', id })
-    void this.ejecutar(id, { texto, contexto })
+    void this.ejecutar(id, { texto, contexto, ...extra })
     return { ok: true }
   }
 

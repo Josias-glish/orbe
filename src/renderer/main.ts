@@ -16,6 +16,7 @@ const panelEl = document.getElementById('panel') as HTMLElement
 const orbe = new Orbe(canvas)
 orbe.iniciar()
 const panel = new PanelChat(orbe)
+void panel.restaurarConversacion()
 
 /** Distingue clic de arrastre sobre un elemento: el arrastre mueve la ventana, el clic ejecuta `alClic`. */
 function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
@@ -82,9 +83,10 @@ window.orbe.alCambiarExpandido(aplicarEstadoVentana)
 // Ventana oculta (bandeja o atajo): se pausa la animación para no gastar GPU.
 window.orbe.alCambiarVisibilidad((visible) => orbe.fijarVisible(visible))
 
-// Escape cierra el panel.
+// Escape cierra el gestor de memoria si está abierto y, si no, el panel.
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && raiz.classList.contains('expandido')) window.orbe.alternar()
+  if (e.key !== 'Escape' || !raiz.classList.contains('expandido')) return
+  if (!panel.alPulsarEscape()) window.orbe.alternar()
 })
 
 // Ganchos para la prueba de humo y el selector de estados.

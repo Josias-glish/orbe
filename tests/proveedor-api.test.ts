@@ -156,12 +156,60 @@ describe('ProveedorApi', () => {
     expect(cuerpo['model']).toBe('claude-opus-5-5')
     expect(cuerpo['stream']).toBe(true)
     expect(cuerpo['output_config']).toEqual({ effort: 'high' })
-    expect(cuerpo['system']).toBe(PROMPT_SISTEMA)
+    expect(String(cuerpo['system']).startsWith(PROMPT_SISTEMA)).toBe(true)
     expect(cuerpo['fallbacks']).toBe('default')
     expect(cabeceras['anthropic-beta']).toContain('server-side-fallback-2026-07-01')
     expect(cabeceras['x-api-key']).toBe('sk-ant-de-prueba')
     expect(cuerpo['thinking']).toBeUndefined() // en estos modelos se omite: nada de budget_tokens
     expect(cuerpo['temperature']).toBeUndefined()
+  })
+
+  it('el prompt lleva la fecha de hoy y la memoria del usuario', async () => {
+    respuestas.push(flujoDeTexto(['ok']))
+    const p = crear({ memoria: () => 'Memoria del usuario\n<memoria>\n- [Perfil] Le gusta la astronomía\n</memoria>', ahora: () => new Date(2026, 9, 4, 10) })
+    await p.enviar({ texto: 'hola' }, recolector())
+    const sistema = String(recibidas[0].cuerpo['system'])
+    expect(sistema).toContain('Hoy es domingo 4 de octubre de 2026.')
+    expect(sistema).toContain('- [Perfil] Le gusta la astronomía')
+  })
+
+  it('la memoria se fija al empezar la conversación y se renueva con «nueva conversación»', async () => {
+    respuestas.push(flujoDeTexto(['uno']), flujoDeTexto(['dos']), flujoDeTexto(['tres']))
+    let memoria = 'NOTAS V1'
+    const p = crear({ memoria: () => memoria })
+    await p.enviar({ texto: 'primero' }, recolector())
+    memoria = 'NOTAS V2' // el usuario guarda algo a mitad de conversación
+    await p.enviar({ texto: 'segundo' }, recolector())
+    p.reiniciar()
+    await p.enviar({ texto: 'tercero' }, recolector())
+
+    const sistemas = recibidas.map((r) => String(r.cuerpo['system']))
+    expect(sistemas[0]).toContain('NOTAS V1')
+    expect(sistemas[1]).toContain('NOTAS V1') // misma conversación: el prompt no cambia (caché)
+    expect(sistemas[1]).not.toContain('NOTAS V2')
+    expect(sistemas[2]).toContain('NOTAS V2')
+  })
+
+  it('un primer intento fallido no fija la memoria de la conversación', async () => {
+    respuestas.push(errorHttp(500, 'api_error', 'fallo'), flujoDeTexto(['ok']))
+    let memoria = 'NOTAS V1'
+    const p = crear({ memoria: () => memoria })
+    await p.enviar({ texto: 'hola' }, recolector()).catch(() => undefined)
+    memoria = 'NOTAS V2'
+    await p.enviar({ texto: 'hola otra vez' }, recolector())
+    expect(String(recibidas[1].cuerpo['system'])).toContain('NOTAS V2')
+  })
+
+  it('el mensaje lleva la conversación anterior y la nota de la aplicación antes de lo que escribió el usuario', async () => {
+    respuestas.push(flujoDeTexto(['ok']))
+    await crear().enviar(
+      { texto: 'sigamos', historialPrevio: 'Usuario: hola\nOrbe: ¡hola!', notaApp: 'Orbe ha guardado una nota.' },
+      recolector()
+    )
+    const mensajes = recibidas[0].cuerpo['messages'] as Array<{ content: Array<{ text: string }> }>
+    const texto = mensajes[0].content[0].text
+    expect(texto.indexOf('<conversacion_anterior>')).toBeLessThan(texto.indexOf('<nota_de_la_app>'))
+    expect(texto.indexOf('<nota_de_la_app>')).toBeLessThan(texto.indexOf('sigamos'))
   })
 
   it('se puede desactivar el reintento de seguridad', async () => {

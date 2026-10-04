@@ -100,6 +100,14 @@ describe('argumentosCli', () => {
   })
 })
 
+describe('argumentosCli con memoria', () => {
+  it('usa el prompt que se le pasa (las instrucciones, la fecha y la memoria)', () => {
+    const prompt = `${PROMPT_SISTEMA}\n\nFecha\n- Hoy es lunes 5 de octubre de 2026.\n\nMemoria del usuario\n- [Perfil] Estudiante`
+    const args = argumentosCli('claude-sonnet-5-5', 'low', prompt)
+    expect(args[args.indexOf('--system-prompt') + 1]).toBe(prompt)
+  })
+})
+
 describe('buscarRutaCli', () => {
   const existe = (...rutas: string[]) => (r: string) => rutas.includes(r)
   const exe = join('C:\\npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
@@ -119,6 +127,42 @@ describe('buscarRutaCli', () => {
 
   it('devuelve null si no encuentra nada', () => {
     expect(buscarRutaCli(['C:\\npm\\claude.cmd'], existe(), {})).toBeNull()
+  })
+})
+
+describe('ProveedorCli: memoria del usuario', () => {
+  const promptDe = (i: number): string => {
+    const args = lanzamientos[i].args
+    return args[args.indexOf('--system-prompt') + 1]
+  }
+
+  it('el prompt del proceso lleva las instrucciones, la fecha y la memoria', async () => {
+    const p = crear({ memoria: () => 'Memoria del usuario\n- [Perfil] Le gusta la astronomía', ahora: () => new Date(2026, 9, 4, 10) })
+    await p.enviar({ texto: 'hola' }, recolector())
+    expect(promptDe(0).startsWith(PROMPT_SISTEMA)).toBe(true)
+    expect(promptDe(0)).toContain('Hoy es domingo 4 de octubre de 2026.')
+    expect(promptDe(0)).toContain('- [Perfil] Le gusta la astronomía')
+  })
+
+  it('sin memoria, el prompt solo lleva las instrucciones y la fecha', async () => {
+    const p = crear({ memoria: () => undefined })
+    await p.enviar({ texto: 'hola' }, recolector())
+    expect(promptDe(0)).not.toContain('Memoria del usuario\n')
+  })
+
+  it('la memoria se fija al lanzar el proceso: cambia con la conversación nueva, no a mitad de la actual', async () => {
+    let memoria = 'NOTAS V1'
+    const p = crear({ memoria: () => memoria })
+    await p.enviar({ texto: 'uno' }, recolector())
+    memoria = 'NOTAS V2'
+    await p.enviar({ texto: 'dos' }, recolector())
+    expect(lanzamientos).toHaveLength(1)
+    expect(promptDe(0)).toContain('NOTAS V1')
+
+    p.reiniciar()
+    await p.enviar({ texto: 'tres' }, recolector())
+    expect(lanzamientos).toHaveLength(2)
+    expect(promptDe(1)).toContain('NOTAS V2')
   })
 })
 

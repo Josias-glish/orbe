@@ -3,13 +3,16 @@ import type { ClaveParte, LecturaPantalla, ParteContexto } from '../../shared/ti
 const NS = 'http://www.w3.org/2000/svg'
 
 /** Trazos (estilo Lucide, dibujados a mano) de cada icono. */
-const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar', string[]> = {
+const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca', string[]> = {
   ventana: ['M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 9h18'],
   seleccion: ['M9 4h6', 'M9 20h6', 'M12 4v16'],
   contenido: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6'],
   imagen: ['M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M9 10.5h.01', 'm21 16-5-5-9 9'],
   ojo: ['M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
-  cerrar: ['M18 6 6 18', 'm6 6 12 12']
+  cerrar: ['M18 6 6 18', 'm6 6 12 12'],
+  libro: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
+  volver: ['M19 12H5', 'm12 19-7-7 7-7'],
+  marca: ['M20 6 9 17l-5-5']
 }
 
 export function crearIcono(nombre: keyof typeof ICONOS, tamano = 14): SVGElement {

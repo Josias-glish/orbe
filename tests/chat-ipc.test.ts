@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANALES, type EventoChat, type EventoPantalla, type InfoChat } from '../src/shared/tipos'
 import type { TurnoEntrada } from '../src/main/chat/contenido'
 import { ErrorChat, crearError } from '../src/main/chat/errores'
+import type { MemoriaChat } from '../src/main/chat/ipc'
 import type { ManejadoresTurno, ProveedorChat, ResultadoTurno } from '../src/main/chat/proveedor'
+import type { CapturaMemoria } from '../src/main/memoria/servicio'
 import type { ResultadoLectura } from '../src/main/pantalla/contexto'
 import { ContextoPendiente } from '../src/main/pantalla/pendiente'
 
@@ -33,10 +35,16 @@ class ProveedorControlado implements ProveedorChat {
   readonly modelo = 'prueba'
   turnos: TurnoEntrada[] = []
   private fin: { ok: (r: ResultadoTurno) => void; ko: (e: unknown) => void } | null = null
+  private manejadores: ManejadoresTurno | null = null
 
-  enviar(turno: TurnoEntrada, _m: ManejadoresTurno): Promise<ResultadoTurno> {
+  enviar(turno: TurnoEntrada, m: ManejadoresTurno): Promise<ResultadoTurno> {
     this.turnos.push(turno)
+    this.manejadores = m
     return new Promise((ok, ko) => (this.fin = { ok, ko }))
+  }
+  /** Simula que llega un trozo de la respuesta. */
+  decir(delta: string): void {
+    this.manejadores?.alTexto(delta)
   }
   terminar(): void {
     this.fin?.ok({ motivo: 'completo' })
@@ -65,7 +73,29 @@ function lectura(): ResultadoLectura {
 
 const esperar = (ms = 0): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-function montar(conReserva = true) {
+/** Una memoria de mentira que apunta lo que le piden. */
+function memoriaFalsa(opciones: { captura?: CapturaMemoria | null; historial?: string | null } = {}) {
+  const llamadas = { capturar: [] as string[], completados: [] as Array<[string, string]>, confirmados: 0, nuevas: 0 }
+  const memoria: MemoriaChat = {
+    capturar: (texto) => {
+      llamadas.capturar.push(texto)
+      return opciones.captura ?? null
+    },
+    tomarHistorialPrevio: () => opciones.historial ?? null,
+    confirmarHistorialUsado: () => {
+      llamadas.confirmados++
+    },
+    turnoCompletado: (usuario, asistente) => {
+      llamadas.completados.push([usuario, asistente])
+    },
+    nuevaConversacion: () => {
+      llamadas.nuevas++
+    }
+  }
+  return { memoria, llamadas }
+}
+
+function montar(conReserva = true, memoria?: MemoriaChat) {
   electron.manejadores.clear()
   electron.escuchas.clear()
   const enviados: Array<{ canal: string; evento: unknown }> = []
@@ -84,7 +114,8 @@ function montar(conReserva = true) {
           restaurar: (c) => pendiente.restaurar(c),
           emitir: (e) => emitidos.push(e)
         }
-      : undefined
+      : undefined,
+    memoria
   )
   const invocar = (canal: string, propio: boolean, ...args: unknown[]): unknown =>
     (electron.manejadores.get(canal) as Manejador)({ sender: propio ? webContents : {} }, ...args)
@@ -217,6 +248,97 @@ describe('chat:enviar y el contexto de pantalla', () => {
     t.pendiente.establecer(lectura())
     expect(() => t.enviar({ id: 'a', texto: 'Hola', conContexto: true }, false)).toThrow(/no autorizado/i)
     expect(t.pendiente.hay()).toBe(true)
+  })
+})
+
+describe('chat:enviar y la memoria', () => {
+  const GUARDADO: CapturaMemoria = {
+    aviso: { tipo: 'guardado', id: 'nota-mi-dato', texto: 'Mi dato' },
+    nota: 'Orbe ha guardado esta nota en la memoria del usuario: «Mi dato».'
+  }
+
+  it('una orden de «recuerda que…» se resuelve antes de enviar: el usuario ve el aviso y el modelo recibe la nota', async () => {
+    const { memoria, llamadas } = memoriaFalsa({ captura: GUARDADO })
+    const t = montar(true, memoria)
+    const r = t.enviar({ id: 'a', texto: '  Recuerda que mi dato  ' })
+    expect(r).toEqual({ ok: true, adjuntos: [], memoria: GUARDADO.aviso })
+    expect(llamadas.capturar).toEqual(['Recuerda que mi dato']) // el texto ya validado y sin espacios
+    await esperar()
+    expect(t.proveedor.turnos[0].notaApp).toBe(GUARDADO.nota)
+    expect(t.proveedor.turnos[0].texto).toBe('Recuerda que mi dato')
+  })
+
+  it('un mensaje normal no lleva aviso ni nota', async () => {
+    const { memoria } = memoriaFalsa()
+    const t = montar(true, memoria)
+    expect(t.enviar({ id: 'a', texto: 'Hola' })).toEqual({ ok: true, adjuntos: [] })
+    await esperar()
+    expect(t.proveedor.turnos[0].notaApp).toBeUndefined()
+    expect(t.proveedor.turnos[0].historialPrevio).toBeUndefined()
+  })
+
+  it('una petición inválida o con una respuesta en curso no llega a tocar la memoria', async () => {
+    const { memoria, llamadas } = memoriaFalsa({ captura: GUARDADO })
+    const t = montar(true, memoria)
+    expect(t.enviar({ id: 'a', texto: '   ' })).toMatchObject({ ok: false })
+    expect(llamadas.capturar).toEqual([])
+
+    t.enviar({ id: 'b', texto: 'Primero' })
+    expect(t.enviar({ id: 'c', texto: 'Recuerda que otra cosa' })).toMatchObject({ ok: false })
+    expect(llamadas.capturar).toEqual(['Primero']) // la segunda nunca se evaluó
+  })
+
+  it('el primer mensaje tras reabrir Orbe lleva la conversación anterior, y se da por usada al terminar', async () => {
+    const { memoria, llamadas } = memoriaFalsa({ historial: 'Usuario: hola\nOrbe: ¡hola!' })
+    const t = montar(true, memoria)
+    t.enviar({ id: 'a', texto: 'sigamos' })
+    await esperar()
+    expect(t.proveedor.turnos[0].historialPrevio).toBe('Usuario: hola\nOrbe: ¡hola!')
+    expect(llamadas.confirmados).toBe(0) // todavía no: si el envío fallara, habría que repetirlo
+    t.proveedor.terminar()
+    await esperar()
+    expect(llamadas.confirmados).toBe(1)
+  })
+
+  it('si el envío falla, la conversación anterior no se da por usada ni se guarda el intercambio', async () => {
+    const { memoria, llamadas } = memoriaFalsa({ historial: 'Usuario: hola\nOrbe: ¡hola!' })
+    const t = montar(true, memoria)
+    t.enviar({ id: 'a', texto: 'sigamos' })
+    t.proveedor.decir('respuesta a medias')
+    t.proveedor.fallar(new ErrorChat(crearError('sin_conexion')))
+    await esperar()
+    expect(llamadas.confirmados).toBe(0)
+    expect(llamadas.completados).toEqual([])
+  })
+
+  it('al terminar un turno se guarda lo que escribió el usuario y lo que respondió Orbe', async () => {
+    const { memoria, llamadas } = memoriaFalsa()
+    const t = montar(true, memoria)
+    t.enviar({ id: 'a', texto: '  ¿Qué es un orbe?  ' })
+    t.proveedor.decir('Una ')
+    t.proveedor.decir('esfera.')
+    t.proveedor.terminar()
+    await esperar()
+    expect(llamadas.completados).toEqual([['¿Qué es un orbe?', 'Una esfera.']])
+  })
+
+  it('«nueva conversación» se lo dice a la memoria y descarta el turno que estuviera en curso', async () => {
+    const { memoria, llamadas } = memoriaFalsa()
+    const t = montar(true, memoria)
+    t.enviar({ id: 'a', texto: 'Hola' })
+    t.proveedor.decir('respuesta')
+    await t.invocar(CANALES.chatNueva, true)
+    expect(llamadas.nuevas).toBe(1)
+    t.proveedor.terminar()
+    await esperar()
+    expect(llamadas.completados).toEqual([]) // lo hablado antes de «nueva» no se guarda
+  })
+
+  it('«nueva conversación» de un remitente ajeno no borra nada', async () => {
+    const { memoria, llamadas } = memoriaFalsa()
+    const t = montar(true, memoria)
+    await t.invocar(CANALES.chatNueva, false)
+    expect(llamadas.nuevas).toBe(0)
   })
 })
 

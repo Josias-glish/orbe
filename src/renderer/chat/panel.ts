@@ -1,5 +1,6 @@
 import type { ClaveParte, ErrorOrbe, EventoChat, EventoPantalla, InfoChat, LecturaPantalla, ResultadoEnvio } from '../../shared/tipos'
 import { EntradaTeclado } from '../entrada/entrada'
+import { VistaMemoria } from '../memoria/vista-memoria'
 import type { Orbe } from '../orbe/orbe'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
@@ -23,6 +24,9 @@ export class PanelChat {
   private readonly barra: BarraContexto
   private readonly botonEnviar: HTMLButtonElement
   private readonly botonLeer: HTMLButtonElement
+  private readonly botonMemoria: HTMLButtonElement
+  private readonly cuerpoPanel: HTMLElement
+  private readonly memoria: VistaMemoria
   private readonly lineaEstado: HTMLElement
   private turno: TurnoEnCurso | null = null
   private temporizadorReposo = 0
@@ -41,6 +45,9 @@ export class PanelChat {
     this.lista = new ListaMensajes(porId('mensajes'), porId('vacio'))
     this.botonEnviar = porId('enviar')
     this.botonLeer = porId('leer')
+    this.botonMemoria = porId('memoria-boton')
+    this.cuerpoPanel = raiz.querySelector('.panel-cuerpo') as HTMLElement
+    this.memoria = new VistaMemoria(porId('memoria'), () => this.cerrarMemoria())
     this.lineaEstado = porId('estado-linea')
     this.entrada = new EntradaTeclado(porId<HTMLTextAreaElement>('entrada'), () => this.actualizarBoton())
     this.barra = new BarraContexto(
@@ -55,6 +62,7 @@ export class PanelChat {
       else this.entrada.enviar()
     })
     this.botonLeer.addEventListener('click', () => void this.leerPantalla())
+    this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
 
     // Los enlaces de las respuestas se abren en el navegador, nunca dentro de Orbe.
@@ -84,7 +92,61 @@ export class PanelChat {
   }
 
   enfocar(): void {
+    if (!this.memoria.visible) this.entrada.enfocar()
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Memoria: gestor, conversación guardada y órdenes «recuerda que…»
+  // -------------------------------------------------------------------------------------------
+
+  private async alternarMemoria(): Promise<void> {
+    if (this.memoria.visible) {
+      this.cerrarMemoria()
+      return
+    }
+    this.cuerpoPanel.hidden = true
+    this.botonMemoria.setAttribute('aria-pressed', 'true')
+    await this.memoria.abrir()
+  }
+
+  private cerrarMemoria(): void {
+    if (!this.memoria.visible) return
+    this.memoria.cerrar()
+    this.cuerpoPanel.hidden = false
+    this.botonMemoria.setAttribute('aria-pressed', 'false')
     this.entrada.enfocar()
+  }
+
+  /** Esc: si el gestor de memoria está abierto, lo cierra y devuelve true (el panel se queda abierto). */
+  alPulsarEscape(): boolean {
+    if (!this.memoria.visible) return false
+    this.cerrarMemoria()
+    return true
+  }
+
+  /** Al abrir Orbe: enseña el aviso de la primera importación y repone la conversación que quedó guardada. */
+  async restaurarConversacion(): Promise<void> {
+    try {
+      const inicio = await window.orbe.memoriaInicio()
+      if (inicio.bienvenida) this.lista.agregarAvisoInicial(inicio.bienvenida)
+      if (inicio.mensajes.length > 0 && !this.lista.hayMensajes()) {
+        for (const m of inicio.mensajes) {
+          if (m.rol === 'usuario') this.lista.agregarUsuario(m.texto)
+          else this.lista.agregarRespuestaGuardada(m.texto)
+        }
+        this.lista.agregarAviso('Conversación anterior restaurada. Sigue donde la dejaste o pulsa el lápiz para empezar de cero.')
+      }
+    } catch {
+      // Sin memoria, Orbe funciona igual: simplemente empieza en blanco.
+    }
+  }
+
+  private async deshacerRecuerdo(id: string): Promise<boolean> {
+    try {
+      return (await window.orbe.memoriaBorrar(id)).ok
+    } catch {
+      return false
+    }
   }
 
   // -------------------------------------------------------------------------------------------
@@ -217,6 +279,9 @@ export class PanelChat {
     if (resultado.ok) {
       // Lo que se adjuntó, tal como lo confirma el proceso principal, queda a la vista en el mensaje.
       if (burbuja) this.lista.adjuntarChips(burbuja, resultado.adjuntos)
+      if (burbuja && resultado.memoria) {
+        this.lista.adjuntarAvisoMemoria(burbuja, resultado.memoria, (id) => this.deshacerRecuerdo(id))
+      }
       if (resultado.adjuntos.length > 0) this.limpiarLectura()
     } else if (this.turno?.id === id) {
       this.terminarTurnoConError(resultado.error)
@@ -238,6 +303,7 @@ export class PanelChat {
   }
 
   async nuevaConversacion(): Promise<void> {
+    this.cerrarMemoria()
     const turno = this.turno
     this.turno = null
     turno?.respuesta.descartarSiVacia()

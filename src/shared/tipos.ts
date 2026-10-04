@@ -19,7 +19,16 @@ export const CANALES = {
   pantallaLeer: 'pantalla:leer',
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
-  pantallaEvento: 'pantalla:evento'
+  pantallaEvento: 'pantalla:evento',
+  memoriaInicio: 'memoria:inicio',
+  memoriaEstado: 'memoria:estado',
+  memoriaGuardar: 'memoria:guardar',
+  memoriaActualizar: 'memoria:actualizar',
+  memoriaBorrar: 'memoria:borrar',
+  memoriaImportar: 'memoria:importar',
+  memoriaActivar: 'memoria:activar',
+  memoriaCarpeta: 'memoria:carpeta',
+  memoriaVaciar: 'memoria:vaciar'
 } as const
 
 export interface EstadoVentana {
@@ -126,7 +135,75 @@ export type EventoPantalla =
   | { tipo: 'vacio'; motivo: 'caducado' | 'descartado' | 'enviado' }
   | { tipo: 'error'; error: ErrorOrbe }
 
-export type ResultadoEnvio = { ok: true; adjuntos: ParteContexto[] } | { ok: false; error: ErrorOrbe }
+export type ResultadoEnvio =
+  | { ok: true; adjuntos: ParteContexto[]; memoria?: AvisoMemoria }
+  | { ok: false; error: ErrorOrbe }
+
+// ---------------------------------------------------------------------------------------------
+// Memoria
+// ---------------------------------------------------------------------------------------------
+
+/** Perfil = quién es el usuario; preferencia = cómo quiere que se trabaje; proyecto = en qué anda; nota = lo que él pidió recordar. */
+export type TipoMemoria = 'usuario' | 'preferencia' | 'proyecto' | 'nota'
+
+export interface RecuerdoVista {
+  id: string
+  tipo: TipoMemoria
+  /** Resumen de una línea. */
+  titulo: string
+  cuerpo: string
+  /** Lo trajo la importación desde la memoria de Claude, o lo escribió el usuario. */
+  origen: 'claude' | 'usuario'
+  /** Se incluye en lo que Orbe sabe del usuario. */
+  usar: boolean
+  /** Se envía el texto completo; si no, solo el resumen. */
+  completo: boolean
+  /** Cuánto ocupa en el prompt con su modo actual (0 si no se usa o no cabe). */
+  caracteres: number
+  modificado: string
+}
+
+export interface EstadoMemoria {
+  activa: boolean
+  recuerdos: RecuerdoVista[]
+  presupuesto: { usados: number; max: number; omitidos: number }
+  carpeta: string
+  hayConversacion: boolean
+}
+
+export interface InformeImportacion {
+  nuevas: number
+  actualizadas: number
+  sinCambios: number
+  omitidas: Array<{ nombre: string; motivo: string }>
+  /** Carpetas de memoria de Claude que se encontraron. */
+  fuentes: number
+}
+
+/** `sensible` indica que se rechazó por parecer una clave o dato personal delicado (se puede forzar). */
+export type ResultadoMemoria = { ok: true; estado: EstadoMemoria; id?: string } | { ok: false; error: string; sensible?: boolean }
+
+/** Qué pasó cuando el mensaje era una orden tipo «recuerda que…». */
+export type AvisoMemoria = { tipo: 'guardado'; id: string; texto: string } | { tipo: 'no_guardado'; motivo: string }
+
+export interface MensajeGuardado {
+  rol: 'usuario' | 'asistente'
+  texto: string
+}
+
+export interface InicioMemoria {
+  /** La conversación que quedó guardada la última vez (vacía si no hay o la memoria está apagada). */
+  mensajes: MensajeGuardado[]
+  /** Aviso de una sola vez tras la primera importación de la memoria de Claude. */
+  bienvenida: string | null
+}
+
+export interface CambiosRecuerdo {
+  titulo?: string
+  cuerpo?: string
+  usar?: boolean
+  completo?: boolean
+}
 
 export interface ApiOrbe {
   alternar(): void
@@ -148,4 +225,14 @@ export interface ApiOrbe {
   pantallaQuitar(clave: ClaveParte): Promise<LecturaPantalla | null>
   pantallaDescartar(): void
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
+
+  memoriaInicio(): Promise<InicioMemoria>
+  memoriaEstado(): Promise<EstadoMemoria>
+  memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
+  memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>
+  memoriaBorrar(id: string): Promise<ResultadoMemoria>
+  memoriaImportar(): Promise<{ informe: InformeImportacion; estado: EstadoMemoria }>
+  memoriaActivar(activa: boolean): Promise<ResultadoMemoria>
+  memoriaCarpeta(): void
+  memoriaVaciar(): Promise<ResultadoMemoria>
 }

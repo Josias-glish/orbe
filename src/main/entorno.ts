@@ -52,6 +52,7 @@ export const MODELO_POR_DEFECTO = 'claude-sonnet-5-5'
 export const CONTEXTO_MAX_POR_DEFECTO = 8000
 export const ATAJO_PANEL_POR_DEFECTO = 'CommandOrControl+Shift+Space'
 export const ATAJO_LEER_POR_DEFECTO = 'CommandOrControl+Shift+Alt+Space'
+export const MEMORIA_MAX_POR_DEFECTO = 6000
 export const ESFUERZO_POR_DEFECTO: Esfuerzo = 'medium'
 const ESFUERZOS: readonly Esfuerzo[] = ['low', 'medium', 'high', 'xhigh', 'max']
 
@@ -66,6 +67,10 @@ export interface Config {
   contextoMax: number
   atajoPanel: string
   atajoLeer: string
+  /** Máximo de caracteres de recuerdos que viajan en cada conversación. */
+  memoriaMax: number
+  /** Carpetas de memoria de Claude de donde importar; null = las de Claude Code (`~/.claude/projects/*\/memory`). */
+  memoriaOrigenes: string[] | null
   avisos: string[]
 }
 
@@ -95,6 +100,26 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else avisos.push(`ORBE_CONTEXTO_MAX="${maxLeido}" no es válido (un entero entre 500 y 60000); uso ${contextoMax}.`)
   }
 
+  let memoriaMax = MEMORIA_MAX_POR_DEFECTO
+  const memoriaLeida = leer('ORBE_MEMORIA_MAX')
+  if (memoriaLeida) {
+    const n = Number(memoriaLeida)
+    if (Number.isInteger(n) && n >= 1000 && n <= 12_000) memoriaMax = n
+    else avisos.push(`ORBE_MEMORIA_MAX="${memoriaLeida}" no es válido (un entero entre 1000 y 12000); uso ${memoriaMax}.`)
+  }
+
+  // ORBE_MEMORIA_CLAUDE: carpetas separadas por «;», o «ninguna» para no importar nada.
+  let memoriaOrigenes: string[] | null = null
+  const origenesLeidos = leer('ORBE_MEMORIA_CLAUDE')
+  if (origenesLeidos) {
+    memoriaOrigenes = /^(ningun[ao]|none|off)$/i.test(origenesLeidos)
+      ? []
+      : origenesLeidos
+          .split(';')
+          .map((c) => c.trim())
+          .filter(Boolean)
+  }
+
   const claveEnArchivo = (delEnv['ANTHROPIC_API_KEY'] ?? '').trim()
   const eleccion = leer('ORBE_PROVEEDOR').toLowerCase() || 'auto'
   let proveedor: 'cli' | 'api'
@@ -114,6 +139,8 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     contextoMax,
     atajoPanel: leer('ORBE_ATAJO_PANEL') || ATAJO_PANEL_POR_DEFECTO,
     atajoLeer: leer('ORBE_ATAJO_LEER') || ATAJO_LEER_POR_DEFECTO,
+    memoriaMax,
+    memoriaOrigenes,
     avisos
   }
 }

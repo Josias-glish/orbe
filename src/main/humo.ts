@@ -1,16 +1,19 @@
 import { app, BrowserWindow } from 'electron'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { ServicioMemoria } from './memoria/servicio'
 import type { FuenteDemo } from './pantalla/fuente-demo'
 import type { VentanaOrbe } from './ventana'
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-/** Lo que la prueba de humo necesita del lector de pantalla para ensayar la fase 3 sin tocar la pantalla real. */
+/** Lo que la prueba de humo necesita del lector de pantalla y de la memoria para ensayarlos sin tocar datos reales. */
 export interface ExtrasHumo {
   fuente: FuenteDemo
   /** Lo mismo que hace el atajo «leer pantalla». */
   leerConAtajo: () => Promise<void>
+  /** La memoria de la prueba (con notas de mentira), para comprobar también por el lado del proceso principal. */
+  memoria: ServicioMemoria
 }
 
 /**
@@ -229,6 +232,154 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(300)
   }
 
+  /** Memoria: gestor, notas, órdenes «recuerda que…», deshacer, conversación repuesta e interruptor. */
+  const pasosMemoria = async ({ memoria }: ExtrasHumo): Promise<void> => {
+    const m: Record<string, unknown> = {}
+    informe.memoria = m
+    const medidor = (): Promise<number> => js(`Number(document.querySelector('#memoria .medidor').getAttribute('aria-valuenow'))`)
+    const gestorAbierto = (): Promise<boolean> => js(`!document.getElementById('memoria').hidden`)
+    const filaDe = (tipo: string): string => `document.querySelector('#memoria .tipo-${tipo}').closest('.recuerdo')`
+    /** Escribe en el cuadro de «nuevo recuerdo» y lo envía como haría una persona (Enter). */
+    const anadirNota = (texto: string): Promise<unknown> =>
+      js(`(() => {
+        const t = document.querySelector('#memoria .memoria-texto');
+        t.value = ${JSON.stringify(texto)};
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('#memoria .memoria-nueva').requestSubmit();
+      })()`)
+    const ultimaRespuesta = (): Promise<string> => js(`[...document.querySelectorAll('.msg.asistente .contenido')].at(-1)?.textContent ?? ''`)
+
+    // 7a. El botón de memoria abre el gestor con lo importado de Claude (menos la referencia y la nota con una clave)
+    await pulsar('#nueva')
+    await esperar(400)
+    await pulsar('#memoria-boton')
+    comprobar('se abre el gestor', await esperarSelector('#memoria:not([hidden]) .recuerdo', 3000))
+    await esperar(200)
+    m.recuerdos = await textosDe('#memoria .recuerdo .recuerdo-texto')
+    m.etiquetas = (await textosDe('#memoria .recuerdo .etiqueta-tipo')).sort()
+    m.resumen = await textoDe('#memoria .memoria-resumen')
+    m.chatOculto = await js(`document.querySelector('.panel-cuerpo').hidden`)
+    comprobar('hay tres recuerdos importados', (m.recuerdos as string[]).length === 3, m.recuerdos)
+    comprobar('son un perfil, una preferencia y un proyecto', mismos(m.etiquetas, ['Perfil', 'Preferencia', 'Proyecto']), m.etiquetas)
+    comprobar('el gestor sustituye al chat', m.chatOculto === true)
+    comprobar('el resumen cuenta lo que viaja', /3 recuerdos · [\d.]+ de 6\.?000 caracteres/.test(String(m.resumen)), m.resumen)
+    await capturar('7a-gestor')
+
+    // 7b. Abrir un recuerdo, marcar «texto completo» y comprobar que pesa más
+    m.usadosAntes = await medidor()
+    await js(`${filaDe('proyecto')}.querySelector('.recuerdo-titulo').click()`)
+    await esperar(150)
+    comprobar('se despliega el detalle', await existe('#memoria .recuerdo-detalle'))
+    await js(`(() => { const c = document.querySelector('#memoria .recuerdo-detalle .memoria-opcion input'); c.checked = true })()`)
+    await js(`[...document.querySelectorAll('#memoria .recuerdo-detalle .boton-memoria')].find((b) => b.textContent.includes('Guardar')).click()`)
+    await esperar(400)
+    m.usadosDespues = await medidor()
+    comprobar('con el texto completo viaja más', (m.usadosDespues as number) > (m.usadosAntes as number), [m.usadosAntes, m.usadosDespues])
+    comprobar('el proceso principal lo confirma', (memoria.bloquePrompt() ?? '').includes('Detalles del huerto de ejemplo'))
+    await capturar('7b-detalle')
+
+    // 7c. Dejar de usar un recuerdo
+    await js(`${filaDe('preferencia')}.querySelector('.recuerdo-usar').click()`)
+    await esperar(400)
+    m.pesoDesactivado = await js(`${filaDe('preferencia')}.querySelector('.recuerdo-peso').textContent`)
+    comprobar('un recuerdo desactivado no pesa', m.pesoDesactivado === '—', m.pesoDesactivado)
+    comprobar('y deja de viajar', !(memoria.bloquePrompt() ?? '').includes('explicaciones breves'))
+
+    // 7d. Añadir una nota a mano
+    await anadirNota('Me encanta el cine de acción')
+    await esperar(400)
+    m.tras = await textosDe('#memoria .recuerdo .recuerdo-texto')
+    comprobar('la nota nueva aparece', (m.tras as string[]).some((t) => t.includes('cine de acción')), m.tras)
+    comprobar('y se guarda en la carpeta', memoria.estado().recuerdos.some((r) => r.titulo === 'Me encanta el cine de acción' && r.tipo === 'nota'))
+
+    // 7e. Un dato delicado se rechaza y solo se guarda si el usuario insiste
+    await anadirNota('mi contraseña es hunter22')
+    await esperar(400)
+    m.errorDelicado = await textoDe('#memoria .memoria-error')
+    comprobar('avisa de que parece una contraseña', /Parece contener una contraseña/.test(String(m.errorDelicado)), m.errorDelicado)
+    comprobar('ofrece guardarlo igualmente', await existe('#memoria .memoria-error .boton-memoria'))
+    comprobar('no lo guardó', !memoria.estado().recuerdos.some((r) => r.titulo.includes('hunter22')))
+    await capturar('7e-delicado')
+    await js(`(() => { const t = document.querySelector('#memoria .memoria-texto'); t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+
+    // 7f. Volver a importar de Claude: no hay nada nuevo y dice qué dejó fuera y por qué
+    await js(`[...document.querySelectorAll('#memoria .boton-memoria')].find((b) => b.textContent.includes('Importar')).click()`)
+    await esperar(500)
+    m.informe = await textoDe('#memoria .memoria-informe')
+    comprobar('el informe cuenta lo importado y lo omitido', /3 sin cambios/.test(String(m.informe)) && /clave-demo/.test(String(m.informe)), m.informe)
+    await js(`document.querySelector('#memoria .memoria-cuerpo').scrollTop = 9999`)
+    await esperar(150)
+    await capturar('7f-informe')
+
+    // 7g. Volver al chat y pedir que recuerde algo: lo guarda la aplicación y el usuario ve el aviso
+    await js(`document.querySelector('#memoria .memoria-cabecera .boton-icono').click()`)
+    await esperar(300)
+    comprobar('vuelve el chat', !(await gestorAbierto()) && (await js<boolean>(`!document.querySelector('.panel-cuerpo').hidden`)))
+    await escribirYEnviar('Recuerda que mi comida favorita es la tortilla de patatas')
+    await esperar(500)
+    m.avisoGuardado = await textoDe('.msg.usuario .nota-memoria')
+    comprobar('el mensaje enseña «Guardado en la memoria»', /Guardado en la memoria/.test(String(m.avisoGuardado)), m.avisoGuardado)
+    comprobar('con un botón para deshacerlo', await existe('.msg.usuario .nota-memoria-deshacer'))
+    comprobar('el proceso principal la guardó', memoria.estado().recuerdos.some((r) => r.cuerpo === 'Mi comida favorita es la tortilla de patatas'))
+    await esperarFin(15_000)
+    await esperar(400)
+    m.acuseNota = (await ultimaRespuesta()).slice(0, 80)
+    comprobar('el modelo recibió la nota de la aplicación', String(m.acuseNota).includes('nota de la app'), m.acuseNota)
+    await capturar('7g-recordado')
+
+    // 7h. Deshacer
+    await pulsar('.msg.usuario .nota-memoria-deshacer')
+    await esperar(400)
+    m.avisoDeshecho = await textoDe('.msg.usuario .nota-memoria')
+    comprobar('deshacer lo borra', /Recuerdo borrado/.test(String(m.avisoDeshecho)), m.avisoDeshecho)
+    comprobar('y ya no está en la memoria', !memoria.estado().recuerdos.some((r) => r.cuerpo.includes('tortilla de patatas')))
+
+    // 7i. Una orden con un dato delicado no se guarda, y se le explica al usuario
+    await escribirYEnviar('Recuerda que mi contraseña es hunter22')
+    await esperar(500)
+    m.avisoRechazo = await js<string>(`[...document.querySelectorAll('.msg.usuario')].at(-1)?.querySelector('.nota-memoria')?.textContent ?? ''`)
+    comprobar('explica por qué no se guardó', m.avisoRechazo === 'No se guardó: parece contener una contraseña o una clave', m.avisoRechazo)
+    await esperarFin(15_000)
+    await esperar(400)
+    await capturar('7i-no-guardado')
+
+    // 7j. Al reabrir la interfaz, la conversación se repone (aquí se recarga la página, como al volver a abrir Orbe)
+    m.usuariosAntes = await contar('.msg.usuario')
+    await wc.reload()
+    await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
+    await esperar(800)
+    orbe.establecerExpandido(false)
+    await esperar(300)
+    orbe.establecerExpandido(true)
+    await esperar(700)
+    m.usuariosRepuestos = await contar('.msg.usuario')
+    m.asistenteRepuestos = await contar('.msg.asistente')
+    m.avisoRepuesto = await textoDe('#mensajes .aviso')
+    comprobar('se reponen los mensajes del usuario', m.usuariosRepuestos === m.usuariosAntes && m.usuariosRepuestos === 2, [m.usuariosAntes, m.usuariosRepuestos])
+    comprobar('se reponen las respuestas', m.asistenteRepuestos === 2, m.asistenteRepuestos)
+    comprobar('avisa de que es la conversación anterior', /Conversación anterior restaurada/.test(String(m.avisoRepuesto)), m.avisoRepuesto)
+    comprobar('no repite el aviso de la importación', !String(m.avisoRepuesto).includes('He cargado'))
+    await capturar('7j-restaurada')
+
+    // 7k. El interruptor apaga la memoria: no viaja nada y los recuerdos se ven atenuados
+    await pulsar('#memoria-boton')
+    await esperarSelector('#memoria:not([hidden]) .recuerdo', 3000)
+    await js(`document.getElementById('memoria-activa').click()`)
+    await esperar(400)
+    m.interruptor = await textoDe('#memoria .interruptor-texto')
+    comprobar('el interruptor dice «Apagada»', m.interruptor === 'Apagada', m.interruptor)
+    m.resumenApagada = await textoDe('#memoria .memoria-resumen')
+    comprobar('el resumen avisa de que no se usa nada', /Memoria apagada/.test(String(m.resumenApagada)), m.resumenApagada)
+    comprobar('con la memoria apagada no viaja nada', memoria.bloquePrompt() === undefined)
+    await capturar('7k-apagada')
+    await js(`document.getElementById('memoria-activa').click()`)
+    await esperar(300)
+    comprobar('al encenderla vuelve a viajar', memoria.bloquePrompt() !== undefined)
+    await pulsar('#memoria-boton')
+    await esperar(300)
+    comprobar('se cierra el gestor', !(await gestorAbierto()))
+  }
+
   try {
     await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
     await esperar(1200)
@@ -267,6 +418,11 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       await capturar('2-expandido')
       informe.boundsExpandido = orbe.ventana.getBounds()
       informe.cabecera = await js(`document.getElementById('modelo')?.textContent`)
+      if (extras) {
+        // La primera vez, Orbe avisa de que ha traído la memoria de Claude (una sola vez).
+        informe.bienvenida = await textoDe('#mensajes .aviso')
+        comprobar('avisa de la memoria cargada de Claude', String(informe.bienvenida).includes('He cargado 3 notas'), informe.bienvenida)
+      }
 
       // 3. Conversación de ejemplo con streaming
       await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
@@ -300,8 +456,11 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       informe.mensajesTrasNueva = await contar('.msg')
       await capturar('5-nueva')
 
-      // 6. Lectura de pantalla (fase 3)
-      if (extras) await pasosPantalla(extras)
+      // 6. Lectura de pantalla (fase 3) y 7. memoria
+      if (extras) {
+        await pasosPantalla(extras)
+        await pasosMemoria(extras)
+      }
 
       orbe.establecerExpandido(false)
       await esperar(400)

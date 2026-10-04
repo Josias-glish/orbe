@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { liberarAtajos, registrarAtajos } from './atajos'
 import { crearProveedor, infoChat } from './chat/fabrica'
@@ -7,6 +8,9 @@ import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
 import { ejecutarHumo } from './humo'
+import { prepararMemoriaDeMentira } from './memoria/fuente-demo'
+import { registrarMemoria } from './memoria/ipc'
+import { ServicioMemoria } from './memoria/servicio'
 import { FuenteHelper, type FuenteUia } from './pantalla/contexto'
 import { FuenteDemo } from './pantalla/fuente-demo'
 import { ClienteHelper } from './pantalla/helper-uia'
@@ -71,20 +75,43 @@ app.whenReady().then(() => {
     contextoMax: config.contextoMax
   })
 
-  const proveedor = modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, app.getPath('userData'))
-  const info = modoHumo && !humoReal ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo' } : infoChat(config)
-  servicioChat = registrarChat(orbe.ventana, proveedor, info, {
-    consumir: () => pantalla.pendiente.consumir(),
-    restaurar: (c) => pantalla.pendiente.restaurar(c),
-    emitir: pantalla.emitir
+  // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.
+  // La prueba de humo empieza siempre de cero y con notas de mentira: nunca lee ni enseña la memoria real.
+  const datos = app.getPath('userData')
+  if (modoHumo) {
+    rmSync(join(datos, 'memoria'), { recursive: true, force: true })
+    rmSync(join(datos, 'conversacion.json'), { force: true })
+  }
+  const memoria = new ServicioMemoria({
+    carpeta: join(datos, 'memoria'),
+    archivoConversacion: join(datos, 'conversacion.json'),
+    max: config.memoriaMax,
+    origenesClaude: modoHumo ? prepararMemoriaDeMentira(app.getPath('temp')) : config.memoriaOrigenes
   })
+  memoria.iniciar()
+  registrarMemoria(orbe.ventana, memoria)
+
+  const proveedor =
+    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt())
+  const info = modoHumo && !humoReal ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo' } : infoChat(config)
+  servicioChat = registrarChat(
+    orbe.ventana,
+    proveedor,
+    info,
+    {
+      consumir: () => pantalla.pendiente.consumir(),
+      restaurar: (c) => pantalla.pendiente.restaurar(c),
+      emitir: pantalla.emitir
+    },
+    memoria
+  )
 
   registrarAtajos(
     { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo() },
     { panel: config.atajoPanel, leer: config.atajoLeer }
   )
 
-  if (fuenteDemo) void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo })
+  if (fuenteDemo) void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria })
 })
 
 app.on('second-instance', () => {

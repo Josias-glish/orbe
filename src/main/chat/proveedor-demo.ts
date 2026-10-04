@@ -20,15 +20,21 @@ function saludar(nombre: string): string {
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-/** Frase con la que la demo confirma qué contexto de pantalla le llegó, para poder comprobarlo en las pruebas visuales. */
-function acuseContexto(contexto: TurnoEntrada['contexto']): string {
-  if (!contexto) return ''
-  const recibido: string[] = []
-  if (contexto.ventana) recibido.push('ventana')
-  if (contexto.seleccion) recibido.push('selección')
-  if (contexto.contenido) recibido.push('contenido')
-  if (contexto.imagen) recibido.push('captura')
-  return recibido.length > 0 ? `*(Recibí contexto de pantalla: ${recibido.join(', ')}.)*\n\n` : ''
+/** Frase con la que la demo confirma qué le llegó (pantalla, nota de la app, conversación anterior), para poder comprobarlo en las pruebas visuales. */
+function acuseContexto(turno: TurnoEntrada): string {
+  const partes: string[] = []
+  const contexto = turno.contexto
+  if (contexto) {
+    const pantalla: string[] = []
+    if (contexto.ventana) pantalla.push('ventana')
+    if (contexto.seleccion) pantalla.push('selección')
+    if (contexto.contenido) pantalla.push('contenido')
+    if (contexto.imagen) pantalla.push('captura')
+    if (pantalla.length > 0) partes.push(`contexto de pantalla: ${pantalla.join(', ')}`)
+  }
+  if (turno.notaApp) partes.push('nota de la app')
+  if (turno.historialPrevio) partes.push('conversación anterior')
+  return partes.length > 0 ? `*(Recibí ${partes.join('; ')}.)*\n\n` : ''
 }
 
 /** Proveedor de mentira para las pruebas visuales (--smoke): emite un texto fijo con ritmo de streaming. */
@@ -43,7 +49,7 @@ export class ProveedorDemo implements ProveedorChat {
     this.cancelado = false
     await esperar(this.ritmo.pensarMs)
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
-    const respuesta = acuseContexto(turno.contexto) + RESPUESTA_DEMO
+    const respuesta = acuseContexto(turno) + RESPUESTA_DEMO
     for (let i = 0; i < respuesta.length && !this.cancelado; i += this.ritmo.trozo) {
       m.alTexto(respuesta.slice(i, i + this.ritmo.trozo))
       await esperar(this.ritmo.trozoMs)

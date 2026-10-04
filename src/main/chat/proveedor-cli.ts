@@ -5,7 +5,7 @@ import type { MotivoFin } from '../../shared/tipos'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeCli, type InfoErrorCli } from './errores'
 import { LectorLineas, interpretarLinea, type EventoCli } from './parseador-stream'
-import { PROMPT_SISTEMA } from './prompt-sistema'
+import { PROMPT_SISTEMA, construirPromptSistema } from './prompt-sistema'
 import type { Esfuerzo, ManejadoresTurno, ProveedorChat, ResultadoTurno } from './proveedor'
 
 /** Cómo se lanza el proceso; se puede sustituir en las pruebas por un CLI de mentira. */
@@ -25,12 +25,16 @@ export interface OpcionesProveedorCli {
   silencioMaxMs?: number
   /** Tiempo que se espera a que el CLI confirme una interrupción antes de matarlo. */
   esperaInterrupcionMs?: number
+  /** Bloque de memoria del usuario; se consulta al lanzar cada proceso (es decir, al empezar cada conversación). */
+  memoria?: () => string | undefined
+  /** Reloj, para la fecha del prompt (las pruebas lo fijan). */
+  ahora?: () => Date
 }
 
 const VARIABLES_QUE_CAMBIAN_DE_CUENTA = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']
 
 /** Argumentos del CLI: un chat puro, sin herramientas, sin ajustes del usuario y sin persistencia. */
-export function argumentosCli(modelo: string, esfuerzo: Esfuerzo): string[] {
+export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string = PROMPT_SISTEMA): string[] {
   return [
     '-p',
     '--input-format', 'stream-json',
@@ -40,7 +44,7 @@ export function argumentosCli(modelo: string, esfuerzo: Esfuerzo): string[] {
     '--model', modelo,
     '--effort', esfuerzo,
     '--tools', '',
-    '--system-prompt', PROMPT_SISTEMA,
+    '--system-prompt', prompt,
     '--setting-sources', '',
     '--strict-mcp-config',
     '--no-session-persistence',
@@ -218,7 +222,12 @@ export class ProveedorCli implements ProveedorChat {
     const env = { ...process.env }
     for (const variable of VARIABLES_QUE_CAMBIAN_DE_CUENTA) delete env[variable]
 
-    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.opciones.esfuerzo), {
+    // El prompt (con la fecha y la memoria del usuario) se fija al lanzar el proceso y vale para toda la conversación.
+    const prompt = construirPromptSistema({
+      ahora: this.opciones.ahora?.(),
+      memoria: this.opciones.memoria?.()
+    })
+    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.opciones.esfuerzo, prompt), {
       cwd: this.opciones.directorioTrabajo,
       env
     })

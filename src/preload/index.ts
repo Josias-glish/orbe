@@ -33,7 +33,17 @@ const api: ApiOrbe = {
   pantallaLeer: () => ipcRenderer.invoke(CANALES.pantallaLeer),
   pantallaQuitar: (clave) => ipcRenderer.invoke(CANALES.pantallaQuitar, clave),
   pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
-  alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb)
+  alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
+
+  memoriaInicio: () => ipcRenderer.invoke(CANALES.memoriaInicio),
+  memoriaEstado: () => ipcRenderer.invoke(CANALES.memoriaEstado),
+  memoriaGuardar: (texto, forzar) => ipcRenderer.invoke(CANALES.memoriaGuardar, texto, forzar),
+  memoriaActualizar: (id, cambios, forzar) => ipcRenderer.invoke(CANALES.memoriaActualizar, id, cambios, forzar),
+  memoriaBorrar: (id) => ipcRenderer.invoke(CANALES.memoriaBorrar, id),
+  memoriaImportar: () => ipcRenderer.invoke(CANALES.memoriaImportar),
+  memoriaActivar: (activa) => ipcRenderer.invoke(CANALES.memoriaActivar, activa),
+  memoriaCarpeta: () => ipcRenderer.send(CANALES.memoriaCarpeta),
+  memoriaVaciar: () => ipcRenderer.invoke(CANALES.memoriaVaciar)
 }
 
 contextBridge.exposeInMainWorld('orbe', api)

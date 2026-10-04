@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { MotivoFin } from '../../shared/tipos'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeApi } from './errores'
-import { PROMPT_SISTEMA } from './prompt-sistema'
+import { construirPromptSistema } from './prompt-sistema'
 import type { Esfuerzo, ManejadoresTurno, ProveedorChat, ResultadoTurno } from './proveedor'
 
 export interface OpcionesProveedorApi {
@@ -18,6 +18,10 @@ export interface OpcionesProveedorApi {
    * (`fallbacks: "default"`, beta server-side-fallback-2026-07-01). Activo por defecto.
    */
   fallbacks?: boolean
+  /** Bloque de memoria del usuario; se consulta al empezar cada conversación. */
+  memoria?: () => string | undefined
+  /** Reloj, para la fecha del prompt (las pruebas lo fijan). */
+  ahora?: () => Date
 }
 
 const MAX_TOKENS = 32_000
@@ -32,6 +36,8 @@ export class ProveedorApi implements ProveedorChat {
 
   private readonly cliente: Anthropic | null
   private historial: Anthropic.Beta.BetaMessageParam[] = []
+  /** Prompt de la conversación en curso: se calcula en su primer turno y no cambia (así la caché del prompt se mantiene). */
+  private prompt: string | null = null
   private controlador: AbortController | null = null
   private turnoEnCurso = false
 
@@ -60,6 +66,10 @@ export class ProveedorApi implements ProveedorChat {
     }
 
     this.turnoEnCurso = true
+    // Hasta que haya un primer intercambio completo se recalcula (un primer intento fallido no fija la memoria).
+    if (this.prompt === null || this.historial.length === 0) {
+      this.prompt = construirPromptSistema({ ahora: this.opciones.ahora?.(), memoria: this.opciones.memoria?.() })
+    }
     const controlador = new AbortController()
     this.controlador = controlador
     const mensajeUsuario: Anthropic.Beta.BetaMessageParam = {
@@ -73,7 +83,7 @@ export class ProveedorApi implements ProveedorChat {
         {
           model: this.opciones.modelo,
           max_tokens: MAX_TOKENS,
-          system: PROMPT_SISTEMA,
+          system: this.prompt,
           messages: [...this.historial, mensajeUsuario],
           output_config: { effort: this.opciones.esfuerzo },
           ...(this.opciones.fallbacks === false
@@ -121,6 +131,7 @@ export class ProveedorApi implements ProveedorChat {
   reiniciar(): void {
     this.cancelar()
     this.historial = []
+    this.prompt = null
   }
 
   cerrar(): void {
