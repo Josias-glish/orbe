@@ -1,0 +1,34 @@
+name: Publicar instalador
+
+# Se ejecuta al subir una etiqueta de versión (por ejemplo v1.0.0): compila, prueba, genera el instalador
+# de Windows y lo adjunta a una release de GitHub.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run dist
+      - name: Crear la release con el instalador
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/Orbe-Setup-"*.exe \
+            "dist/Orbe-Setup-"*.exe.blockmap \
+            --title "Orbe $GITHUB_REF_NAME" \
+            --generate-notes

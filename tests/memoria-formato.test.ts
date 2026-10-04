@@ -179,9 +179,9 @@ describe('buscarSensible', () => {
     'Nunca revelar la clave `sb_secret_…`; solo la publishable.',
     'La clave publishable es pública: sb_publishable_abc123',
     'Ejecutar con --proxy-path "<url con token>" desde publicar/',
-    'Plan en C:\\Users\\LENOVO\\.claude\\plans\\pasted-content-id-7162-rol-gleaming-whale.md',
+    'Plan en C:\\Users\\USUARIO\\.claude\\plans\\pasted-content-id-7162-rol-gleaming-whale.md',
     'El commit 571b821c0ffee5d2e8d1f3a4b5c6d7e8f9a0b1c2 está en main',
-    'Carpeta C:\\Users\\LENOVO\\proyectos\\orbe y versión 2.1.289',
+    'Carpeta C:\\Users\\USUARIO\\proyectos\\orbe y versión 2.1.289',
     'Llámame al +34 600 123 456 mañana',
     'Quedamos el 2026-10-04 a las 18:30'
   ])('no se asusta de la prosa normal: %s', (texto) => {

@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { CANALES } from '../shared/tipos'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { leerAjustes } from './ajustes'
@@ -651,6 +652,20 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
   }
 
   /** Voz (leer las respuestas) y dictado por micrófono (con el micrófono falso de Chromium y una transcripción de mentira). */
+  /** La bandeja no se crea en la prueba, pero su orden «nueva conversación» llega a la interfaz por este canal. */
+  const pasosBandeja = async (): Promise<void> => {
+    const v: Record<string, unknown> = (informe.bandeja = {})
+    await pulsar('#nueva')
+    await esperar(300)
+    await escribirYEnviar('Hola desde la bandeja')
+    await esperarFin(15_000)
+    comprobar('hay mensajes antes de la orden de la bandeja', (await contar('.msg')) >= 2)
+    wc.send(CANALES.appOrden, 'nueva-conversacion')
+    await esperar(600)
+    v.mensajes = await contar('.msg')
+    comprobar('la orden «nueva conversación» de la bandeja limpia el chat', v.mensajes === 0, v.mensajes)
+  }
+
   const pasosVoz = async (): Promise<void> => {
     const v: Record<string, unknown> = {}
     informe.voz = v
@@ -922,6 +937,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosCaptura(extras)
         await pasosPanel()
         await pasosVoz()
+        await pasosBandeja()
       }
 
       orbe.establecerExpandido(false)

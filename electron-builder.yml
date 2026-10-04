@@ -1,0 +1,41 @@
+appId: com.orbe.asistente
+productName: Orbe
+copyright: Orbe
+directories:
+  output: dist
+  buildResources: resources
+
+# Solo lo compilado y las dependencias de producción: nunca el .env, las pruebas ni las capturas.
+files:
+  - out/**
+  - package.json
+
+# Fuera del asar: el lector de pantalla (PowerShell + C#) se ejecuta desde disco, y el icono de la bandeja.
+extraResources:
+  - from: helper
+    to: helper
+    filter:
+      - '*.cs'
+      - '*.ps1'
+  - from: resources/tray.png
+    to: tray.png
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: resources/icon.ico
+  artifactName: Orbe-Setup-${version}.${ext}
+  # Sin certificado de firma: Windows SmartScreen avisará de «editor desconocido» al instalar.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Orbe
+  deleteAppDataOnUninstall: false
+  # Un único nombre de instalador por versión, sin guiones raros.
+  uninstallDisplayName: Orbe

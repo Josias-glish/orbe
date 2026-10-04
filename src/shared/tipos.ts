@@ -24,6 +24,7 @@ export const CANALES = {
   pantallaDescartar: 'pantalla:descartar',
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
+  appOrden: 'app:orden',
   vozInfo: 'voz:info',
   vozTranscribir: 'voz:transcribir',
   vozSintetizar: 'voz:sintetizar',
@@ -247,6 +248,9 @@ export interface EstadoFondo {
   imagen: string | null
 }
 
+/** Órdenes que el proceso principal (la bandeja) da a la interfaz. */
+export type OrdenApp = 'nueva-conversacion'
+
 export interface ApiOrbe {
   alternar(): void
   arrastreInicio(x: number, y: number): void
@@ -273,6 +277,7 @@ export interface ApiOrbe {
   /** Captura de respaldo: oculta Orbe, fotografía la pantalla y deja la imagen lista para el próximo mensaje. Solo tras la confirmación del usuario. */
   pantallaCapturar(): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
+  alOrdenApp(cb: (orden: OrdenApp) => void): () => void
 
   vozInfo(): Promise<InfoVoz>
   /** Pasa a texto una grabación del micrófono (solo tras pulsar grabar y terminar). */

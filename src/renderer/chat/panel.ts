@@ -131,6 +131,9 @@ export class PanelChat {
 
     window.orbe.alEventoChat((evento) => this.alEvento(evento))
     window.orbe.alEventoPantalla((evento) => this.alEventoPantalla(evento))
+    window.orbe.alOrdenApp((orden) => {
+      if (orden === 'nueva-conversacion') void this.nuevaConversacion()
+    })
     void this.mostrarInfo(porId('modelo'))
     this.actualizarBoton()
   }

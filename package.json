@@ -1,6 +1,6 @@
 {
   "name": "orbe",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Asistente de escritorio flotante con orbe de shaders y chat con Claude",
   "private": true,
   "main": "./out/main/index.js",
@@ -11,9 +11,11 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "humo": "electron-vite build && electron . --smoke",
-    "dist": "electron-vite build && electron-builder --win",
+    "dist": "electron-vite build && electron-builder --win --publish never",
     "humo:real": "electron-vite build && electron . --smoke --real",
-    "probar-uia": "node scripts/probar-uia.mjs"
+    "probar-uia": "node scripts/probar-uia.mjs",
+    "iconos": "node scripts/generar-iconos.mjs",
+    "dist:dir": "electron-vite build && electron-builder --win --dir"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -28,5 +30,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vitest": "^3.2.4"
-  }
+  },
+  "author": "Orbe",
+  "license": "UNLICENSED"
 }

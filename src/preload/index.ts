@@ -4,7 +4,8 @@ import {
   type ApiOrbe,
   type EstadoVentana,
   type EventoChat,
-  type EventoPantalla
+  type EventoPantalla,
+  type OrdenApp
 } from '../shared/tipos'
 
 /** Suscripción a un canal que devuelve la función para cancelarla. */
@@ -38,6 +39,7 @@ const api: ApiOrbe = {
   pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
   pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
+  alOrdenApp: (cb) => suscribir<OrdenApp>(CANALES.appOrden, cb),
 
   vozInfo: () => ipcRenderer.invoke(CANALES.vozInfo),
   vozTranscribir: (audio, mime) => ipcRenderer.invoke(CANALES.vozTranscribir, audio, mime),

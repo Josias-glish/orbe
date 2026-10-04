@@ -1,4 +1,6 @@
-import { app } from 'electron'
+import { app, type Tray } from 'electron'
+import { crearBandeja } from './bandeja'
+import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { liberarAtajos, registrarAtajos } from './atajos'
@@ -53,6 +55,7 @@ if (!app.requestSingleInstanceLock()) {
 let ventanaOrbe: VentanaOrbe | null = null
 let servicioChat: ServicioChat | null = null
 let helper: ClienteHelper | null = null
+let bandeja: Tray | null = null
 
 /** Dónde buscar el .env: junto al proyecto en desarrollo, junto al .exe al instalar, y en los datos del usuario. */
 function rutasEnv(): string[] {
@@ -166,6 +169,28 @@ app.whenReady().then(() => {
     { panel: config.atajoPanel, leer: config.atajoLeer }
   )
 
+  // Icono de la bandeja del sistema (en la prueba de humo no se crea: no debe dejar un icono en la barra del usuario).
+  if (!modoHumo) {
+    const mostrarPanel = (): void => {
+      orbe.mostrar()
+      orbe.establecerExpandido(true)
+    }
+    bandeja = crearBandeja(
+      {
+        alternarVisibilidad: () => orbe.alternarVisibilidad(),
+        mostrarPanel,
+        nuevaConversacion: () => {
+          mostrarPanel()
+          orbe.ventana.webContents.send(CANALES.appOrden, 'nueva-conversacion')
+        },
+        leerPantalla: () => void pantalla.leerConAtajo(),
+        salir: () => app.quit()
+      },
+      () => orbe.estaVisible,
+      app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources')
+    )
+  }
+
   if (fuenteDemo && capturaDemo) {
     void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo })
   }
@@ -175,11 +200,12 @@ app.on('second-instance', () => {
   ventanaOrbe?.mostrar()
 })
 
-// El orbe vive en segundo plano: cerrar la ventana no cierra la app (la bandeja llega en la fase 5).
+// El orbe vive en segundo plano: cerrar la ventana no cierra la app (se sale desde la bandeja).
 app.on('window-all-closed', () => {})
 
 app.on('will-quit', () => {
   liberarAtajos()
   servicioChat?.cerrar()
   helper?.cerrar()
+  bandeja?.destroy()
 })
