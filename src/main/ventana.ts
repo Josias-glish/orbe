@@ -25,6 +25,11 @@ export class VentanaOrbe {
   private arrastre: { dx: number; dy: number } | null = null
   /** Redimensión en curso: dónde empezó el puntero, cómo era la ventana y qué ejes se mueven. */
   private redimension: { x0: number; y0: number; inicial: Rect; modo: ModoRedimension } | null = null
+  /**
+   * El tamaño que le hemos dado a la ventana expandida. Con una escala de pantalla fraccionaria, Windows lo
+   * devuelve redondeado (380 → 381) y, si se volviera a leer, cada redimensión desviaría un píxel más.
+   */
+  private tamanoFijado: { width: number; height: number } | null = null
 
   constructor(
     private readonly urlRenderer: string | null,
@@ -79,8 +84,9 @@ export class VentanaOrbe {
   private posicionInicial(): Rect {
     const guardada = leerAjustes().posicion
     const primaria = screen.getPrimaryDisplay().workArea
-    if (guardada) {
-      const rect = { ...TAM_COLAPSADO, ...guardada }
+    // Solo se fía de la esquina guardada (x, y); el tamaño siempre es el del orbe, aunque el archivo diga otra cosa.
+    if (guardada && Number.isFinite(guardada.x) && Number.isFinite(guardada.y)) {
+      const rect = { ...TAM_COLAPSADO, x: guardada.x, y: guardada.y }
       const centro = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
       const visible = screen.getAllDisplays().some((d) => {
         const a = d.workArea
@@ -121,11 +127,13 @@ export class VentanaOrbe {
       const disposicion = disposicionExpandida(this.colapsado, this.areaDe(this.colapsado), leerAjustes().panel)
       this.ancla = disposicion.ancla
       this.ventana.setBounds(disposicion.bounds)
+      this.tamanoFijado = { width: disposicion.bounds.width, height: disposicion.bounds.height }
       this.expandido = true
       // Con el panel abierto se va a escribir: la ventana necesita el foco (también al abrir con el atajo).
       this.ventana.focus()
     } else {
       this.expandido = false
+      this.tamanoFijado = null
       this.ventana.setBounds(this.colapsado)
     }
     this.avisarEstado()
@@ -153,7 +161,19 @@ export class VentanaOrbe {
   /** Empieza a cambiar el tamaño del panel (solo con el panel abierto). Las coordenadas son de pantalla. */
   redimensionarInicio(x: number, y: number, modo: ModoRedimension): void {
     if (!this.expandido) return
-    this.redimension = { x0: x, y0: y, inicial: this.ventana.getBounds(), modo }
+    const b = this.ventana.getBounds()
+    const f = this.tamanoFijado
+    // Si lo que devuelve Windows es lo que fijamos con un píxel de redondeo, se parte del tamaño fijado (con la esquina del orbe donde está).
+    const redondeo = f !== null && Math.abs(b.width - f.width) <= 2 && Math.abs(b.height - f.height) <= 2
+    const inicial: Rect = redondeo
+      ? {
+          width: f.width,
+          height: f.height,
+          x: this.ancla.horizontal === 'derecha' ? b.x + b.width - f.width : b.x,
+          y: this.ancla.vertical === 'abajo' ? b.y + b.height - f.height : b.y
+        }
+      : b
+    this.redimension = { x0: x, y0: y, inicial, modo }
   }
 
   redimensionarMover(x: number, y: number): void {
@@ -162,6 +182,7 @@ export class VentanaOrbe {
     const centro = { x: r.inicial.x + r.inicial.width / 2, y: r.inicial.y + r.inicial.height / 2 }
     const nuevo = redimensionar(r.inicial, this.ancla, { dx: x - r.x0, dy: y - r.y0 }, r.modo, this.areaDe(centro))
     this.ventana.setBounds(nuevo)
+    this.tamanoFijado = { width: nuevo.width, height: nuevo.height }
   }
 
   /** Termina la redimensión: recuerda el tamaño elegido para la próxima vez. */
@@ -170,7 +191,7 @@ export class VentanaOrbe {
     this.redimension = null
     const actual = this.ventana.getBounds()
     this.colapsado = rectColapsadoDesde(actual, this.ancla)
-    guardarAjustes({ panel: panelDeVentana(actual) })
+    guardarAjustes({ panel: panelDeVentana(this.tamanoFijado ? { ...actual, ...this.tamanoFijado } : actual) })
   }
 
   private registrarIpc(): void {

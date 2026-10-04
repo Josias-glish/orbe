@@ -3,6 +3,10 @@ import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaMemoria } from '../memoria/vista-memoria'
 import type { Orbe } from '../orbe/orbe'
+import { Dictado, type EstadoDictado } from '../voz/dictado'
+import { LectorVoz, type Sintesis } from '../voz/lector'
+import { ReproductorAudio } from '../voz/reproductor'
+import { MenuVoz } from '../voz/menu-voz'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
@@ -31,6 +35,12 @@ export class PanelChat {
   private readonly confirmacion: ConfirmacionCaptura
   private readonly sugerencia: SugerenciaCaptura
   private capturando = false
+  private readonly botonMicro: HTMLButtonElement
+  private readonly lector: LectorVoz
+  private readonly menuVoz: MenuVoz
+  private readonly dictado: Dictado
+  /** La línea de estado muestra ahora «Grabando…» o «Transcribiendo…» (y no un error que no debe borrarse). */
+  private mostrandoDictado = false
   /** El usuario cerró la sugerencia de captura: no se vuelve a ofrecer hasta su próximo mensaje. */
   private sugerenciaDescartada = false
   private readonly cuerpoPanel: HTMLElement
@@ -58,6 +68,29 @@ export class PanelChat {
     this.memoria = new VistaMemoria(porId('memoria'), () => this.cerrarMemoria())
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
+    this.botonMicro = porId('microfono')
+    let almacen: Storage | null = null
+    try {
+      almacen = window.localStorage
+    } catch {
+      // sin almacenamiento local, las preferencias de voz duran hasta cerrar Orbe
+    }
+    this.lector = new LectorVoz((window.speechSynthesis as Sintesis | undefined) ?? null, almacen, {
+      neuronal: {
+        sintetizar: async (texto) => {
+          const r = await window.orbe.vozSintetizar(texto)
+          return r.ok ? r : { ok: false, mensaje: r.error.mensaje }
+        }
+      },
+      reproductor: new ReproductorAudio(),
+      alError: (mensaje) => this.mostrarEstadoTemporal(mensaje)
+    })
+    this.menuVoz = new MenuVoz(porId('voz-boton'), porId('voz-menu'), this.lector)
+    this.dictado = new Dictado({
+      alEstado: (estado, segundos) => this.alEstadoDictado(estado, segundos),
+      alTexto: (texto) => this.alTextoDictado(texto),
+      alError: (mensaje) => this.mostrarEstadoTemporal(mensaje)
+    })
     this.confirmacion = new ConfirmacionCaptura(porId('confirmacion'))
     this.sugerencia = new SugerenciaCaptura(
       porId('sugerencia'),
@@ -84,6 +117,7 @@ export class PanelChat {
     })
     this.botonLeer.addEventListener('click', () => void this.leerPantalla())
     this.botonCapturar.addEventListener('click', () => void this.pedirCaptura())
+    this.botonMicro.addEventListener('click', () => void this.dictado.alternar())
     this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
 
@@ -106,7 +140,8 @@ export class PanelChat {
       const info: InfoChat | null = await window.orbe.chatInfo()
       if (!info) return
       chip.textContent = info.modeloLegible
-      chip.title = info.proveedor === 'cli' ? `${info.modelo} · mediante el CLI de Claude` : `${info.modelo} · mediante la API`
+      const via = { cli: 'el CLI de Claude', api: 'la API de Anthropic', openai: 'una API compatible con OpenAI' }[info.proveedor]
+      chip.title = `${info.modelo} · mediante ${via}`
       chip.hidden = false
     } catch {
       // Sin información no se muestra el chip; el chat funciona igual.
@@ -141,6 +176,15 @@ export class PanelChat {
 
   /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
   alPulsarEscape(): boolean {
+    if (this.menuVoz.cerrarSiAbierto()) return true
+    if (this.dictado.grabando) {
+      this.dictado.cancelar()
+      return true
+    }
+    if (this.lector.hablando) {
+      this.lector.parar()
+      return true
+    }
     if (this.confirmacion.visible) {
       this.confirmacion.cancelar()
       return true
@@ -383,12 +427,48 @@ export class PanelChat {
   }
 
   private cancelar(): void {
+    this.lector.parar()
     if (this.turno) window.orbe.chatCancelar(this.turno.id)
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Dictado por micrófono
+  // -------------------------------------------------------------------------------------------
+
+  private alEstadoDictado(estado: EstadoDictado, segundos: number): void {
+    this.botonMicro.classList.toggle('grabando', estado === 'grabando')
+    this.botonMicro.disabled = estado === 'transcribiendo'
+    if (estado === 'reposo') {
+      if (this.mostrandoDictado) {
+        this.mostrandoDictado = false
+        this.ocultarEstado()
+      }
+      if (!this.turno && !this.leyendo && !this.capturando) this.cambiarEstadoOrbe('reposo')
+      return
+    }
+    this.mostrandoDictado = true
+    if (estado === 'grabando') {
+      const tiempo = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, '0')}`
+      this.mostrarEstado(`Grabando… ${tiempo} · pulsa el micrófono para terminar (Esc cancela)`)
+      if (!this.turno) this.cambiarEstadoOrbe('escuchando')
+    } else {
+      this.mostrarEstado('Transcribiendo…')
+      if (!this.turno) this.cambiarEstadoOrbe('pensando')
+    }
+  }
+
+  /** Llega el texto dictado: se añade al mensaje (y se envía si así se pidió en el menú de voz). */
+  private alTextoDictado(texto: string): void {
+    this.entrada.insertar(texto)
+    this.entrada.enfocar()
+    if (this.lector.obtenerPrefs().autoenviar && !this.turno) this.entrada.enviar()
   }
 
   async nuevaConversacion(): Promise<void> {
     this.cerrarMemoria()
     this.confirmacion.cancelar()
+    this.dictado.cancelar()
+    this.lector.parar()
     this.sugerenciaDescartada = false
     const turno = this.turno
     this.turno = null
@@ -418,6 +498,7 @@ export class PanelChat {
 
     switch (evento.tipo) {
       case 'inicio':
+        this.lector.empezar()
         break
       case 'texto':
         if (!turno.recibioTexto) {
@@ -426,6 +507,7 @@ export class PanelChat {
           this.cambiarEstadoOrbe('respondiendo')
         }
         turno.respuesta.anexar(evento.delta)
+        this.lector.anexar(evento.delta)
         // Cada fragmento mueve el orbe: más texto de golpe, onda más fuerte.
         this.orbe.pulso(Math.min(0.7, 0.18 + evento.delta.length / 40))
         break
@@ -438,6 +520,7 @@ export class PanelChat {
       case 'fin':
         this.ocultarEstado()
         turno.respuesta.finalizar(evento.motivo)
+        this.lector.terminar()
         this.turno = null
         this.programarReposo()
         this.actualizarBoton()
@@ -452,6 +535,7 @@ export class PanelChat {
   private terminarTurnoConError(error: ErrorOrbe): void {
     const turno = this.turno
     if (!turno) return
+    this.lector.parar()
     this.turno = null
     this.ocultarEstado()
     turno.respuesta.descartarSiVacia()

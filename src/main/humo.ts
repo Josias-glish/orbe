@@ -525,6 +525,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     const p: Record<string, unknown> = {}
     informe.panel = p
     const bounds = (): { x: number; y: number; width: number; height: number } => orbe.ventana.getBounds()
+    /** Con una escala de pantalla fraccionaria Windows puede redondear un píxel. */
+    const casi = (a: number, b: number): boolean => Math.abs(a - b) <= 1
     /** Arrastra un agarre con eventos de puntero de verdad (pulsar, mover, soltar), como haría una persona. */
     const arrastrar = (selector: string, dx: number, dy: number): Promise<unknown> =>
       js(`(() => {
@@ -551,14 +553,14 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await arrastrar('.agarre-xy', 30, 100)
     await esperar(300)
     const pequeno = bounds()
-    comprobar('arrastrar hacia dentro encoge el ancho y el alto', pequeno.width === antes.width - 30 && pequeno.height === antes.height - 100, [antes, pequeno])
+    comprobar('arrastrar hacia dentro encoge el ancho y el alto', casi(pequeno.width, antes.width - 30) && casi(pequeno.height, antes.height - 100), [antes, pequeno])
     await arrastrar('.agarre-xy', -150, -100)
     await esperar(400)
     const grande = bounds()
     p.grande = grande
-    comprobar('arrastrar hacia fuera agranda el ancho', grande.width === antes.width + 120, [antes.width, grande.width])
-    comprobar('y vuelve a crecer el alto', grande.height === antes.height, [antes.height, grande.height])
-    comprobar('el orbe no se mueve (esquina inferior derecha fija)', grande.x + grande.width === antes.x + antes.width && grande.y + grande.height === antes.y + antes.height)
+    comprobar('arrastrar hacia fuera agranda el ancho (sin acumular desvíos)', casi(grande.width, antes.width + 120), [antes.width, grande.width])
+    comprobar('y vuelve a crecer el alto', casi(grande.height, antes.height), [antes.height, grande.height])
+    comprobar('el orbe no se mueve (esquina inferior derecha fija)', casi(grande.x + grande.width, antes.x + antes.width) && casi(grande.y + grande.height, antes.y + antes.height))
     const m = await medidasPanel()
     p.panelGrande = m
     comprobar('la interfaz sigue el tamaño de la ventana', m.ancho === m.ventana[0] && m.alto === m.ventana[1] - ALTO_EXTRA_ORBE, m)
@@ -569,18 +571,18 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     const antesX = bounds()
     await arrastrar('.agarre-x', -40, 999)
     await esperar(300)
-    comprobar('el borde lateral solo cambia el ancho', bounds().width === antesX.width + 40 && bounds().height === antesX.height, [antesX, bounds()])
+    comprobar('el borde lateral solo cambia el ancho', casi(bounds().width, antesX.width + 40) && casi(bounds().height, antesX.height), [antesX, bounds()])
     const antesY = bounds()
     await arrastrar('.agarre-y', 999, 60)
     await esperar(300)
-    comprobar('el borde superior solo cambia el alto', bounds().height === antesY.height - 60 && bounds().width === antesY.width, [antesY, bounds()])
+    comprobar('el borde superior solo cambia el alto', casi(bounds().height, antesY.height - 60) && casi(bounds().width, antesY.width), [antesY, bounds()])
 
     // 9c. Hay un mínimo
     await arrastrar('.agarre-xy', 3000, 3000)
     await esperar(300)
     const minimo = bounds()
     p.minimo = minimo
-    comprobar('no se encoge más del mínimo', minimo.width === TAM_PANEL_MIN.ancho && minimo.height === TAM_PANEL_MIN.alto + ALTO_EXTRA_ORBE, minimo)
+    comprobar('no se encoge más del mínimo', casi(minimo.width, TAM_PANEL_MIN.ancho) && casi(minimo.height, TAM_PANEL_MIN.alto + ALTO_EXTRA_ORBE), minimo)
     await capturar('9c-panel-minimo')
 
     // 9d. Recuerda el tamaño al cerrar y abrir
@@ -591,8 +593,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(300)
     orbe.establecerExpandido(true)
     await esperar(500)
-    comprobar('al volver a abrir el panel conserva el tamaño', bounds().width === elegido.width && bounds().height === elegido.height, [elegido, bounds()])
-    comprobar('y el orbe colapsado sigue en su sitio', bounds().x + bounds().width === antes.x + antes.width)
+    comprobar('al volver a abrir el panel conserva el tamaño', casi(bounds().width, elegido.width) && casi(bounds().height, elegido.height), [elegido, bounds()])
+    comprobar('y el orbe colapsado sigue en su sitio', casi(bounds().x + bounds().width, antes.x + antes.width))
 
     // 9e. El fondo: botón, imagen aplicada, menú, otro fondo, visibilidad y apagarlo
     const imagenDelFondo = (): Promise<string> => js(`getComputedStyle(document.getElementById('fondo')).backgroundImage`)
@@ -646,6 +648,195 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await js(`document.getElementById('mensajes').click()`)
     await esperar(250)
     comprobar('un clic fuera cierra el menú', await js<boolean>(`document.getElementById('fondo-menu').hidden`))
+  }
+
+  /** Voz (leer las respuestas) y dictado por micrófono (con el micrófono falso de Chromium y una transcripción de mentira). */
+  const pasosVoz = async (): Promise<void> => {
+    const v: Record<string, unknown> = {}
+    informe.voz = v
+    const escribir = (texto: string): Promise<unknown> =>
+      js(`(() => { const t = document.getElementById('entrada'); t.value = ${JSON.stringify(texto)}; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    const campo = (): Promise<string> => js(`document.getElementById('entrada').value`)
+    const estadoLinea = (): Promise<string> => js(`document.getElementById('estado-linea').hidden ? '' : document.getElementById('estado-linea').textContent`)
+    const pulsarEscape = (): Promise<unknown> => js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    const casilla = (n: number): string => `#voz-menu .memoria-opcion:nth-of-type(${n}) input`
+
+    // 10a. El menú de voz y su convivencia con el del fondo
+    await pulsar('#nueva')
+    await esperar(400)
+    comprobar('hay botón de voz y de micrófono', (await existe('#voz-boton')) && (await existe('#microfono')))
+    await pulsar('#voz-boton')
+    comprobar('se abre el menú de voz', await esperarSelector('#voz-menu:not([hidden]) .voz-selector', 2000))
+    v.menu = await textoDe('#voz-menu')
+    v.voces = await js<number>(`speechSynthesis.getVoices().length`)
+    comprobar('el menú explica el estado del dictado', /Dictado listo \(whisper-1, idioma es\)/.test(String(v.menu)), v.menu)
+    comprobar('y ofrece leer en voz alta, probar y parar', /Leer las respuestas en voz alta/.test(String(v.menu)) && /Probar la voz/.test(String(v.menu)) && /Parar/.test(String(v.menu)))
+    await capturar('10a-menu-voz')
+    await pulsar('#fondo-boton')
+    await esperar(300)
+    comprobar('abrir el del fondo cierra el de voz', (await js<boolean>(`document.getElementById('voz-menu').hidden`)) && !(await js<boolean>(`document.getElementById('fondo-menu').hidden`)))
+    await pulsarEscape()
+    await esperar(200)
+
+    // 10b. Dictar: un clic graba (el orbe «escucha»), otro clic termina y el texto aparece en el campo
+    await pulsar('#microfono')
+    comprobar('empieza a grabar', await esperarSelector('#microfono.grabando', 4000))
+    await esperar(1500)
+    v.estadoGrabando = await estadoLinea()
+    v.orbeGrabando = await estadoOrbe()
+    comprobar('la línea de estado cuenta el tiempo y explica cómo terminar', /^Grabando… 0:0\d · pulsa el micrófono para terminar/.test(String(v.estadoGrabando)), v.estadoGrabando)
+    comprobar('el orbe pasa a «escuchando»', v.orbeGrabando === 'escuchando', v.orbeGrabando)
+    await capturar('10b-grabando')
+    await pulsar('#microfono')
+    comprobar('al terminar, el texto dictado aparece en el campo', await (async () => {
+      const limite = Date.now() + 8000
+      while (Date.now() < limite) {
+        if ((await campo()).includes('Texto dictado de prueba')) return true
+        await esperar(150)
+      }
+      return false
+    })(), await campo())
+    comprobar('ya no graba y la línea de estado se limpia', !(await existe('#microfono.grabando')) && (await estadoLinea()) === '', await estadoLinea())
+    comprobar('el orbe vuelve a reposo', (await estadoOrbe()) === 'reposo')
+    await capturar('10c-dictado')
+
+    // 10d. Dictar sobre lo que ya hay escrito lo añade con un espacio
+    await escribir('Hola,')
+    await pulsar('#microfono')
+    await esperarSelector('#microfono.grabando', 4000)
+    await esperar(1200)
+    await pulsar('#microfono')
+    await esperar(2500)
+    comprobar('lo dictado se añade a lo escrito', (await campo()) === 'Hola, Texto dictado de prueba', await campo())
+    await escribir('')
+
+    // 10e. Esc cancela la grabación sin transcribir nada
+    await pulsar('#microfono')
+    await esperarSelector('#microfono.grabando', 4000)
+    await esperar(800)
+    await pulsarEscape()
+    await esperar(1500)
+    comprobar(
+      'Esc descarta la grabación',
+      !(await existe('#microfono.grabando')) && (await campo()) === '',
+      { grabando: await existe('#microfono.grabando'), campo: await campo(), estado: await estadoLinea(), botonDeshabilitado: await js(`document.getElementById('microfono').disabled`) }
+    )
+    comprobar('y el panel sigue abierto', orbe.estaExpandido)
+
+    // 10f. Con «enviar al terminar de dictar», el mensaje sale solo
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden])', 2000)
+    await js(`document.querySelector('#voz-menu .memoria-opcion:last-of-type input').click()`)
+    await esperar(200)
+    await js(`document.body.click()`)
+    await nuevaConversacionHumo()
+    await pulsar('#microfono')
+    await esperarSelector('#microfono.grabando', 4000)
+    await esperar(1200)
+    await pulsar('#microfono')
+    comprobar('el mensaje dictado se envía solo', await esperarSelector('.msg.usuario', 8000))
+    v.enviado = await textoDe('.msg.usuario .contenido-plano')
+    comprobar('con el texto dictado', v.enviado === 'Texto dictado de prueba', v.enviado)
+    await esperarFin(15_000)
+    await esperar(400)
+    // Se vuelve a dejar apagado para el resto de la prueba.
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden])', 2000)
+    await js(`document.querySelector('#voz-menu .memoria-opcion:last-of-type input').click()`)
+    await js(`document.body.click()`)
+
+    // 10g. Leer las respuestas: frase a frase, saltándose el código, y Esc la corta
+    await nuevaConversacionHumo()
+    await js(`(() => {
+      window.__dicho = [];
+      const original = speechSynthesis.speak.bind(speechSynthesis);
+      speechSynthesis.speak = (u) => { window.__dicho.push(u.text); u.volume = 0; original(u) }; // en silencio: la prueba no debe sonar
+    })()`)
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden])', 2000)
+    await js(`document.querySelector('#voz-menu .memoria-opcion:first-of-type input').click()`)
+    await esperar(200)
+    comprobar('el botón de voz se marca como activo', await existe('#voz-boton.activo'))
+    await js(`document.body.click()`)
+    await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
+    await esperarFin(15_000)
+    await esperar(1200)
+    v.dicho = await js<string[]>(`window.__dicho`)
+    comprobar('se leyó la respuesta por frases', (v.dicho as string[]).includes('Claro, esto es una respuesta de demostración para ver cómo se pinta el chat.'), v.dicho)
+    comprobar('sin leer el código (solo avisa de que hay)', (v.dicho as string[]).some((f) => f.startsWith('Hay un bloque de código')) && !(v.dicho as string[]).some((f) => f.includes('function')), v.dicho)
+    comprobar('ni los símbolos de Markdown', !(v.dicho as string[]).some((f) => /[*`#]|\]\(/.test(f)), v.dicho)
+    comprobar('ni la dirección web', !(v.dicho as string[]).some((f) => f.includes('example.com')), v.dicho)
+    await pulsarEscape()
+    await esperar(300)
+    comprobar('Esc corta la voz y no cierra el panel', !(await js<boolean>(`speechSynthesis.speaking`)) && orbe.estaExpandido)
+
+    // Y se deja apagada.
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden])', 2000)
+    await js(`document.querySelector('#voz-menu .memoria-opcion:first-of-type input').click()`)
+    await esperar(200)
+    comprobar('apagarla la quita del botón', !(await existe('#voz-boton.activo')))
+    await js(`document.body.click()`)
+
+    // 10h. «Estilo Jarvis»: voz masculina grave y pausada y, al haber voz neuronal, esa
+    await nuevaConversacionHumo()
+    await js(`(() => {
+      window.__reproducidos = 0;
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { window.__reproducidos++; return play.call(this) };
+    })()`)
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden]) .boton-memoria.primario', 2000)
+    comprobar('el menú ofrece el estilo Jarvis', /Estilo Jarvis/.test(await textoDe('#voz-menu')))
+    comprobar('y la voz neuronal como motor', /Voz neuronal «onyx»/.test(await textoDe('#voz-menu')))
+    await js(`document.querySelector('#voz-menu .boton-memoria.primario').click()`)
+    await esperar(600)
+    v.prefsJarvis = await js<string>(`localStorage.getItem('orbe.voz')`)
+    const prefsJarvis = JSON.parse(String(v.prefsJarvis)) as { activa: boolean; voz: string | null; velocidad: number; tono: number; motor: string }
+    comprobar('activa la lectura con voz neuronal', prefsJarvis.activa === true && prefsJarvis.motor === 'neuronal', prefsJarvis)
+    comprobar('grave y pausado', prefsJarvis.tono === 0.7 && prefsJarvis.velocidad === 0.9, prefsJarvis)
+    if ((v.voces as number) > 0) comprobar('elige una voz masculina de Windows para el respaldo', /raul|pablo|jorge|david|mark/i.test(String(prefsJarvis.voz)), prefsJarvis.voz)
+    comprobar('el menú muestra la voz neuronal elegida y deshabilita lo de Windows', (await js<string>(`document.querySelector('#voz-menu select[aria-label="Motor de voz"]').value`)) === 'neuronal' && (await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
+    comprobar('pulsar «Estilo Jarvis» no cierra el menú', !(await js<boolean>(`document.getElementById('voz-menu').hidden`)))
+    await capturar('10h-jarvis')
+    await js(`document.body.click()`)
+    comprobar('probar la voz (al elegir el estilo) reprodujo audio neuronal', (await js<number>(`window.__reproducidos`)) >= 1, await js(`window.__reproducidos`))
+
+    const antesAudio = await js<number>(`window.__reproducidos`)
+    await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
+    await esperarFin(15_000)
+    await esperar(1500)
+    v.reproducidos = (await js<number>(`window.__reproducidos`)) - antesAudio
+    comprobar('la respuesta se lee con la voz neuronal, frase a frase', (v.reproducidos as number) >= 5, v.reproducidos)
+    comprobar('sin usar la voz de Windows', (await js<string[]>(`window.__dicho`)).length === (v.dicho as string[]).length)
+
+    // Se deja todo como estaba.
+    await pulsar('#voz-boton')
+    await esperarSelector('#voz-menu:not([hidden])', 2000)
+    await js(`document.querySelector('#voz-menu .memoria-opcion:first-of-type input').click()`)
+    await esperar(200)
+    await js(`document.body.click()`)
+    comprobar('queda apagada', !(await existe('#voz-boton.activo')))
+
+    // 10i. El botón de copiar sigue funcionando con los permisos restringidos (el portapapeles exige que la ventana tenga el foco)
+    app.focus({ steal: true })
+    orbe.ventana.focus()
+    await esperar(400)
+    const copiado = await wc.executeJavaScript(
+      `(async () => { const b = document.querySelector('.msg.asistente .boton-copiar'); b.click(); await new Promise((r) => setTimeout(r, 400)); return b.textContent })()`,
+      true
+    )
+    v.portapapeles = await wc.executeJavaScript(
+      `(async () => { try { await navigator.clipboard.writeText('x'); return 'ok' } catch (e) { return e.name + ': ' + e.message } })()`,
+      true
+    )
+    comprobar('copiar al portapapeles sigue permitido', copiado === 'Copiado', [copiado, v.portapapeles])
+  }
+
+  /** «Nueva conversación» y un respiro, para empezar un paso con la pantalla limpia. */
+  const nuevaConversacionHumo = async (): Promise<void> => {
+    await pulsar('#nueva')
+    await esperar(400)
   }
 
   try {
@@ -730,6 +921,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosMemoria(extras)
         await pasosCaptura(extras)
         await pasosPanel()
+        await pasosVoz()
       }
 
       orbe.establecerExpandido(false)

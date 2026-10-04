@@ -19,7 +19,7 @@ export interface ResultadoTurno {
  * se rechaza con un `ErrorChat` (ya traducido para el usuario).
  */
 export interface ProveedorChat {
-  readonly nombre: 'cli' | 'api'
+  readonly nombre: 'cli' | 'api' | 'openai'
   readonly modelo: string
   enviar(turno: TurnoEntrada, manejadores: ManejadoresTurno): Promise<ResultadoTurno>
   /** Detiene la respuesta en curso (el turno termina con motivo «cancelado»). */

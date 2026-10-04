@@ -53,16 +53,29 @@ export const CONTEXTO_MAX_POR_DEFECTO = 8000
 export const ATAJO_PANEL_POR_DEFECTO = 'CommandOrControl+Shift+Space'
 export const ATAJO_LEER_POR_DEFECTO = 'CommandOrControl+Shift+Alt+Space'
 export const MEMORIA_MAX_POR_DEFECTO = 6000
+export const URL_OPENAI_POR_DEFECTO = 'https://api.openai.com/v1'
+/** El estilo por defecto de la voz neuronal: un mayordomo digital sereno y elegante (sin imitar a nadie en concreto). */
+export const INSTRUCCIONES_VOZ_POR_DEFECTO =
+  'Habla en español con un tono sereno, elegante y ligeramente británico, como un mayordomo digital muy competente: ' +
+  'voz grave y pausada, cortés, con un toque de ingenio discreto. Sin exagerar ni dramatizar.'
 export const ESFUERZO_POR_DEFECTO: Esfuerzo = 'medium'
 const ESFUERZOS: readonly Esfuerzo[] = ['low', 'medium', 'high', 'xhigh', 'max']
 
 export interface Config {
-  proveedor: 'cli' | 'api'
+  proveedor: 'cli' | 'api' | 'openai'
   modelo: string
   esfuerzo: Esfuerzo
   /** Solo se rellena si el proveedor es la API. Nunca debe salir del proceso principal. */
   apiKey: string
   rutaCli: string
+  /** Solo para el proveedor `openai` (cualquier API compatible: OpenAI, Groq, OpenRouter, Ollama…). */
+  openaiUrl: string
+  /** Puede quedar vacía con servidores locales. Nunca debe salir del proceso principal. */
+  openaiKey: string
+  /** Dictado por micrófono: servicio de transcripción compatible con `/audio/transcriptions`. */
+  dictado: { disponible: boolean; url: string; clave: string; modelo: string; idioma: string }
+  /** Voz neuronal para leer las respuestas: servicio compatible con `/audio/speech` (OpenAI y similares). */
+  voz: { disponible: boolean; url: string; clave: string; modelo: string; voz: string; instrucciones: string }
   /** Máximo de caracteres de contexto de pantalla que se envían (selección o contenido de la ventana). */
   contextoMax: number
   atajoPanel: string
@@ -84,8 +97,6 @@ export interface Config {
 export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.ProcessEnv = process.env): Config {
   const leer = (clave: string): string => (delEnv[clave] ?? proceso[clave] ?? '').trim()
   const avisos: string[] = []
-
-  const modelo = leer('ORBE_MODELO') || MODELO_POR_DEFECTO
 
   let esfuerzo = ESFUERZO_POR_DEFECTO
   const esfuerzoLeido = leer('ORBE_ESFUERZO').toLowerCase()
@@ -124,13 +135,25 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
 
   const claveEnArchivo = (delEnv['ANTHROPIC_API_KEY'] ?? '').trim()
   const eleccion = leer('ORBE_PROVEEDOR').toLowerCase() || 'auto'
-  let proveedor: 'cli' | 'api'
+  let proveedor: 'cli' | 'api' | 'openai'
   if (eleccion === 'cli') proveedor = 'cli'
   else if (eleccion === 'api') proveedor = 'api'
+  else if (eleccion === 'openai') proveedor = 'openai'
   else {
-    if (eleccion !== 'auto') avisos.push(`ORBE_PROVEEDOR="${eleccion}" no es válido (auto, cli, api); uso auto.`)
+    if (eleccion !== 'auto') avisos.push(`ORBE_PROVEEDOR="${eleccion}" no es válido (auto, cli, api, openai); uso auto.`)
     proveedor = claveEnArchivo ? 'api' : 'cli'
   }
+
+  // Con `openai` el modelo hay que elegirlo: el de Claude por defecto no existiría en ese servicio.
+  const modelo = leer('ORBE_MODELO') || (proveedor === 'openai' ? '' : MODELO_POR_DEFECTO)
+  if (proveedor === 'openai' && !modelo) avisos.push('ORBE_PROVEEDOR=openai necesita ORBE_MODELO (por ejemplo gpt-4o-mini).')
+
+  const openaiUrl = leer('ORBE_OPENAI_URL') || URL_OPENAI_POR_DEFECTO
+  const openaiKey = leer('ORBE_OPENAI_KEY') || leer('OPENAI_API_KEY')
+  const urlDictado = leer('ORBE_STT_URL')
+  const claveDictado = leer('ORBE_STT_KEY') || openaiKey
+  const urlVoz = leer('ORBE_TTS_URL')
+  const claveVoz = leer('ORBE_TTS_KEY') || openaiKey
 
   return {
     proveedor,
@@ -138,6 +161,24 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     esfuerzo,
     apiKey: proveedor === 'api' ? claveEnArchivo || leer('ANTHROPIC_API_KEY') : '',
     rutaCli: leer('CLAUDE_CLI_PATH'),
+    openaiUrl,
+    openaiKey: proveedor === 'openai' ? openaiKey : '',
+    dictado: {
+      // Con clave (la de OpenAI sirve) o con un servidor propio (ORBE_STT_URL, p. ej. un Whisper local).
+      disponible: Boolean(claveDictado) || Boolean(urlDictado),
+      url: urlDictado || openaiUrl,
+      clave: claveDictado,
+      modelo: leer('ORBE_STT_MODELO') || 'whisper-1',
+      idioma: leer('ORBE_STT_IDIOMA') || 'es'
+    },
+    voz: {
+      disponible: Boolean(claveVoz) || Boolean(urlVoz),
+      url: urlVoz || openaiUrl,
+      clave: claveVoz,
+      modelo: leer('ORBE_TTS_MODELO') || 'gpt-4o-mini-tts',
+      voz: leer('ORBE_TTS_VOZ') || 'onyx',
+      instrucciones: leer('ORBE_TTS_INSTRUCCIONES') || INSTRUCCIONES_VOZ_POR_DEFECTO
+    },
     contextoMax,
     atajoPanel: leer('ORBE_ATAJO_PANEL') || ATAJO_PANEL_POR_DEFECTO,
     atajoLeer: leer('ORBE_ATAJO_LEER') || ATAJO_LEER_POR_DEFECTO,

@@ -68,6 +68,15 @@ export class EntradaTeclado implements FuenteEntrada {
     return this.campo.value.trim().length > 0
   }
 
+  /** Añade texto al final de lo escrito (por ejemplo, lo dictado), separado por un espacio. */
+  insertar(texto: string): void {
+    const actual = this.campo.value
+    this.campo.value = actual && !/\s$/.test(actual) ? `${actual} ${texto}` : actual + texto
+    this.ajustarAltura()
+    this.alCambiar()
+    this.campo.setSelectionRange(this.campo.value.length, this.campo.value.length)
+  }
+
   /** Lo que hay escrito ahora mismo (sin enviar). */
   texto(): string {
     return this.campo.value

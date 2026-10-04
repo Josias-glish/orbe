@@ -4,6 +4,7 @@ import { nombreLegibleModelo, type Config } from '../entorno'
 import type { ProveedorChat } from './proveedor'
 import { ProveedorApi } from './proveedor-api'
 import { ProveedorCli } from './proveedor-cli'
+import { ProveedorOpenai } from './proveedor-openai'
 
 /**
  * Crea el proveedor que indica la configuración. `datosApp` es la carpeta de datos del usuario y `memoria`
@@ -12,6 +13,9 @@ import { ProveedorCli } from './proveedor-cli'
 export function crearProveedor(config: Config, datosApp: string, memoria?: () => string | undefined): ProveedorChat {
   if (config.proveedor === 'api') {
     return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria })
+  }
+  if (config.proveedor === 'openai') {
+    return new ProveedorOpenai({ url: config.openaiUrl, clave: config.openaiKey, modelo: config.modelo, memoria })
   }
   return new ProveedorCli({
     modelo: config.modelo,

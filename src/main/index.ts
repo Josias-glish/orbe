@@ -12,6 +12,9 @@ import { procesarConElectron } from './fondos-electron'
 import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
 import { registrarFondos } from './fondos-ipc'
 import { ejecutarHumo } from './humo'
+import { restringirPermisos } from './permisos'
+import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
+import { wavSilencioso } from './voz-demo'
 import { prepararMemoriaDeMentira } from './memoria/fuente-demo'
 import { registrarMemoria } from './memoria/ipc'
 import { ServicioMemoria } from './memoria/servicio'
@@ -28,8 +31,19 @@ const modoHumo = process.argv.includes('--smoke')
 // Con --real, la prueba de humo habla con Claude de verdad (gasta unos céntimos de tu plan).
 const humoReal = modoHumo && process.argv.includes('--real')
 
+// En la prueba de humo el micrófono es uno falso de Chromium (un pitido) y no se pide permiso a nadie.
+if (modoHumo) {
+  app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+  app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
+}
+
 // La prueba de humo no debe tocar los ajustes reales del usuario.
-if (modoHumo) app.setPath('userData', join(app.getPath('temp'), 'orbe-humo'))
+if (modoHumo) {
+  app.setPath('userData', join(app.getPath('temp'), 'orbe-humo'))
+  // Siempre desde cero (también las preferencias del navegador, como la voz), y antes de crear la ventana, que lee de
+  // aquí su posición y su tamaño. Es una carpeta temporal solo de la prueba.
+  rmSync(app.getPath('userData'), { recursive: true, force: true })
+}
 
 // Instancia única: un segundo arranque no abre otro orbe.
 if (!app.requestSingleInstanceLock()) {
@@ -89,13 +103,6 @@ app.whenReady().then(() => {
   // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.
   // La prueba de humo empieza siempre de cero y con notas de mentira: nunca lee ni enseña la memoria real.
   const datos = app.getPath('userData')
-  if (modoHumo) {
-    rmSync(join(datos, 'memoria'), { recursive: true, force: true })
-    rmSync(join(datos, 'conversacion.json'), { force: true })
-    rmSync(join(datos, 'fondo.json'), { force: true })
-    rmSync(join(datos, 'fondos-cache'), { recursive: true, force: true })
-    rmSync(join(datos, 'ajustes.json'), { force: true })
-  }
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
     archivoConversacion: join(datos, 'conversacion.json'),
@@ -113,6 +120,31 @@ app.whenReady().then(() => {
     procesar: modoHumo ? procesarDeMentira : procesarConElectron
   })
   registrarFondos(orbe.ventana, fondos)
+
+  // Dictado por micrófono: el audio solo sale al terminar de grabar, hacia el servicio de transcripción configurado
+  // (en la prueba de humo, una respuesta de mentira).
+  restringirPermisos(orbe.ventana.webContents)
+  const dictado = new ServicioDictado(
+    modoHumo
+      ? {
+          ...config.dictado,
+          disponible: true,
+          clave: 'de-mentira',
+          fetch: async () => new Response(JSON.stringify({ text: 'Texto dictado de prueba' }), { headers: { 'content-type': 'application/json' } })
+        }
+      : config.dictado
+  )
+  const sintesis = new ServicioSintesis(
+    modoHumo
+      ? {
+          ...config.voz,
+          disponible: true,
+          clave: 'de-mentira',
+          fetch: async () => new Response(wavSilencioso(300), { headers: { 'content-type': 'audio/wav' } })
+        }
+      : config.voz
+  )
+  registrarVoz(orbe.ventana, dictado, sintesis)
 
   const proveedor =
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt())

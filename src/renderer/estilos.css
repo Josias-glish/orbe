@@ -885,6 +885,50 @@ kbd {
   background: rgba(0, 0, 0, 0.22);
 }
 
+/* ---- Voz y dictado ---- */
+.compositor .boton-leer {
+  width: 36px;
+  height: 36px;
+}
+.boton-micro.grabando {
+  color: var(--error);
+  border-color: rgba(251, 113, 133, 0.75);
+  animation: latido-rojo 1s ease-in-out infinite;
+}
+@keyframes latido-rojo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(251, 113, 133, 0);
+  }
+}
+#voz-boton.activo {
+  color: var(--cian);
+}
+#voz-boton.hablando {
+  color: var(--cian);
+  background: var(--superficie);
+  animation: latido 1.2s ease-in-out infinite;
+}
+.voz-menu {
+  width: 270px;
+}
+.voz-selector {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 9px;
+  border: 1px solid var(--linea);
+  background: rgba(30, 32, 60, 0.95);
+  color: var(--texto);
+}
+.voz-selector option {
+  background: #1b1d3a;
+  color: #e8eaff;
+}
+
 /* ---- Cambiar el tamaño del panel ---- */
 .agarre {
   position: absolute;

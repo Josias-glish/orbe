@@ -39,6 +39,10 @@ const api: ApiOrbe = {
   pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
 
+  vozInfo: () => ipcRenderer.invoke(CANALES.vozInfo),
+  vozTranscribir: (audio, mime) => ipcRenderer.invoke(CANALES.vozTranscribir, audio, mime),
+  vozSintetizar: (texto) => ipcRenderer.invoke(CANALES.vozSintetizar, texto),
+
   fondoEstado: () => ipcRenderer.invoke(CANALES.fondoEstado),
   fondoSiguiente: () => ipcRenderer.invoke(CANALES.fondoSiguiente),
   fondoAjustar: (cambios) => ipcRenderer.invoke(CANALES.fondoAjustar, cambios),

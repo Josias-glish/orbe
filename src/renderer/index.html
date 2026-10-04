@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src blob:; connect-src 'self' ws://localhost:* http://localhost:*"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Orbe</title>
@@ -19,6 +19,13 @@
             <span id="modelo" class="chip-modelo" hidden></span>
           </div>
           <div class="cabecera-acciones">
+            <button id="voz-boton" class="boton-icono" type="button" title="Voz y dictado" aria-label="Voz y dictado" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4V5z" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            </button>
             <button id="fondo-boton" class="boton-icono" type="button" title="Fondo del chat" aria-label="Fondo del chat" aria-expanded="false" hidden>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
@@ -82,6 +89,19 @@
                 <circle cx="12" cy="13" r="3" />
               </svg>
             </button>
+            <button
+              id="microfono"
+              class="boton-leer boton-micro"
+              type="button"
+              title="Dictar con el micrófono (pulsa para empezar a grabar y otra vez para terminar)"
+              aria-label="Dictar con el micrófono"
+            >
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <path d="M12 19v3" />
+              </svg>
+            </button>
             <textarea id="entrada" class="entrada" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" spellcheck="true"></textarea>
             <button id="enviar" class="boton-enviar" type="button" aria-label="Enviar" disabled>
               <svg class="icono-enviar" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -98,6 +118,7 @@
         <section id="memoria" class="memoria" aria-label="Memoria" hidden></section>
 
         <div id="fondo-menu" class="fondo-menu" role="dialog" aria-label="Opciones del fondo" hidden></div>
+        <div id="voz-menu" class="fondo-menu voz-menu" role="dialog" aria-label="Opciones de voz" hidden></div>
 
         <!-- Agarres para cambiar el tamaño: están en los bordes libres (los opuestos al orbe, que no se mueve). -->
         <div class="agarre agarre-x" data-modo="x" title="Cambiar el ancho"></div>

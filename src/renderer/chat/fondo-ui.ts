@@ -1,4 +1,5 @@
 import type { EstadoFondo } from '../../shared/tipos'
+import { registrarMenu } from './menus'
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(etiqueta)
@@ -15,6 +16,7 @@ export class FondoChat {
   private estado: EstadoFondo | null = null
   /** Para no repintar la imagen (cientos de KB) cuando solo cambia la visibilidad. */
   private imagenPuesta: string | null = null
+  private readonly menus: { anunciarApertura(): void }
 
   constructor(
     private readonly capa: HTMLElement,
@@ -22,6 +24,7 @@ export class FondoChat {
     private readonly menu: HTMLElement,
     private readonly panel: HTMLElement
   ) {
+    this.menus = registrarMenu('fondo', () => this.cerrarMenu())
     boton.addEventListener('click', (e) => {
       e.stopPropagation()
       if (this.menu.hidden) this.abrirMenu()
@@ -29,7 +32,7 @@ export class FondoChat {
     })
     // Un clic fuera del menú lo cierra.
     document.addEventListener('click', (e) => {
-      if (!this.menu.hidden && !this.menu.contains(e.target as Node)) this.cerrarMenu()
+      if (!this.menu.hidden && !e.composedPath().includes(this.menu)) this.cerrarMenu()
     })
   }
 
@@ -49,6 +52,7 @@ export class FondoChat {
   }
 
   private abrirMenu(): void {
+    this.menus.anunciarApertura()
     this.menu.hidden = false
     this.boton.setAttribute('aria-expanded', 'true')
     this.pintarMenu()

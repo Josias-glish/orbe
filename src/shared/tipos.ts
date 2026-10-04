@@ -24,6 +24,9 @@ export const CANALES = {
   pantallaDescartar: 'pantalla:descartar',
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
+  vozInfo: 'voz:info',
+  vozTranscribir: 'voz:transcribir',
+  vozSintetizar: 'voz:sintetizar',
   fondoEstado: 'fondo:estado',
   fondoSiguiente: 'fondo:siguiente',
   fondoAjustar: 'fondo:ajustar',
@@ -94,7 +97,7 @@ export interface PeticionChat {
 }
 
 export interface InfoChat {
-  proveedor: 'cli' | 'api'
+  proveedor: 'cli' | 'api' | 'openai'
   modelo: string
   /** Nombre legible para la cabecera, p. ej. «Sonnet 5.5». */
   modeloLegible: string
@@ -215,6 +218,22 @@ export interface CambiosRecuerdo {
   completo?: boolean
 }
 
+/** Lo que la interfaz sabe del dictado por micrófono (nunca la clave). */
+export interface InfoVoz {
+  /** Hay un servicio de transcripción configurado. */
+  dictado: boolean
+  modelo: string
+  idioma: string
+  /** Hay un servicio de voz neuronal configurado (para leer las respuestas con una voz más natural). */
+  neuronal: boolean
+  /** Nombre de la voz neuronal (p. ej. «onyx»). */
+  vozNeuronal: string
+}
+
+export type ResultadoSintesis = { ok: true; audio: Uint8Array; mime: string } | { ok: false; error: ErrorOrbe }
+
+export type ResultadoDictado = { ok: true; texto: string } | { ok: false; error: ErrorOrbe }
+
 /** El fondo del chat: una imagen de la carpeta que el usuario eligió, con su visibilidad. */
 export interface EstadoFondo {
   /** Hay una carpeta con imágenes. Si no, el menú de fondos no se ofrece. */
@@ -254,6 +273,12 @@ export interface ApiOrbe {
   /** Captura de respaldo: oculta Orbe, fotografía la pantalla y deja la imagen lista para el próximo mensaje. Solo tras la confirmación del usuario. */
   pantallaCapturar(): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
+
+  vozInfo(): Promise<InfoVoz>
+  /** Pasa a texto una grabación del micrófono (solo tras pulsar grabar y terminar). */
+  vozTranscribir(audio: Uint8Array, mime: string): Promise<ResultadoDictado>
+  /** Convierte una frase en audio con la voz neuronal configurada (solo si el usuario la eligió en el menú de voz). */
+  vozSintetizar(texto: string): Promise<ResultadoSintesis>
 
   fondoEstado(): Promise<EstadoFondo>
   fondoSiguiente(): Promise<EstadoFondo>
