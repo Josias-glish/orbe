@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { CatalogoAplicaciones } from '../src/main/agente/aplicaciones'
 import { crearProveedorBusqueda, ErrorBusqueda, type ProveedorBusqueda, type ResultadoBusqueda } from '../src/main/agente/busqueda'
 import { EjecutorHerramientas } from '../src/main/agente/ejecutor'
 import { normalizarFuentes } from '../src/main/agente/fuentes'
@@ -349,6 +350,20 @@ describe('crearRegistro', () => {
   it('con un servicio compatible con OpenAI y un buscador, ofrece buscar_web', () => {
     const registro = crearRegistro(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm', ORBE_BUSQUEDA_KEY: 'tvly-1' }))
     expect(registro.nombres).toEqual(['buscar_web'])
+  })
+
+  it('con el sistema real ofrece además abrir_url y abrir_aplicacion, con cualquiera de los dos proveedores', () => {
+    const sistema = {
+      abrirUrl: { abrir: async () => {} },
+      catalogo: {} as CatalogoAplicaciones,
+      lanzador: { abrirRuta: async () => {}, abrirTienda: async () => {} }
+    }
+    const openai = crearRegistro(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm', ORBE_BUSQUEDA_KEY: 'tvly-1' }), sistema)
+    expect(openai.nombres).toEqual(['buscar_web', 'abrir_url', 'abrir_aplicacion'])
+    const api = crearRegistro(config({ ORBE_PROVEEDOR: 'api', ANTHROPIC_API_KEY: 'k' }), sistema)
+    expect(api.nombres).toEqual(['abrir_url', 'abrir_aplicacion'])
+    // Todas son libres: los permisos los decide la política según los parámetros.
+    expect(['abrir_url', 'abrir_aplicacion'].map((n) => api.buscar(n)?.nivel)).toEqual(['libre', 'libre'])
   })
 
   it('sin buscador, o con la API de Claude (que trae la suya), no hay herramienta propia de búsqueda', () => {

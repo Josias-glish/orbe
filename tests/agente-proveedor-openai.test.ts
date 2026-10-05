@@ -311,12 +311,59 @@ describe('ProveedorOpenai como agente: Detener', () => {
 })
 
 describe('ProveedorOpenai como agente: errores y funciones puras', () => {
-  it('un servicio que rechaza las herramientas da un mensaje que dice cómo apagar el modo agente', async () => {
+  const rechazo = (mensaje: string, estado = 400): Respuesta => (res) => {
+    res.writeHead(estado, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ error: { message: mensaje } }))
+  }
+
+  it('un servicio que no admite herramientas: se sigue conversando sin ellas, se avisa y las conversaciones siguientes ya no las mandan', async () => {
     const { herramienta } = eco()
-    respuestas.push((res) => {
-      res.writeHead(400, { 'content-type': 'application/json' })
-      res.end(JSON.stringify({ error: { message: 'This model does not support tools' } }))
-    })
+    respuestas.push(rechazo('This model does not support tools'), flujo(['Hola, sin herramientas.']), flujo(['Otra vez.']))
+    const p = crear([herramienta])
+    const avisos: string[] = []
+    const textos: string[] = []
+    const r = await p.enviar({ texto: 'Hola' }, { alTexto: (d) => textos.push(d), alAviso: (t) => avisos.push(t) })
+
+    expect(r.motivo).toBe('completo')
+    expect(textos).toEqual(['Hola, sin herramientas.'])
+    expect(avisos).toEqual(['Este modelo o servicio no admite herramientas: sigo solo conversando, sin buscar ni abrir nada.'])
+    expect(recibidas).toHaveLength(2)
+    expect(recibidas[0].cuerpo['tools']).toBeDefined()
+    expect(recibidas[1].cuerpo['tools']).toBeUndefined()
+    expect(recibidas[1].cuerpo['tool_choice']).toBeUndefined()
+
+    // La siguiente conversación ni lo intenta, y vuelve el prompt de solo conversar.
+    p.reiniciar()
+    await p.enviar({ texto: 'Hola otra vez' }, recolector().m)
+    expect(recibidas).toHaveLength(3)
+    expect(recibidas[2].cuerpo['tools']).toBeUndefined()
+    expect(String(recibidas[2].cuerpo['messages'][0].content)).toContain('Solo conversas')
+  })
+
+  it('también cuando el servicio contesta 422 o lo dice de otra manera', async () => {
+    const { herramienta } = eco()
+    for (const [estado, mensaje] of [
+      [422, 'Unrecognized request argument supplied: tools'],
+      [400, 'Function calling is not supported by this model'],
+      [400, "'tool_choice' is only allowed when 'tools' are specified"]
+    ] as const) {
+      recibidas = []
+      respuestas.push(rechazo(mensaje, estado), flujo(['Vale.']))
+      expect((await crear([herramienta]).enviar({ texto: 'x' }, recolector().m)).motivo).toBe('completo')
+      expect(recibidas[1].cuerpo['tools']).toBeUndefined()
+    }
+  })
+
+  it('si el servicio rechaza algo que no son las herramientas, no se reintenta y el error sale tal cual', async () => {
+    const { herramienta } = eco()
+    respuestas.push(rechazo('Invalid API key format'), flujo(['no debería llegar']))
+    await expect(crear([herramienta]).enviar({ texto: 'x' }, recolector().m)).rejects.toBeInstanceOf(ErrorChat)
+    expect(recibidas).toHaveLength(1)
+  })
+
+  it('si sigue rechazando incluso sin herramientas, el error dice cómo apagar el modo agente', async () => {
+    const { herramienta } = eco()
+    respuestas.push(rechazo('This model does not support tools'), rechazo('This model does not support tools'))
     try {
       await crear([herramienta]).enviar({ texto: 'x' }, recolector().m)
       throw new Error('debía fallar')
@@ -325,6 +372,32 @@ describe('ProveedorOpenai como agente: errores y funciones puras', () => {
       expect((e as ErrorChat).error.mensaje).toMatch(/no admite herramientas.*ORBE_AGENTE=0/)
     }
     expect(errorDesdeHttp(400, JSON.stringify({ error: { message: 'tools unsupported' } })).error.codigo).toBe('solicitud_invalida')
+  })
+
+  it('si el servicio rechaza el nivel de potencia pero admite herramientas, se quita solo el nivel', async () => {
+    const { herramienta } = eco()
+    respuestas.push(rechazo("Unsupported parameter: 'reasoning_effort'"), flujo(['Vale.']))
+    const p = crear([herramienta])
+    p.establecerEsfuerzo('max')
+    const avisos: string[] = []
+    await p.enviar({ texto: 'x' }, { alTexto: () => {}, alAviso: (t) => avisos.push(t) })
+    expect(recibidas[0].cuerpo['reasoning_effort']).toBe('high')
+    expect(recibidas[1].cuerpo['reasoning_effort']).toBeUndefined()
+    expect(recibidas[1].cuerpo['tools']).toBeDefined()
+    expect(avisos).toEqual(['Este servicio no admite niveles de potencia: sigo con el nivel normal del modelo.'])
+  })
+
+  it('si el rechazo habla de herramientas, se quitan ellas y no se culpa al nivel de potencia', async () => {
+    const { herramienta } = eco()
+    respuestas.push(rechazo('Unrecognized request argument supplied: tools'), flujo(['Vale.']))
+    const p = crear([herramienta])
+    p.establecerEsfuerzo('max')
+    const avisos: string[] = []
+    await p.enviar({ texto: 'x' }, { alTexto: () => {}, alAviso: (t) => avisos.push(t) })
+    expect(recibidas[1].cuerpo['tools']).toBeUndefined()
+    expect(recibidas[1].cuerpo['reasoning_effort']).toBe('high')
+    expect(avisos).toHaveLength(1)
+    expect(avisos[0]).toMatch(/no admite herramientas/)
   })
 
   it('repararHistorialCancelado contesta las llamadas pendientes y cierra con la marca', () => {

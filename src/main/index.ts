@@ -5,6 +5,7 @@ import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
+import { crearDepsSistema } from './agente/sistema'
 import { guardarAjustes, leerAjustes } from './ajustes'
 import { liberarAtajos, registrarAtajos } from './atajos'
 import { crearProveedor, infoChat } from './chat/fabrica'
@@ -178,7 +179,12 @@ app.whenReady().then(() => {
   })
 
   // Las herramientas del agente (según la configuración). Sin herramientas, el chat solo conversa.
-  const registro = crearRegistro(config)
+  const sistema = crearDepsSistema(datos)
+  const registro = crearRegistro(config, sistema)
+  // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
+  if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
+    setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
+  }
   const proveedor =
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro)
   const info =

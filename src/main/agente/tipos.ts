@@ -61,6 +61,13 @@ export interface Herramienta<T = unknown> {
   ejecutar(entrada: T, ctx: ContextoHerramienta): Promise<ResultadoEjecucion>
 }
 
+/**
+ * Una herramienta la lanza cuando, ya con los datos delante (una dirección que resulta ser local, una aplicación que
+ * resulta ser una consola), ve que la acción está prohibida: ni con permiso se hace. El mensaje es el motivo, en
+ * español y terminado en punto; el chat la cuenta como «no permitida» y el modelo recibe la orden de parar.
+ */
+export class AccionProhibida extends Error {}
+
 /** Una petición del modelo para usar una de nuestras herramientas. */
 export interface LlamadaHerramienta {
   id: string

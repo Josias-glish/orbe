@@ -3,7 +3,7 @@ import { envolverExterno } from './envoltorio'
 import { normalizarFuentes } from './fuentes'
 import type { Politica } from './politica'
 import type { RegistroHerramientas } from './registro'
-import type { LlamadaHerramienta, PeticionConfirmacion, ResultadoLlamada } from './tipos'
+import { AccionProhibida, type LlamadaHerramienta, type PeticionConfirmacion, type ResultadoLlamada } from './tipos'
 import { recortar } from './validacion'
 
 /** Tope de lo que se le devuelve al modelo por cada herramienta: una página enorme no puede desbordar el contexto. */
@@ -29,6 +29,10 @@ export interface DepsEjecutor {
 const CANCELADO = 'Cancelado por el usuario.'
 
 class Cancelado extends Error {}
+
+/** Lo que recibe el modelo cuando algo está prohibido: parar y pedírselo al usuario, sin buscar otro camino. */
+const mensajeProhibido = (motivo: string): string =>
+  `PROHIBIDO: ${motivo} No lo intentes de otra manera: detén la tarea y pídele al usuario que lo haga él mismo.`
 
 /** Se resuelve con lo que haga `promesa`, pero se rinde al instante si el usuario detiene la tarea. */
 function conSenal<T>(promesa: Promise<T>, senal: AbortSignal): Promise<T> {
@@ -104,9 +108,8 @@ export class EjecutorHerramientas {
     try {
       const decision = politica.decidir(herramienta, entrada, titulo)
       if (decision.tipo === 'prohibir') {
-        const motivo = `PROHIBIDO: ${decision.motivo} No lo intentes de otra manera: detén la tarea y pídele al usuario que lo haga él mismo.`
         alAccion(vista({ titulo, parametros, estado: 'denegada', resultado: recortar(decision.motivo, MAX_RESULTADO_VISTA) }))
-        return error(motivo)
+        return error(mensajeProhibido(decision.motivo))
       }
       if (decision.tipo === 'confirmar') {
         const permitido = this.deps.confirmar
@@ -140,6 +143,10 @@ export class EjecutorHerramientas {
       if (e instanceof Cancelado || senal.aborted) {
         alAccion(vista({ titulo, parametros, estado: 'cancelada', resultado: 'Detenida.' }))
         return error(CANCELADO)
+      }
+      if (e instanceof AccionProhibida) {
+        alAccion(vista({ titulo, parametros, estado: 'denegada', resultado: recortar(e.message, MAX_RESULTADO_VISTA) }))
+        return error(mensajeProhibido(e.message))
       }
       const motivo = textoDeError(e)
       alAccion(vista({ titulo, parametros, estado: 'error', resultado: motivo }))

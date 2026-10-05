@@ -63,6 +63,9 @@ const URL_OPENAI = 'api.openai.com'
 const MENSAJE_PARAMETRO_NO_ADMITIDO =
   /reasoning|effort|unrecogni[sz]ed (request )?(argument|field|parameter)|unknown (field|parameter|argument)|extra (fields|inputs|parameters)|additional propert|unexpected (field|keyword|parameter)/i
 
+/** Cómo suena un servicio cuando no admite herramientas (llamadas a funciones). Se mira antes que el parámetro de esfuerzo. */
+const MENSAJE_HERRAMIENTAS_NO_ADMITIDAS = /\btools?\b|tool[_ ]choice|function[_ ]call/i
+
 /** El marcador de potencia de Orbe tiene cinco niveles; los servicios compatibles con OpenAI, tres. */
 export function esfuerzoParaServicio(nivel: Esfuerzo): 'low' | 'medium' | 'high' {
   return nivel === 'low' ? 'low' : nivel === 'medium' ? 'medium' : 'high'
@@ -195,6 +198,8 @@ export class ProveedorOpenai implements ProveedorChat {
   private esfuerzo: Esfuerzo = 'medium'
   /** El servicio rechazó `reasoning_effort`: no se le vuelve a mandar. */
   private esfuerzoNoAdmitido = false
+  /** El servicio rechazó las herramientas: desde entonces solo conversa (no hay agente). */
+  private herramientasNoAdmitidas = false
   private historial: MensajeApi[] = []
   private prompt: string | null = null
   private controlador: AbortController | null = null
@@ -217,7 +222,7 @@ export class ProveedorOpenai implements ProveedorChat {
     }
 
     this.turnoEnCurso = true
-    const agente = agenteActivo(this.opciones.agente) ? this.opciones.agente : undefined
+    const agente = agenteActivo(this.opciones.agente) && !this.herramientasNoAdmitidas ? this.opciones.agente : undefined
     if (this.prompt === null || this.historial.length === 0) {
       this.prompt = construirPromptSistema({
         ahora: this.opciones.ahora?.(),
@@ -288,7 +293,7 @@ export class ProveedorOpenai implements ProveedorChat {
     acumulado: { texto: string }
   ): Promise<RespuestaFlujo> {
     const { url, clave, modelo } = this.opciones
-    const llamar = (conEsfuerzo: boolean): Promise<Response> => {
+    const llamar = (conEsfuerzo: boolean, conHerramientas: boolean): Promise<Response> => {
       armar(this.opciones.conexionMaxMs ?? 30_000, 'conexion')
       return (this.opciones.fetch ?? fetch)(`${normalizarUrlBase(url)}/chat/completions`, {
         method: 'POST',
@@ -297,7 +302,7 @@ export class ProveedorOpenai implements ProveedorChat {
           model: modelo,
           stream: true,
           messages: mensajes,
-          ...(herramientas ? { tools: herramientas.definiciones, ...(herramientas.ninguna ? { tool_choice: 'none' } : {}) } : {}),
+          ...(herramientas && conHerramientas ? { tools: herramientas.definiciones, ...(herramientas.ninguna ? { tool_choice: 'none' } : {}) } : {}),
           ...(conEsfuerzo ? { reasoning_effort: esfuerzoParaServicio(this.esfuerzo) } : {})
         }),
         signal: controlador.signal
@@ -305,14 +310,26 @@ export class ProveedorOpenai implements ProveedorChat {
     }
 
     // El marcador de potencia solo se manda si se ha movido del punto medio; si el servicio lo rechaza, se sigue sin él.
-    const conEsfuerzo = !this.esfuerzoNoAdmitido && this.esfuerzo !== 'medium'
-    let respuesta = await llamar(conEsfuerzo)
-    if (!respuesta.ok && conEsfuerzo && respuesta.status === 400) {
+    let conEsfuerzo = !this.esfuerzoNoAdmitido && this.esfuerzo !== 'medium'
+    let conHerramientas = herramientas !== undefined
+    let respuesta = await llamar(conEsfuerzo, conHerramientas)
+    // Un servicio que no entiende un parámetro suele contestar 400 (o 422): se aparta el culpable y se repite.
+    for (let intento = 0; intento < 2 && !respuesta.ok && (respuesta.status === 400 || respuesta.status === 422); intento++) {
       const cuerpo = await respuesta.text().catch(() => '')
-      if (!MENSAJE_PARAMETRO_NO_ADMITIDO.test(cuerpo)) throw errorDesdeHttp(400, cuerpo)
-      this.esfuerzoNoAdmitido = true
-      m.alAviso?.('Este servicio no admite niveles de potencia: sigo con el nivel normal del modelo.')
-      respuesta = await llamar(false)
+      if (conHerramientas && MENSAJE_HERRAMIENTAS_NO_ADMITIDAS.test(cuerpo)) {
+        // Sin herramientas no hay agente: se sigue como chat normal, y las siguientes conversaciones también.
+        this.herramientasNoAdmitidas = true
+        this.prompt = null
+        conHerramientas = false
+        m.alAviso?.('Este modelo o servicio no admite herramientas: sigo solo conversando, sin buscar ni abrir nada.')
+      } else if (conEsfuerzo && MENSAJE_PARAMETRO_NO_ADMITIDO.test(cuerpo)) {
+        this.esfuerzoNoAdmitido = true
+        conEsfuerzo = false
+        m.alAviso?.('Este servicio no admite niveles de potencia: sigo con el nivel normal del modelo.')
+      } else {
+        throw errorDesdeHttp(respuesta.status, cuerpo)
+      }
+      respuesta = await llamar(conEsfuerzo, conHerramientas)
     }
     if (!respuesta.ok) throw errorDesdeHttp(respuesta.status, await respuesta.text().catch(() => ''))
     if (!respuesta.body) throw new ErrorChat(crearError('desconocido', { detalle: 'La respuesta no trae contenido.' }))
