@@ -1,4 +1,4 @@
-import type { AccionVista, AvisoMemoria, ErrorOrbe, EstadoAccion, MotivoFin, ParteContexto } from '../../shared/tipos'
+import type { AccionVista, AvisoMemoria, ErrorOrbe, EstadoAccion, FuenteVista, MotivoFin, ParteContexto } from '../../shared/tipos'
 import { crearChipsAdjuntos, crearIcono } from './contexto-ui'
 import { renderizarMarkdown } from './markdown'
 
@@ -38,6 +38,9 @@ const TEXTO_ESTADO: Record<EstadoAccion, string> = {
   cancelada: 'detenida'
 }
 
+/** Cuántos enlaces de fuentes se enseñan como máximo bajo una respuesta. */
+const MAX_FUENTES = 8
+
 /** Respuesta del asistente mientras llega en streaming: tramos de texto con las acciones del agente entre medias. */
 export class RespuestaEnCurso {
   readonly el: HTMLElement
@@ -46,6 +49,8 @@ export class RespuestaEnCurso {
   /** El tramo que sigue recibiendo texto; es null justo después de una acción. */
   private actual: Tramo | null = null
   private readonly acciones = new Map<string, HTMLElement>()
+  /** Las fuentes que el agente fue consultando; se enseñan juntas al final de la respuesta. */
+  private readonly fuentes = new Map<string, FuenteVista>()
   private pendiente = 0
 
   constructor(private readonly lista: ListaMensajes) {
@@ -153,6 +158,42 @@ export class RespuestaEnCurso {
     detalle.replaceChildren(...partes)
   }
 
+  /** Apunta las fuentes que llegan (sin repetir); no se pintan hasta que la respuesta termina, para que queden al final. */
+  agregarFuentes(fuentes: readonly FuenteVista[]): void {
+    for (const f of fuentes) {
+      if (this.fuentes.size >= MAX_FUENTES) break
+      // Solo enlaces web: el proceso principal ya lo exige, y aquí se comprueba otra vez al pintarlos.
+      if (/^https?:\/\//i.test(f.url) && !this.fuentes.has(f.url)) this.fuentes.set(f.url, f)
+    }
+  }
+
+  /** La lista de fuentes bajo la respuesta: título y dominio de cada una, todo con `textContent`, y el enlace con `href`. */
+  private pintarFuentes(): void {
+    this.el.querySelector('.fuentes')?.remove()
+    if (this.fuentes.size === 0) return
+    const bloque = elemento('div', 'fuentes')
+    const lista = elemento('ol', 'fuentes-lista')
+    lista.setAttribute('aria-label', 'Fuentes')
+    bloque.append(elemento('p', 'fuentes-titulo', 'Fuentes'), lista)
+    let n = 0
+    for (const f of this.fuentes.values()) {
+      let dominio = ''
+      try {
+        dominio = new URL(f.url).hostname.replace(/^www\./, '')
+      } catch {
+        continue
+      }
+      const enlace = elemento('a', 'fuentes-enlace')
+      enlace.setAttribute('href', f.url)
+      enlace.title = f.url
+      enlace.append(elemento('span', 'fuentes-numero', `${++n}.`), elemento('span', 'fuentes-nombre', f.titulo), elemento('span', 'fuentes-dominio', dominio))
+      const item = elemento('li')
+      item.append(enlace)
+      lista.append(item)
+    }
+    if (n > 0) this.el.append(bloque)
+  }
+
   /** Lo que quede «en curso» cuando el turno termina ya no puede estarlo: se marca como detenido. */
   private cerrarAccionesAbiertas(): void {
     for (const linea of this.acciones.values()) {
@@ -176,6 +217,7 @@ export class RespuestaEnCurso {
     }
     for (const tramo of this.tramos) this.pintarTramo(tramo)
     this.cerrarAccionesAbiertas()
+    this.pintarFuentes()
     if (motivo === 'cancelado') this.el.append(elemento('p', 'nota', this.hayAcciones ? 'Tarea detenida' : 'Respuesta detenida'))
     if (motivo === 'limite_tokens') this.el.append(elemento('p', 'nota', 'La respuesta se cortó por su longitud máxima'))
     if (motivo === 'limite_pasos') this.el.append(elemento('p', 'nota', 'La tarea llegó a su límite de pasos y se detuvo aquí'))
@@ -191,6 +233,7 @@ export class RespuestaEnCurso {
     else {
       for (const tramo of this.tramos) this.pintarTramo(tramo)
       this.cerrarAccionesAbiertas()
+      this.pintarFuentes()
     }
   }
 

@@ -1036,6 +1036,32 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('el «Detener» del orbe se esconde al terminar', !(await detenerVisible('#detener-orbe')))
     orbe.establecerExpandido(true)
     await esperar(600)
+
+    // 11f. Una búsqueda web: la línea de acción y las fuentes como enlaces bajo la respuesta
+    await nuevaConversacion()
+    await escribirYEnviar('/busca')
+    comprobar('la búsqueda de la demo termina', await esperarFin(8000))
+    await esperar(500)
+    a.estadosBusqueda = await estadosAcciones()
+    comprobar('la búsqueda queda como hecha', mismos(a.estadosBusqueda, ['ok']), a.estadosBusqueda)
+    a.fuentes = await js(
+      `[...document.querySelectorAll('.msg.asistente .fuentes a')].map((e) => [e.getAttribute('href'), e.querySelector('.fuentes-nombre').textContent, e.querySelector('.fuentes-dominio').textContent])`
+    )
+    comprobar(
+      'las fuentes son solo enlaces web, sin repetidos, con el título tal cual y el dominio',
+      JSON.stringify(a.fuentes) ===
+        JSON.stringify([
+          ['https://www.ejemplo.org/tiempo/lima', 'El tiempo en Lima hoy', 'ejemplo.org'],
+          ['https://clima.example.com/lima?dias=7', '<img src=x onerror=alert(1)> Previsión semanal', 'clima.example.com']
+        ]),
+      a.fuentes
+    )
+    comprobar('un título con HTML no crea elementos', (await js<number>(`document.querySelectorAll('.msg.asistente .fuentes img').length`)) === 0)
+    comprobar(
+      'las fuentes quedan al final, después del texto de la respuesta',
+      await js<boolean>(`document.querySelector('.msg.asistente .fuentes')?.previousElementSibling?.classList.contains('contenido') === true`)
+    )
+    await capturar('11f-fuentes')
     await nuevaConversacion()
   }
 

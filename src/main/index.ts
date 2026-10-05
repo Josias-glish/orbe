@@ -4,7 +4,7 @@ import { registrarConfiguracion } from './configuracion'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { RegistroHerramientas } from './agente/registro'
+import { crearRegistro } from './agente/herramientas'
 import { guardarAjustes, leerAjustes } from './ajustes'
 import { liberarAtajos, registrarAtajos } from './atajos'
 import { crearProveedor, infoChat } from './chat/fabrica'
@@ -177,8 +177,8 @@ app.whenReady().then(() => {
     }
   })
 
-  // Las herramientas del agente: cada fase del modo agente añade las suyas aquí. Sin herramientas, el chat solo conversa.
-  const registro = new RegistroHerramientas([])
+  // Las herramientas del agente (según la configuración). Sin herramientas, el chat solo conversa.
+  const registro = crearRegistro(config)
   const proveedor =
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro)
   const info =

@@ -1,7 +1,9 @@
 import { createServer, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import type { AccionVista } from '../src/shared/tipos'
+import type { AccionVista, FuenteVista } from '../src/shared/tipos'
+import type { ProveedorBusqueda } from '../src/main/agente/busqueda'
+import { crearBuscarWeb } from '../src/main/agente/herramientas/buscar-web'
 import { RegistroHerramientas } from '../src/main/agente/registro'
 import type { Herramienta, PeticionConfirmacion } from '../src/main/agente/tipos'
 import { ErrorChat } from '../src/main/chat/errores'
@@ -352,5 +354,53 @@ describe('ProveedorOpenai como agente: errores y funciones puras', () => {
     expect(mensajes[0].content).toMatch(/omitido/)
     expect(mensajes[1].content).toBe('corto')
     expect(mensajes[2].content).toHaveLength(3000)
+  })
+})
+
+describe('ProveedorOpenai con buscar_web', () => {
+  const resultados = [
+    { titulo: 'El tiempo en Lima', url: 'https://www.ejemplo.org/lima', extracto: 'Nublado, 19 °C.' },
+    { titulo: 'Previsión', url: 'https://clima.example.com/', extracto: '' }
+  ]
+
+  function conBuscador(): { proveedor: ProveedorOpenai; consultas: string[] } {
+    const consultas: string[] = []
+    const buscador: ProveedorBusqueda = {
+      nombre: 'tavily',
+      buscar: async (consulta) => {
+        consultas.push(consulta)
+        return resultados
+      }
+    }
+    return { proveedor: crear([crearBuscarWeb(buscador)]), consultas }
+  }
+
+  it('el modelo busca, recibe los resultados como datos externos y las fuentes salen como enlaces', async () => {
+    respuestas.push(
+      flujo(['Voy a buscarlo.'], [{ id: 'call_1', nombre: 'buscar_web', argumentos: JSON.stringify({ consulta: 'tiempo en Lima' }) }]),
+      flujo(['En Lima hay 19 °C.'])
+    )
+    const { proveedor, consultas } = conBuscador()
+    const textos: string[] = []
+    const acciones: AccionVista[] = []
+    const fuentes: FuenteVista[][] = []
+    const r = await proveedor.enviar({ texto: '¿Qué tiempo hace en Lima?' }, { alTexto: (d) => textos.push(d), alAccion: (a) => acciones.push(a), alFuentes: (f) => fuentes.push(f) })
+
+    expect(r.motivo).toBe('completo')
+    expect(consultas).toEqual(['tiempo en Lima'])
+    expect(acciones.map((a) => [a.estado, a.titulo])).toEqual([
+      ['en_curso', 'Buscando: tiempo en Lima'],
+      ['ok', 'Buscando: tiempo en Lima']
+    ])
+    expect(fuentes).toEqual([resultados.map((x) => ({ titulo: x.titulo, url: x.url }))])
+
+    const peticion = recibidas[0].cuerpo
+    expect(peticion['tools'].map((t: any) => t.function.name)).toEqual(['buscar_web'])
+    expect(String(peticion['messages'][0].content)).toContain('Puedes buscar en internet')
+
+    const segunda = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: string }>
+    const herramienta = segunda.find((m) => m.role === 'tool')
+    expect(herramienta?.content).toMatch(/^<contenido_externo origen="busqueda" id="[0-9a-f]{12}">/)
+    expect(herramienta?.content).toContain('https://www.ejemplo.org/lima')
   })
 })

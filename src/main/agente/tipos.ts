@@ -42,6 +42,8 @@ export interface ResultadoEjecucion {
    * `<contenido_externo>` para que lo trate como datos y nunca como instrucciones.
    */
   externo?: { origen: string; url?: string }
+  /** De dónde salió la información: se enseña como enlaces bajo la respuesta. */
+  fuentes?: Array<{ titulo: string; url: string }>
 }
 
 export interface Herramienta<T = unknown> {

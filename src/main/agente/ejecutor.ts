@@ -1,5 +1,6 @@
-import type { AccionVista } from '../../shared/tipos'
+import type { AccionVista, FuenteVista } from '../../shared/tipos'
 import { envolverExterno } from './envoltorio'
+import { normalizarFuentes } from './fuentes'
 import type { Politica } from './politica'
 import type { RegistroHerramientas } from './registro'
 import type { LlamadaHerramienta, PeticionConfirmacion, ResultadoLlamada } from './tipos'
@@ -15,6 +16,8 @@ export interface DepsEjecutor {
   politica: Politica
   senal: AbortSignal
   alAccion(accion: AccionVista): void
+  /** Una herramienta aportó fuentes (enlaces) para enseñar bajo la respuesta. */
+  alFuentes?(fuentes: FuenteVista[]): void
   /** Pregunta al usuario; sin esto (p. ej. en pruebas) toda confirmación se da por negada. */
   confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
   /** Marca única de la tarea para envolver el contenido externo. */
@@ -126,6 +129,8 @@ export class EjecutorHerramientas {
       )
       const texto = r.texto.length > MAX_RESULTADO ? `${r.texto.slice(0, MAX_RESULTADO)}\n[…resultado recortado]` : r.texto
       alAccion(vista({ titulo, parametros, estado: 'ok', resultado: recortar(r.texto, MAX_RESULTADO_VISTA) }))
+      const fuentes = normalizarFuentes(r.fuentes ?? [])
+      if (fuentes.length > 0) this.deps.alFuentes?.(fuentes)
       return {
         id: llamada.id,
         contenido: r.externo ? envolverExterno(texto, { ...r.externo, nonce: this.deps.nonce }) : texto,

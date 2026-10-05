@@ -1,7 +1,7 @@
 import { createServer, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import type { AccionVista } from '../src/shared/tipos'
+import type { AccionVista, FuenteVista } from '../src/shared/tipos'
 import { RegistroHerramientas } from '../src/main/agente/registro'
 import type { Herramienta, PeticionConfirmacion } from '../src/main/agente/tipos'
 import { ErrorChat } from '../src/main/chat/errores'
@@ -15,7 +15,23 @@ interface Recibida {
 }
 type Respuesta = (res: ServerResponse) => void | Promise<void>
 
-type Bloque = { texto: string } | { herramienta: string; id: string; entrada: unknown }
+interface Cita {
+  url: string
+  title: string
+  cited_text?: string
+}
+interface ResultadoWeb {
+  title: string
+  url: string
+}
+type Bloque =
+  | { texto: string; citas?: Cita[] }
+  | { herramienta: string; id: string; entrada: unknown }
+  /** Claude pide una búsqueda web (la ejecuta el servidor de Anthropic). */
+  | { busqueda: string; id: string }
+  /** El resultado de esa búsqueda, tal como lo devuelve el servidor (con el contenido cifrado). */
+  | { resultados: ResultadoWeb[]; id: string }
+  | { errorBusqueda: string; id: string }
 
 let servidor: Server
 let puerto: number
@@ -58,6 +74,35 @@ function respuesta(bloques: Bloque[], parada = 'end_turn', detalles?: unknown): 
       if ('texto' in bloque) {
         evento(res, 'content_block_start', { type: 'content_block_start', index, content_block: { type: 'text', text: '' } })
         evento(res, 'content_block_delta', { type: 'content_block_delta', index, delta: { type: 'text_delta', text: bloque.texto } })
+        for (const c of bloque.citas ?? []) {
+          evento(res, 'content_block_delta', {
+            type: 'content_block_delta',
+            index,
+            delta: { type: 'citations_delta', citation: { type: 'web_search_result_location', encrypted_index: 'ei', cited_text: 'texto citado', ...c } }
+          })
+        }
+      } else if ('busqueda' in bloque) {
+        evento(res, 'content_block_start', {
+          type: 'content_block_start',
+          index,
+          content_block: { type: 'server_tool_use', id: bloque.id, name: 'web_search', input: {} }
+        })
+        evento(res, 'content_block_delta', {
+          type: 'content_block_delta',
+          index,
+          delta: { type: 'input_json_delta', partial_json: JSON.stringify({ query: bloque.busqueda }) }
+        })
+      } else if ('resultados' in bloque || 'errorBusqueda' in bloque) {
+        // Los resultados de la búsqueda llegan enteros en el bloque de inicio.
+        const contenido =
+          'resultados' in bloque
+            ? bloque.resultados.map((r) => ({ type: 'web_search_result', title: r.title, url: r.url, page_age: null, encrypted_content: `cifrado-de-${r.url}` }))
+            : { type: 'web_search_tool_result_error', error_code: bloque.errorBusqueda }
+        evento(res, 'content_block_start', {
+          type: 'content_block_start',
+          index,
+          content_block: { type: 'web_search_tool_result', tool_use_id: bloque.id, content: contenido }
+        })
       } else {
         evento(res, 'content_block_start', {
           type: 'content_block_start',
@@ -138,15 +183,24 @@ function crear(herramientas: Herramienta[] = [], extra: Partial<OpcionesProveedo
   return p
 }
 
+/** Un proveedor con la búsqueda web de Claude (y, si se dan, herramientas propias). */
+function crearConBusqueda(maxUsos = 5, herramientas: Herramienta[] = []): ProveedorApi {
+  return crear([], {
+    agente: { registro: new RegistroHerramientas(herramientas), maxPasos: 15, permitirLocal: false, busquedaNativa: { maxUsos } }
+  })
+}
+
 function recolector(confirmar?: (p: PeticionConfirmacion) => Promise<boolean>) {
   const textos: string[] = []
   const acciones: AccionVista[] = []
+  const fuentes: FuenteVista[][] = []
   const m: ManejadoresTurno = {
     alTexto: (d) => textos.push(d),
     alAccion: (a) => acciones.push(a),
+    alFuentes: (f) => fuentes.push(f),
     ...(confirmar ? { confirmar } : {})
   }
-  return { m, textos, acciones }
+  return { m, textos, acciones, fuentes }
 }
 
 const roles = (mensajes: Array<{ role: string }>): string[] => mensajes.map((m) => m.role)
@@ -366,6 +420,201 @@ describe('ProveedorApi como agente: Detener', () => {
     expect((await turno).motivo).toBe('cancelado')
     expect(ejecutadas).toEqual([])
     expect(acciones.map((a) => a.estado)).toEqual(['en_curso', 'cancelada'])
+  })
+})
+
+/** Una respuesta con una búsqueda ya pedida que no termina hasta que el cliente cuelga. */
+const respuestaBusquedaColgada: Respuesta = async (res) => {
+  inicioMensaje(res)
+  evento(res, 'content_block_start', {
+    type: 'content_block_start',
+    index: 0,
+    content_block: { type: 'server_tool_use', id: 'srvtoolu_c', name: 'web_search', input: {} }
+  })
+  evento(res, 'content_block_delta', {
+    type: 'content_block_delta',
+    index: 0,
+    delta: { type: 'input_json_delta', partial_json: JSON.stringify({ query: 'lo que no termina' }) }
+  })
+  evento(res, 'content_block_stop', { type: 'content_block_stop', index: 0 })
+  await new Promise<void>((r) => res.on('close', () => r()))
+}
+
+const RESULTADOS: ResultadoWeb[] = [
+  { title: 'El tiempo en Lima', url: 'https://www.ejemplo.org/lima' },
+  { title: 'Previsión semanal', url: 'https://clima.example.com/lima' },
+  { title: 'Otra página', url: 'https://otra.example.net/pagina' }
+]
+
+describe('ProveedorApi con la búsqueda web de Claude', () => {
+  it('ofrece la búsqueda del servidor aunque no haya herramientas propias, con su tope y las instrucciones de búsqueda', async () => {
+    respuestas.push(respuesta([{ texto: 'Hola' }]))
+    await crearConBusqueda(3).enviar({ texto: 'Hola' }, recolector().m)
+    const cuerpo = recibidas[0].cuerpo
+    expect(cuerpo['tools']).toEqual([{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }])
+    expect(cuerpo['tool_choice']).toEqual({ type: 'auto', disable_parallel_tool_use: true })
+    expect(String(cuerpo['system'])).toContain('Puedes buscar en internet')
+  })
+
+  it('la búsqueda va junto a las herramientas propias, y sin búsqueda las instrucciones no la mencionan', async () => {
+    const { herramienta } = eco()
+    respuestas.push(respuesta([{ texto: 'Hola' }]), respuesta([{ texto: 'Hola' }]))
+    await crearConBusqueda(5, [herramienta]).enviar({ texto: 'Hola' }, recolector().m)
+    expect(recibidas[0].cuerpo['tools']).toEqual([...new RegistroHerramientas([herramienta]).paraAnthropic(), { type: 'web_search_20250305', name: 'web_search', max_uses: 5 }])
+
+    await crear([herramienta]).enviar({ texto: 'Hola' }, recolector().m)
+    expect(String(recibidas[1].cuerpo['system'])).not.toContain('Puedes buscar en internet')
+  })
+
+  it('cuenta cada búsqueda en el chat y enseña como fuentes solo los enlaces que Claude citó', async () => {
+    respuestas.push(
+      respuesta([
+        { texto: 'Voy a buscarlo.' },
+        { busqueda: 'tiempo en Lima', id: 'srvtoolu_1' },
+        { resultados: RESULTADOS, id: 'srvtoolu_1' },
+        { texto: 'Hay 19 °C.', citas: [{ url: RESULTADOS[0].url, title: RESULTADOS[0].title }, { url: RESULTADOS[0].url, title: RESULTADOS[0].title }] }
+      ])
+    )
+    const { m, acciones, fuentes } = recolector()
+    const r = await crearConBusqueda().enviar({ texto: '¿Qué tiempo hace en Lima?' }, m)
+
+    expect(r.motivo).toBe('completo')
+    expect(recibidas).toHaveLength(1)
+    expect(acciones.map((a) => [a.accionId, a.estado, a.titulo])).toEqual([
+      ['busqueda-srvtoolu_1', 'en_curso', 'Buscando: tiempo en Lima'],
+      ['busqueda-srvtoolu_1', 'ok', 'Buscando: tiempo en Lima']
+    ])
+    expect(acciones[1].resultado).toMatch(/^3 resultados: El tiempo en Lima/)
+    expect(acciones[0].parametros).toBe('{"consulta":"tiempo en Lima"}')
+    expect(fuentes).toEqual([[{ titulo: 'El tiempo en Lima', url: 'https://www.ejemplo.org/lima' }]])
+  })
+
+  it('si Claude no cita nada, las fuentes son los resultados de la búsqueda', async () => {
+    respuestas.push(respuesta([{ busqueda: 'algo', id: 'srvtoolu_1' }, { resultados: RESULTADOS, id: 'srvtoolu_1' }, { texto: 'Listo.' }]))
+    const { m, fuentes } = recolector()
+    await crearConBusqueda().enviar({ texto: 'x' }, m)
+    expect(fuentes[0].map((f) => f.url)).toEqual(RESULTADOS.map((r) => r.url))
+  })
+
+  it('un enlace que no es web o trae usuario y contraseña nunca llega como fuente', async () => {
+    const malos: ResultadoWeb[] = [
+      { title: 'js', url: 'javascript:alert(1)' },
+      { title: 'archivo', url: 'file:///C:/secreto.txt' },
+      { title: 'credenciales', url: 'https://usuario:clave@ejemplo.org/' },
+      { title: 'bueno', url: 'https://ejemplo.org/bueno#parte' }
+    ]
+    respuestas.push(respuesta([{ busqueda: 'x', id: 'srvtoolu_1' }, { resultados: malos, id: 'srvtoolu_1' }, { texto: 'Listo.' }]))
+    const { m, fuentes } = recolector()
+    await crearConBusqueda().enviar({ texto: 'x' }, m)
+    expect(fuentes).toEqual([[{ titulo: 'bueno', url: 'https://ejemplo.org/bueno' }]])
+  })
+
+  it('el historial conserva los bloques de la búsqueda tal como llegaron, que es lo que la API exige para seguir', async () => {
+    respuestas.push(
+      respuesta([
+        { busqueda: 'tiempo en Lima', id: 'srvtoolu_1' },
+        { resultados: RESULTADOS, id: 'srvtoolu_1' },
+        { texto: 'Hay 19 °C.', citas: [{ url: RESULTADOS[0].url, title: RESULTADOS[0].title }] }
+      ]),
+      respuesta([{ texto: 'De nada.' }])
+    )
+    const p = crearConBusqueda()
+    await p.enviar({ texto: '¿Qué tiempo hace?' }, recolector().m)
+    await p.enviar({ texto: 'Gracias' }, recolector().m)
+
+    const segunda = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: any[] }>
+    expect(roles(segunda)).toEqual(['user', 'assistant', 'user'])
+    expect(segunda[1].content.map((b) => b.type)).toEqual(['server_tool_use', 'web_search_tool_result', 'text'])
+    expect(segunda[1].content[0]).toMatchObject({ id: 'srvtoolu_1', name: 'web_search', input: { query: 'tiempo en Lima' } })
+    expect(segunda[1].content[1].content[0]).toMatchObject({ type: 'web_search_result', url: RESULTADOS[0].url, encrypted_content: `cifrado-de-${RESULTADOS[0].url}` })
+    expect(segunda[1].content[2].citations[0]).toMatchObject({ type: 'web_search_result_location', url: RESULTADOS[0].url, encrypted_index: 'ei' })
+  })
+
+  it('una pausa en mitad de una búsqueda se continúa reenviando lo recibido, sin pedir nada al usuario', async () => {
+    respuestas.push(
+      respuesta([{ busqueda: 'tema largo', id: 'srvtoolu_1' }, { resultados: RESULTADOS, id: 'srvtoolu_1' }], 'pause_turn'),
+      respuesta([{ texto: 'Ya lo tengo.' }])
+    )
+    const { m, textos } = recolector()
+    const r = await crearConBusqueda().enviar({ texto: 'Investiga' }, m)
+    expect(r.motivo).toBe('completo')
+    expect(textos).toEqual(['Ya lo tengo.'])
+    const segunda = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: any[] }>
+    expect(roles(segunda)).toEqual(['user', 'assistant'])
+    expect(segunda[1].content.map((b) => b.type)).toEqual(['server_tool_use', 'web_search_tool_result'])
+  })
+
+  it('un fallo de la búsqueda se ve como error en su línea y Claude sigue con lo que tiene', async () => {
+    respuestas.push(respuesta([{ busqueda: 'x', id: 'srvtoolu_1' }, { errorBusqueda: 'max_uses_exceeded', id: 'srvtoolu_1' }, { texto: 'No pude buscar.' }]))
+    const { m, acciones, fuentes } = recolector()
+    const r = await crearConBusqueda().enviar({ texto: 'x' }, m)
+    expect(r.motivo).toBe('completo')
+    expect(acciones.map((a) => a.estado)).toEqual(['en_curso', 'error'])
+    expect(acciones[1].resultado).toMatch(/máximo de búsquedas/)
+    expect(fuentes).toEqual([])
+  })
+
+  it('mezclada con una herramienta propia: se ejecuta la nuestra y el resultado va primero en el mensaje del usuario', async () => {
+    const { herramienta, ejecutadas } = eco()
+    respuestas.push(
+      respuesta([{ busqueda: 'x', id: 'srvtoolu_1' }, { resultados: RESULTADOS, id: 'srvtoolu_1' }, usaEco('hola')], 'tool_use'),
+      respuesta([{ texto: 'Hecho.' }])
+    )
+    await crearConBusqueda(5, [herramienta]).enviar({ texto: 'x' }, recolector().m)
+    expect(ejecutadas).toEqual(['hola'])
+    const segunda = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: any[] }>
+    expect(segunda[1].content.map((b) => b.type)).toEqual(['server_tool_use', 'web_search_tool_result', 'tool_use'])
+    expect(segunda[2].content[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_1', content: 'hola' })
+  })
+
+  it('una respuesta cortada por longitud a mitad de una búsqueda no deja una petición de búsqueda sin resultado', async () => {
+    respuestas.push(respuesta([{ texto: 'Busco.' }, { busqueda: 'x', id: 'srvtoolu_1' }], 'max_tokens'), respuesta([{ texto: 'Sigo.' }]))
+    const p = crearConBusqueda()
+    expect((await p.enviar({ texto: 'x' }, recolector().m)).motivo).toBe('limite_tokens')
+    await p.enviar({ texto: 'Continúa' }, recolector().m)
+    const segunda = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: any }>
+    expect(roles(segunda)).toEqual(['user', 'assistant', 'user'])
+    expect(JSON.stringify(segunda[1].content)).not.toContain('server_tool_use')
+  })
+
+  it('detener mientras Claude busca corta la tarea, deja la línea sin terminar y el historial sigue siendo válido', async () => {
+    respuestas.push(respuestaBusquedaColgada)
+    const p = crearConBusqueda()
+    const { m, acciones } = recolector()
+    const turno = p.enviar({ texto: 'Busca algo' }, m)
+    await esperarHasta(() => acciones.length > 0)
+    p.cancelar()
+    expect((await turno).motivo).toBe('cancelado')
+    expect(acciones.map((a) => a.estado)).toEqual(['en_curso'])
+
+    respuestas.push(respuesta([{ texto: 'Aquí sigo.' }]))
+    await p.enviar({ texto: 'Perdona' }, recolector().m)
+    const mensajes = recibidas[1].cuerpo['messages'] as Array<{ role: string; content: any }>
+    expect(roles(mensajes)).toEqual(['user', 'assistant', 'user'])
+    expect(mensajes[1].content).toBe(MARCA_DETENIDO)
+  })
+
+  it('si la cuenta no tiene la búsqueda activada, el error lo explica y dice cómo seguir sin ella', async () => {
+    respuestas.push(async (res) => {
+      res.writeHead(400, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'The web_search tool is not enabled for this organization.' } }))
+    })
+    const fallo = await crearConBusqueda()
+      .enviar({ texto: 'x' }, recolector().m)
+      .catch((e: unknown) => e)
+    expect(fallo).toBeInstanceOf(ErrorChat)
+    expect((fallo as ErrorChat).error.mensaje).toMatch(/búsqueda web no está activada.*ORBE_BUSQUEDA_MAX=0/)
+  })
+
+  it('un 400 que no habla de la búsqueda no se confunde con eso', async () => {
+    respuestas.push(async (res) => {
+      res.writeHead(400, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'messages: otra cosa distinta' } }))
+    })
+    const fallo = await crearConBusqueda()
+      .enviar({ texto: 'x' }, recolector().m)
+      .catch((e: unknown) => e)
+    expect((fallo as ErrorChat).error.mensaje).not.toMatch(/ORBE_BUSQUEDA_MAX/)
   })
 })
 

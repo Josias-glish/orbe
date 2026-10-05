@@ -494,6 +494,62 @@ kbd {
   }
 }
 
+/* Fuentes de una búsqueda web: enlaces numerados bajo la respuesta. */
+.fuentes {
+  margin: 10px 0 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--linea);
+  font-size: 12px;
+}
+.fuentes-titulo {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+.fuentes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fuentes-enlace {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  color: var(--cian);
+  text-decoration: none;
+}
+.fuentes-enlace:hover .fuentes-nombre {
+  text-decoration: underline;
+}
+.fuentes-enlace:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.fuentes-numero {
+  flex: none;
+  color: var(--texto-suave);
+}
+.fuentes-nombre {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fuentes-dominio {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+
 /* «Detener la tarea» sobre el campo de texto mientras el agente actúa. */
 .detener-accion {
   display: flex;

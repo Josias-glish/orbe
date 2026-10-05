@@ -16,12 +16,23 @@ describe('opcionesAgente', () => {
     const registro = conHerramientas()
     const entornos: Array<Record<string, string>> = [{ ANTHROPIC_API_KEY: 'k', ORBE_PROVEEDOR: 'api' }, { ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }]
     for (const env of entornos) {
-      expect(opcionesAgente(config({ ...env, ORBE_AGENTE_PASOS: '9', ORBE_PERMITIR_LOCAL: '1' }), registro)).toEqual({
-        registro,
-        maxPasos: 9,
-        permitirLocal: true
-      })
+      const opciones = opcionesAgente(config({ ...env, ORBE_AGENTE_PASOS: '9', ORBE_PERMITIR_LOCAL: '1' }), registro)
+      expect(opciones).toMatchObject({ registro, maxPasos: 9, permitirLocal: true })
     }
+  })
+
+  it('con la API de Claude la búsqueda web nativa activa el agente aunque no haya herramientas propias', () => {
+    const vacio = new RegistroHerramientas()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api' }), vacio)?.busquedaNativa).toEqual({ maxUsos: 5 })
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api', ORBE_BUSQUEDA_MAX: '3' }), vacio)?.busquedaNativa).toEqual({ maxUsos: 3 })
+    // Con ORBE_BUSQUEDA_MAX=0 se apaga, y sin herramientas propias tampoco hay agente.
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api', ORBE_BUSQUEDA_MAX: '0' }), vacio)).toBeUndefined()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api', ORBE_BUSQUEDA_MAX: '0' }), conHerramientas())?.busquedaNativa).toBeUndefined()
+  })
+
+  it('con un servicio compatible con OpenAI no hay búsqueda nativa: solo cuenta buscar_web si el registro la trae', () => {
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), new RegistroHerramientas())).toBeUndefined()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), conHerramientas())?.busquedaNativa).toBeUndefined()
   })
 
   it('con el CLI no hay agente: va con --tools "" y no admite las herramientas de Orbe', () => {
@@ -30,7 +41,7 @@ describe('opcionesAgente', () => {
 
   it('apagado con ORBE_AGENTE=0, o sin herramientas que ofrecer, no hay agente', () => {
     expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api', ORBE_AGENTE: '0' }), conHerramientas())).toBeUndefined()
-    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api' }), new RegistroHerramientas())).toBeUndefined()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), new RegistroHerramientas())).toBeUndefined()
     expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api' }), undefined)).toBeUndefined()
   })
 })
@@ -38,6 +49,8 @@ describe('opcionesAgente', () => {
 describe('infoChat y crearProveedor con el agente', () => {
   it('infoChat dice a la interfaz si el modo agente está activo', () => {
     expect(infoChat(config({ ORBE_PROVEEDOR: 'api' }), conHerramientas()).agente).toBe(true)
+    expect(infoChat(config({ ORBE_PROVEEDOR: 'api' }), new RegistroHerramientas()).agente).toBe(true) // búsqueda nativa
+    expect(infoChat(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), new RegistroHerramientas()).agente).toBe(false)
     expect(infoChat(config({ ORBE_PROVEEDOR: 'api' })).agente).toBe(false)
     expect(infoChat(config({ ORBE_PROVEEDOR: 'cli' }), conHerramientas()).agente).toBe(false)
   })
@@ -69,6 +82,18 @@ describe('el prompt del agente', () => {
     // Conserva lo de la pantalla y la memoria.
     expect(p).toContain('<contexto_pantalla>')
     expect(p).toContain('Memoria')
+  })
+
+  it('las instrucciones de búsqueda solo aparecen si el agente puede buscar, y no prometen herramientas que no hay', () => {
+    const sin = construirPromptSistema({ ahora: new Date(2026, 9, 4), pasosAgente: 15 })
+    const con = construirPromptSistema({ ahora: new Date(2026, 9, 4), pasosAgente: 15, busquedaWeb: true })
+    expect(sin).not.toContain('Puedes buscar en internet')
+    expect(con).toContain('Puedes buscar en internet')
+    expect(con).toMatch(/enseña los enlaces bajo tu respuesta/)
+    for (const p of [sin, con]) {
+      expect(p).toMatch(/solo las de tu lista de herramientas/)
+      expect(p).not.toMatch(/manejar un navegador propio/)
+    }
   })
 
   it('el prompt del agente sigue terminando con la fecha y la memoria', () => {

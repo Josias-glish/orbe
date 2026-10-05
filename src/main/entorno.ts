@@ -95,13 +95,20 @@ export interface Config {
     activo: boolean
     /** Máximo de rondas de herramientas por tarea. */
     pasos: number
-    /** Máximo de búsquedas web por petición (búsqueda nativa de la API de Claude). */
+    /** Máximo de búsquedas web por petición (búsqueda nativa de la API de Claude); 0 la apaga. */
     busquedaMax: number
     /** Dejar que el agente llegue a localhost y a redes privadas (apagado por defecto). */
     permitirLocal: boolean
   }
+  /**
+   * Buscador para el proveedor `openai` (herramienta `buscar_web`). Con la API de Claude manda su búsqueda nativa.
+   * `proveedor` es null si no hay ninguno bien configurado. La clave nunca debe salir del proceso principal.
+   */
+  busqueda: { proveedor: ProveedorBusquedaConfig | null; clave: string; url: string }
   avisos: string[]
 }
+
+export type ProveedorBusquedaConfig = 'tavily' | 'searxng'
 
 /** Lee un valor tipo sí/no del .env; devuelve `undefined` si no es ninguno de los reconocidos. */
 export function leerBooleano(valor: string): boolean | undefined {
@@ -155,8 +162,31 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
   const busquedaLeida = leer('ORBE_BUSQUEDA_MAX')
   if (busquedaLeida) {
     const n = Number(busquedaLeida)
-    if (Number.isInteger(n) && n >= 1 && n <= 10) busquedaMax = n
-    else avisos.push(`ORBE_BUSQUEDA_MAX="${busquedaLeida}" no es válido (un entero entre 1 y 10); uso ${busquedaMax}.`)
+    if (Number.isInteger(n) && n >= 0 && n <= 10) busquedaMax = n
+    else avisos.push(`ORBE_BUSQUEDA_MAX="${busquedaLeida}" no es válido (un entero entre 0 y 10); uso ${busquedaMax}.`)
+  }
+
+  // Búsqueda web para los servicios compatibles con OpenAI, que no tienen la de Claude: Tavily o un SearXNG propio.
+  const busquedaProveedorLeido = leer('ORBE_BUSQUEDA_PROVEEDOR').toLowerCase()
+  const busquedaClave = leer('ORBE_BUSQUEDA_KEY')
+  const busquedaUrl = leer('ORBE_BUSQUEDA_URL')
+  let busquedaProveedor: ProveedorBusquedaConfig | null = null
+  if (/^(ningun[ao]|none|off|0)$/.test(busquedaProveedorLeido)) busquedaProveedor = null
+  else if (busquedaProveedorLeido === 'tavily' || busquedaProveedorLeido === 'searxng') busquedaProveedor = busquedaProveedorLeido
+  else {
+    if (busquedaProveedorLeido && busquedaProveedorLeido !== 'auto') {
+      avisos.push(`ORBE_BUSQUEDA_PROVEEDOR="${busquedaProveedorLeido}" no es válido (auto, tavily, searxng o ninguno); uso auto.`)
+    }
+    // Sin elegir, se deduce: una clave es de Tavily; una dirección sin clave, de un SearXNG.
+    busquedaProveedor = busquedaClave ? 'tavily' : busquedaUrl ? 'searxng' : null
+  }
+  if (busquedaProveedor === 'tavily' && !busquedaClave) {
+    avisos.push('ORBE_BUSQUEDA_PROVEEDOR=tavily necesita ORBE_BUSQUEDA_KEY; la búsqueda web queda apagada.')
+    busquedaProveedor = null
+  }
+  if (busquedaProveedor === 'searxng' && !/^https?:\/\//i.test(busquedaUrl)) {
+    avisos.push('ORBE_BUSQUEDA_PROVEEDOR=searxng necesita ORBE_BUSQUEDA_URL con la dirección de tu SearXNG (http o https); la búsqueda web queda apagada.')
+    busquedaProveedor = null
   }
 
   const agenteLeido = leer('ORBE_AGENTE')
@@ -244,6 +274,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     memoriaMax,
     memoriaOrigenes,
     agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal },
+    busqueda: { proveedor: busquedaProveedor, clave: busquedaClave, url: busquedaUrl },
     avisos
   }
 }

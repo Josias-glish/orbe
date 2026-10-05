@@ -80,6 +80,15 @@ describe('ServicioChat', () => {
     expect(eventos).toContainEqual({ tipo: 'aviso', id: 'a', texto: 'se reinició' })
   })
 
+  it('las fuentes de una búsqueda llegan a la interfaz como un evento del turno', async () => {
+    const { servicio, proveedor, eventos } = montar()
+    servicio.iniciar({ id: 'a', texto: 'x' })
+    proveedor.manejadores?.alFuentes?.([{ titulo: 'Una página', url: 'https://ejemplo.org/' }])
+    proveedor.terminar({ motivo: 'completo' })
+    await tick()
+    expect(eventos).toContainEqual({ tipo: 'fuentes', id: 'a', fuentes: [{ titulo: 'Una página', url: 'https://ejemplo.org/' }] })
+  })
+
   it('traduce un ErrorChat del proveedor a un evento de error', async () => {
     const { servicio, proveedor, eventos } = montar()
     servicio.iniciar({ id: 'a', texto: 'x' })

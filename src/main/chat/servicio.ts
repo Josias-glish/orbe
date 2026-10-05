@@ -57,6 +57,7 @@ export class ServicioChat {
         alReintento: (intento, maximo) => this.emitir({ tipo: 'reintento', id, intento, maximo }),
         alAviso: (texto) => this.emitir({ tipo: 'aviso', id, texto }),
         alAccion: (accion) => this.emitir({ tipo: 'accion', id, accion }),
+        alFuentes: (fuentes) => this.emitir({ tipo: 'fuentes', id, fuentes }),
         confirmar: (peticion) => this.pedirConfirmacion(id, peticion)
       })
       this.emitir({ tipo: 'fin', id, motivo: resultado.motivo })

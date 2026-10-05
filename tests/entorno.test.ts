@@ -194,9 +194,10 @@ describe('resolverConfig: modo agente', () => {
     }
   })
 
-  it('ORBE_BUSQUEDA_MAX acepta de 1 a 10 y avisa con lo demás', () => {
+  it('ORBE_BUSQUEDA_MAX acepta de 0 (apagada) a 10 y avisa con lo demás', () => {
     expect(resolverConfig({ ORBE_BUSQUEDA_MAX: '3' }, {}).agente.busquedaMax).toBe(3)
-    for (const v of ['0', '11', 'x']) {
+    expect(resolverConfig({ ORBE_BUSQUEDA_MAX: '0' }, {}).agente.busquedaMax).toBe(0)
+    for (const v of ['11', '-1', 'x']) {
       const c = resolverConfig({ ORBE_BUSQUEDA_MAX: v }, {})
       expect(c.agente.busquedaMax).toBe(5)
       expect(c.avisos.some((a) => a.includes('ORBE_BUSQUEDA_MAX'))).toBe(true)

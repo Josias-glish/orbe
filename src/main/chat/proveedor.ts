@@ -1,4 +1,4 @@
-import type { AccionVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
+import type { AccionVista, FuenteVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 
@@ -11,6 +11,8 @@ export interface ManejadoresTurno {
   alAviso?(texto: string): void
   /** El agente empieza o termina una acción (llega dos veces con el mismo `accionId`). */
   alAccion?(accion: AccionVista): void
+  /** El agente consultó fuentes (una búsqueda web): se enseñan como enlaces bajo la respuesta. */
+  alFuentes?(fuentes: FuenteVista[]): void
   /** El agente pide permiso al usuario para una acción; resuelve `true` si la permite. */
   confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
 }

@@ -633,6 +633,9 @@ export class PanelChat {
       case 'accion':
         this.alAccion(turno, evento.accion)
         break
+      case 'fuentes':
+        turno.respuesta.agregarFuentes(evento.fuentes)
+        break
       case 'confirmar': {
         const { confirmacion } = evento
         void this.confirmacionAccion.pedir(confirmacion).then((permitir) => {

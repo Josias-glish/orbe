@@ -121,6 +121,13 @@ export interface ConfirmacionVista {
   etiquetaCancelar?: string
 }
 
+/** De dónde salió parte de una respuesta (una búsqueda web): se enseña como un enlace bajo el texto. */
+export interface FuenteVista {
+  titulo: string
+  /** Siempre http o https: la interfaz la abre en el navegador, nunca dentro de Orbe. */
+  url: string
+}
+
 export type EventoChat =
   | { tipo: 'inicio'; id: string }
   | { tipo: 'texto'; id: string; delta: string }
@@ -128,6 +135,7 @@ export type EventoChat =
   | { tipo: 'aviso'; id: string; texto: string }
   | { tipo: 'accion'; id: string; accion: AccionVista }
   | { tipo: 'confirmar'; id: string; confirmacion: ConfirmacionVista }
+  | { tipo: 'fuentes'; id: string; fuentes: FuenteVista[] }
   | { tipo: 'fin'; id: string; motivo: MotivoFin }
   | { tipo: 'error'; id: string; error: ErrorOrbe }
 

@@ -85,10 +85,31 @@ export class ProveedorDemo implements ProveedorChat {
     return { motivo: this.cancelado ? 'cancelado' : 'completo' }
   }
 
+  /**
+   * «/busca»: una búsqueda web con sus fuentes bajo la respuesta. Las fuentes llevan a propósito un título con HTML y
+   * un enlace que no es web, para comprobar que la interfaz muestra el texto tal cual y descarta lo que no sea http(s).
+   */
+  private async simularBusqueda(m: ManejadoresTurno): Promise<ResultadoTurno> {
+    m.alTexto('Voy a buscarlo en internet.')
+    await esperar(150)
+    m.alAccion?.(accionDemo('demo-b', 'Buscando: tiempo en Lima', 'en_curso'))
+    await esperar(600)
+    m.alAccion?.(accionDemo('demo-b', 'Buscando: tiempo en Lima', 'ok', '3 resultados'))
+    m.alFuentes?.([
+      { titulo: 'El tiempo en Lima hoy', url: 'https://www.ejemplo.org/tiempo/lima' },
+      { titulo: '<img src=x onerror=alert(1)> Previsión semanal', url: 'https://clima.example.com/lima?dias=7' },
+      { titulo: 'Enlace que no es web', url: 'javascript:alert(1)' },
+      { titulo: 'El tiempo en Lima hoy (repetida)', url: 'https://www.ejemplo.org/tiempo/lima' }
+    ])
+    m.alTexto('En Lima hay unos 19 °C y el cielo está nublado.')
+    return { motivo: this.cancelado ? 'cancelado' : 'completo' }
+  }
+
   async enviar(turno: TurnoEntrada, m: ManejadoresTurno): Promise<ResultadoTurno> {
     this.cancelado = false
     await esperar(this.ritmo.pensarMs)
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
+    if (turno.texto.startsWith('/busca')) return this.simularBusqueda(m)
     if (turno.texto.startsWith('/acciones') || turno.texto.startsWith('/colgada')) return this.simularAgente(turno.texto, m)
     const respuesta = acuseContexto(turno) + RESPUESTA_DEMO
     for (let i = 0; i < respuesta.length && !this.cancelado; i += this.ritmo.trozo) {

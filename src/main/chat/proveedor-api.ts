@@ -1,8 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { MotivoFin } from '../../shared/tipos'
 import { ejecutarBucle, type RespuestaPaso } from '../agente/bucle'
-import { agenteActivo, crearEjecutor, type OpcionesAgente } from '../agente/sesion'
+import { agenteActivo, crearEjecutor, hayBusquedaWeb, type OpcionesAgente } from '../agente/sesion'
 import type { LlamadaHerramienta, ResultadoLlamada } from '../agente/tipos'
+import {
+  SeguimientoBusquedas,
+  definicionBusquedaNativa,
+  esBusquedaNoDisponible,
+  fuentesDeContenido,
+  quitarBloquesIncompletos
+} from './busqueda-nativa'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeApi } from './errores'
 import { construirPromptSistema } from './prompt-sistema'
@@ -133,7 +140,8 @@ export class ProveedorApi implements ProveedorChat {
       this.prompt = construirPromptSistema({
         ahora: this.opciones.ahora?.(),
         memoria: this.opciones.memoria?.(),
-        pasosAgente: agente?.maxPasos
+        pasosAgente: agente?.maxPasos,
+        busquedaWeb: agente ? hayBusquedaWeb(agente) : undefined
       })
     }
     const controlador = new AbortController()
@@ -179,6 +187,15 @@ export class ProveedorApi implements ProveedorChat {
         return { motivo: 'cancelado' }
       }
       if (e instanceof ErrorChat) throw e
+      if (agente?.busquedaNativa && esBusquedaNoDisponible(e)) {
+        throw new ErrorChat(
+          crearError('solicitud_invalida', {
+            mensaje:
+              'La búsqueda web no está activada en tu cuenta de Anthropic (un administrador de la organización puede activarla en la Console). Pon ORBE_BUSQUEDA_MAX=0 en el archivo .env para seguir sin ella.',
+            detalle: e instanceof Error ? e.message : undefined
+          })
+        )
+      }
       throw new ErrorChat(errorDesdeApi(e))
     } finally {
       this.turnoEnCurso = false
@@ -211,7 +228,12 @@ export class ProveedorApi implements ProveedorChat {
     const cliente = this.cliente as Anthropic
     const mensajes: Mensaje[] = [...this.historial, mensajeUsuario]
     const ejecutor = crearEjecutor(agente, controlador.signal, m)
-    const herramientas = agente.registro.paraAnthropic()
+    // Las nuestras (que ejecutamos aquí) y, si toca, la búsqueda web de Anthropic (que ejecutan sus servidores).
+    const herramientas: Anthropic.Beta.BetaToolUnion[] = [
+      ...agente.registro.paraAnthropic(),
+      ...(agente.busquedaNativa ? [definicionBusquedaNativa(agente.busquedaNativa.maxUsos)] : [])
+    ]
+    const busquedas = new SeguimientoBusquedas(m)
 
     const resultado = await ejecutarBucle({
       maxPasos: agente.maxPasos,
@@ -230,6 +252,7 @@ export class ProveedorApi implements ProveedorChat {
           { signal: controlador.signal }
         )
         flujo.on('text', (delta) => m.alTexto(delta))
+        flujo.on('contentBlock', (bloque) => busquedas.alBloque(bloque))
         const final = await flujo.finalMessage()
 
         if (final.stop_reason === 'refusal') {
@@ -237,10 +260,13 @@ export class ProveedorApi implements ProveedorChat {
           throw new ErrorChat(crearError('rechazo', { detalle: categoria ? `categoría=${categoria}` : undefined }))
         }
 
+        const fuentes = fuentesDeContenido(final.content)
+        if (fuentes.length > 0) m.alFuentes?.(fuentes)
+
         let contenido = final.content as unknown as BloqueParam[]
         if (final.stop_reason === 'max_tokens') {
-          // Una petición de herramienta cortada a medias no se puede reenviar: se descarta.
-          contenido = contenido.filter((b) => b.type !== 'tool_use')
+          // Una petición de herramienta (o de búsqueda) cortada a medias no se puede reenviar: se descarta.
+          contenido = quitarBloquesIncompletos(contenido)
           if (contenido.length === 0) contenido = [{ type: 'text', text: '[Respuesta cortada por su longitud máxima.]' }]
         }
         mensajes.push({ role: 'assistant', content: contenido })

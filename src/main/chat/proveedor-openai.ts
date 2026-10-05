@@ -1,6 +1,6 @@
 import type { MotivoFin } from '../../shared/tipos'
 import { ejecutarBucle, type RespuestaPaso } from '../agente/bucle'
-import { agenteActivo, crearEjecutor, type OpcionesAgente } from '../agente/sesion'
+import { agenteActivo, crearEjecutor, hayBusquedaWeb, type OpcionesAgente } from '../agente/sesion'
 import type { LlamadaHerramienta, ResultadoLlamada } from '../agente/tipos'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError } from './errores'
@@ -222,7 +222,8 @@ export class ProveedorOpenai implements ProveedorChat {
       this.prompt = construirPromptSistema({
         ahora: this.opciones.ahora?.(),
         memoria: this.opciones.memoria?.(),
-        pasosAgente: agente?.maxPasos
+        pasosAgente: agente?.maxPasos,
+        busquedaWeb: agente ? hayBusquedaWeb(agente) : undefined
       })
     }
     const controlador = new AbortController()
