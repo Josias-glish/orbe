@@ -3,7 +3,7 @@ import type { ClaveParte, LecturaPantalla, ParteContexto } from '../../shared/ti
 const NS = 'http://www.w3.org/2000/svg'
 
 /** Trazos (estilo Lucide, dibujados a mano) de cada icono. */
-const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca' | 'camara', string[]> = {
+const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca' | 'camara' | 'rayo' | 'escudo' | 'parar', string[]> = {
   ventana: ['M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 9h18'],
   seleccion: ['M9 4h6', 'M9 20h6', 'M12 4v16'],
   contenido: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6'],
@@ -13,7 +13,10 @@ const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca
   libro: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
   volver: ['M19 12H5', 'm12 19-7-7 7-7'],
   marca: ['M20 6 9 17l-5-5'],
-  camara: ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']
+  camara: ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+  rayo: ['M13 2 3 14h9l-1 8 10-12h-9z'],
+  escudo: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
+  parar: ['M7 7h10v10H7z']
 }
 
 export function crearIcono(nombre: keyof typeof ICONOS, tamano = 14): SVGElement {

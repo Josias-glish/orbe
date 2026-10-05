@@ -1,6 +1,7 @@
 import type { BrowserWindow } from 'electron'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CANALES, type EventoChat, type EventoPantalla, type InfoChat } from '../src/shared/tipos'
+import { CANALES, type AccionVista, type EventoChat, type EventoPantalla, type InfoChat } from '../src/shared/tipos'
+import type { PeticionConfirmacion } from '../src/main/agente/tipos'
 import type { TurnoEntrada } from '../src/main/chat/contenido'
 import { ErrorChat, crearError } from '../src/main/chat/errores'
 import type { MemoriaChat } from '../src/main/chat/ipc'
@@ -27,7 +28,7 @@ vi.mock('electron', () => ({
 
 const { registrarChat } = await import('../src/main/chat/ipc')
 
-const INFO: InfoChat = { proveedor: 'cli', modelo: 'claude-sonnet-5-5', modeloLegible: 'Sonnet 5.5' }
+const INFO: InfoChat = { proveedor: 'cli', modelo: 'claude-sonnet-5-5', modeloLegible: 'Sonnet 5.5', agente: false }
 
 /** Un proveedor que se queda esperando hasta que la prueba lo termine o lo haga fallar. */
 class ProveedorControlado implements ProveedorChat {
@@ -45,6 +46,14 @@ class ProveedorControlado implements ProveedorChat {
   /** Simula que llega un trozo de la respuesta. */
   decir(delta: string): void {
     this.manejadores?.alTexto(delta)
+  }
+  /** Simula que el agente cuenta una acción. */
+  accion(accion: AccionVista): void {
+    this.manejadores?.alAccion?.(accion)
+  }
+  /** Simula que el agente pide permiso al usuario. */
+  confirmar(peticion: PeticionConfirmacion): Promise<boolean> | undefined {
+    return this.manejadores?.confirmar?.(peticion)
   }
   terminar(): void {
     this.fin?.ok({ motivo: 'completo' })
@@ -339,6 +348,104 @@ describe('chat:enviar y la memoria', () => {
     const t = montar(true, memoria)
     await t.invocar(CANALES.chatNueva, false)
     expect(llamadas.nuevas).toBe(0)
+  })
+})
+
+describe('el agente: acciones y confirmaciones por IPC', () => {
+  const accion = (estado: AccionVista['estado'], resultado?: string): AccionVista => ({
+    accionId: 'a1',
+    herramienta: 'eco',
+    titulo: 'Repitiendo: hola',
+    parametros: '{"texto":"hola"}',
+    estado,
+    ...(resultado ? { resultado } : {})
+  })
+
+  it('las acciones llegan a la interfaz como eventos del turno', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'Haz algo' })
+    await esperar()
+    t.proveedor.accion(accion('en_curso'))
+    t.proveedor.accion(accion('ok', 'hola'))
+    expect(t.eventosChat().filter((e) => e.tipo === 'accion')).toEqual([
+      { tipo: 'accion', id: 'a', accion: accion('en_curso') },
+      { tipo: 'accion', id: 'a', accion: accion('ok', 'hola') }
+    ])
+  })
+
+  it('la confirmación llega con un id propio y el «sí» del usuario la resuelve', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'Envía el formulario' })
+    await esperar()
+    const respuesta = t.proveedor.confirmar({ titulo: 'Enviar el formulario', detalle: 'Pulsará «Enviar» en example.com' })
+    const pedida = t.eventosChat().find((e) => e.tipo === 'confirmar')
+    expect(pedida).toMatchObject({ tipo: 'confirmar', id: 'a', confirmacion: { titulo: 'Enviar el formulario' } })
+    const confirmacionId = (pedida as Extract<EventoChat, { tipo: 'confirmar' }>).confirmacion.confirmacionId
+    expect(confirmacionId).toMatch(/\S+/)
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', confirmacionId, true)
+    await expect(respuesta).resolves.toBe(true)
+  })
+
+  it('cancelar la tarjeta devuelve «no»', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'x' })
+    await esperar()
+    const respuesta = t.proveedor.confirmar({ titulo: 'T', detalle: 'D' })
+    const id = (t.eventosChat().find((e) => e.tipo === 'confirmar') as Extract<EventoChat, { tipo: 'confirmar' }>).confirmacion.confirmacionId
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', id, false)
+    await expect(respuesta).resolves.toBe(false)
+  })
+
+  it('una respuesta de un remitente ajeno, de otro turno, con un id que no existe o con tipos raros se ignora', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'x' })
+    await esperar()
+    let resuelta: boolean | null = null
+    void t.proveedor.confirmar({ titulo: 'T', detalle: 'D' })?.then((v) => (resuelta = v))
+    const id = (t.eventosChat().find((e) => e.tipo === 'confirmar') as Extract<EventoChat, { tipo: 'confirmar' }>).confirmacion.confirmacionId
+    t.emitirDesde(CANALES.chatConfirmar, false, 'a', id, true) // remitente ajeno
+    t.emitirDesde(CANALES.chatConfirmar, true, 'otro', id, true) // otro turno
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', 'no-existe', true)
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', id, 'true') // no es booleano
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', 42, true)
+    t.emitirDesde(CANALES.chatConfirmar, true, 7, id, true)
+    await esperar()
+    expect(resuelta).toBeNull()
+    t.emitirDesde(CANALES.chatConfirmar, true, 'a', id, true)
+    await esperar()
+    expect(resuelta).toBe(true)
+  })
+
+  it('detener el turno cierra la tarjeta pendiente como «no»', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'x' })
+    await esperar()
+    const respuesta = t.proveedor.confirmar({ titulo: 'T', detalle: 'D' })
+    t.emitirDesde(CANALES.chatCancelar, true, 'a')
+    await expect(respuesta).resolves.toBe(false)
+  })
+
+  it('al terminar el turno, una tarjeta sin contestar cuenta como «no» y ya no se puede contestar', async () => {
+    const t = montar()
+    t.enviar({ id: 'a', texto: 'x' })
+    await esperar()
+    const respuesta = t.proveedor.confirmar({ titulo: 'T', detalle: 'D' })
+    t.proveedor.terminar()
+    await expect(respuesta).resolves.toBe(false)
+  })
+
+  it('en la memoria, el texto de antes y de después de una acción se separa en párrafos', async () => {
+    const { memoria, llamadas } = memoriaFalsa()
+    const t = montar(true, memoria)
+    t.enviar({ id: 'a', texto: 'Busca' })
+    await esperar()
+    t.proveedor.decir('Voy a buscar.')
+    t.proveedor.accion(accion('en_curso'))
+    t.proveedor.accion(accion('ok'))
+    t.proveedor.decir('Esto es lo que encontré.')
+    t.proveedor.terminar()
+    await esperar()
+    expect(llamadas.completados).toEqual([['Busca', 'Voy a buscar.\n\nEsto es lo que encontré.']])
   })
 })
 

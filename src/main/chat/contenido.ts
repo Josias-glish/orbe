@@ -16,7 +16,7 @@ export type BloqueEntrada =
   | { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png'; data: string } }
 
 const ETIQUETAS_PROPIAS =
-  /<(\/?)(contexto_pantalla|ventana|seleccion|contenido_ventana|captura|memoria|nota_de_la_app|conversacion_anterior)\b/gi
+  /<(\/?)(contexto_pantalla|ventana|seleccion|contenido_ventana|captura|memoria|nota_de_la_app|conversacion_anterior|contenido_externo|aviso_app)\b/gi
 
 /** Evita que el contenido de la pantalla cierre o abra nuestras etiquetas (un texto hostil podría intentarlo). */
 export function neutralizarEtiquetas(texto: string): string {

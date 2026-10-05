@@ -1,4 +1,13 @@
-import type { ClaveParte, ErrorOrbe, EventoChat, EventoPantalla, InfoChat, LecturaPantalla, ResultadoEnvio } from '../../shared/tipos'
+import type {
+  AccionVista,
+  ClaveParte,
+  ErrorOrbe,
+  EventoChat,
+  EventoPantalla,
+  InfoChat,
+  LecturaPantalla,
+  ResultadoEnvio
+} from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaAjustes } from '../ajustes/vista-ajustes'
@@ -9,14 +18,19 @@ import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
 import { MenuVoz } from '../voz/menu-voz'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
+import { ConfirmacionAccion } from './confirmacion-accion'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
+import { MenuPotencia } from './menu-potencia'
 
 interface TurnoEnCurso {
   id: string
   texto: string
   respuesta: RespuestaEnCurso
+  /** Ya llegó texto del tramo actual (cada acción del agente abre un tramo nuevo). */
   recibioTexto: boolean
+  /** El agente ya hizo alguna acción en este turno: hace falta un Detener bien visible. */
+  conAcciones: boolean
 }
 
 /** Pausa antes de volver a «reposo» al terminar, para que las ondas del orbe se apaguen con suavidad. */
@@ -34,11 +48,15 @@ export class PanelChat {
   private readonly botonMemoria: HTMLButtonElement
   private readonly botonCapturar: HTMLButtonElement
   private readonly confirmacion: ConfirmacionCaptura
+  private readonly confirmacionAccion: ConfirmacionAccion
+  private readonly botonDetenerAccion: HTMLButtonElement
+  private readonly botonDetenerOrbe: HTMLButtonElement
   private readonly sugerencia: SugerenciaCaptura
   private capturando = false
   private readonly botonMicro: HTMLButtonElement
   private readonly lector: LectorVoz
   private readonly menuVoz: MenuVoz
+  private readonly menuPotencia: MenuPotencia
   private readonly dictado: Dictado
   /** La línea de estado muestra ahora «Grabando…» o «Transcribiendo…» (y no un error que no debe borrarse). */
   private mostrandoDictado = false
@@ -93,6 +111,7 @@ export class PanelChat {
       alError: (mensaje) => this.mostrarEstadoTemporal(mensaje)
     })
     this.menuVoz = new MenuVoz(porId('voz-boton'), porId('voz-menu'), this.lector)
+    this.menuPotencia = new MenuPotencia(porId('potencia-boton'), porId('potencia-menu'))
     // Si no hay voz neuronal configurada, el motor neuronal que quedara guardado se ignora y se habla con Windows.
     void window.orbe
       .vozInfo()
@@ -104,6 +123,14 @@ export class PanelChat {
       alError: (mensaje) => this.mostrarEstadoTemporal(mensaje)
     })
     this.confirmacion = new ConfirmacionCaptura(porId('confirmacion'))
+    this.confirmacionAccion = new ConfirmacionAccion(porId('confirmacion'), this.confirmacion)
+    this.botonDetenerAccion = porId('detener-accion')
+    this.botonDetenerOrbe = porId('detener-orbe')
+    this.botonDetenerAccion.addEventListener('click', () => this.cancelar())
+    this.botonDetenerOrbe.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this.cancelar()
+    })
     this.sugerencia = new SugerenciaCaptura(
       porId('sugerencia'),
       () => void this.pedirCaptura(),
@@ -244,6 +271,7 @@ export class PanelChat {
   /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
   alPulsarEscape(): boolean {
     if (this.menuVoz.cerrarSiAbierto()) return true
+    if (this.menuPotencia.cerrarSiAbierto()) return true
     if (this.dictado.grabando) {
       this.dictado.cancelar()
       return true
@@ -252,8 +280,18 @@ export class PanelChat {
       this.lector.parar()
       return true
     }
+    if (this.confirmacionAccion.visible) {
+      // Esc en la tarjeta del agente es un «Cancelar»: la acción no se hace y la tarea sigue su curso.
+      this.confirmacionAccion.cancelar()
+      return true
+    }
     if (this.confirmacion.visible) {
       this.confirmacion.cancelar()
+      return true
+    }
+    if (this.turno?.conAcciones) {
+      // Mientras el agente trabaja, Esc lo detiene (en lugar de plegar el panel).
+      this.cancelar()
       return true
     }
     if (this.ajustes.visible) {
@@ -353,7 +391,7 @@ export class PanelChat {
 
   /** Pide confirmación y, si el usuario acepta, hace la captura y la deja pendiente con su vista previa. */
   async pedirCaptura(): Promise<void> {
-    if (this.capturando || this.leyendo || this.confirmacion.visible) return
+    if (this.capturando || this.leyendo || this.confirmacion.visible || this.confirmacionAccion.visible) return
     this.sugerencia.ocultar()
     if (!(await this.confirmacion.pedir())) {
       this.evaluarSugerencia()
@@ -391,7 +429,7 @@ export class PanelChat {
    */
   private evaluarSugerencia(): void {
     const hayImagen = this.lectura?.partes.some((p) => p.clave === 'imagen') ?? false
-    if (hayImagen || this.sugerenciaDescartada || this.capturando || this.confirmacion.visible) {
+    if (hayImagen || this.sugerenciaDescartada || this.capturando || this.confirmacion.visible || this.confirmacionAccion.visible) {
       this.sugerencia.ocultar()
     } else if (this.lectura?.sugerirCaptura) {
       this.sugerencia.mostrar('¿Adjuntas una captura? Puede ayudar a Claude a entender esa ventana.')
@@ -462,7 +500,7 @@ export class PanelChat {
   private async iniciarTurno(texto: string, burbuja: HTMLElement | null): Promise<void> {
     const id = crypto.randomUUID()
     const respuesta = this.lista.iniciarRespuesta()
-    this.turno = { id, texto, respuesta, recibioTexto: false }
+    this.turno = { id, texto, respuesta, recibioTexto: false, conAcciones: false }
     this.ocultarEstado()
     this.cambiarEstadoOrbe('pensando')
     this.entrada.bloquear(false)
@@ -539,6 +577,7 @@ export class PanelChat {
     this.cerrarMemoria()
     this.cerrarAjustes()
     this.confirmacion.cancelar()
+    this.confirmacionAccion.cancelar()
     this.dictado.cancelar()
     this.lector.parar()
     this.sugerenciaDescartada = false
@@ -577,6 +616,8 @@ export class PanelChat {
           turno.recibioTexto = true
           this.ocultarEstado()
           this.cambiarEstadoOrbe('respondiendo')
+          // Un tramo nuevo tras una acción del agente: al leer en voz alta no se pega al anterior.
+          if (turno.conAcciones) this.lector.anexar('\n\n')
         }
         turno.respuesta.anexar(evento.delta)
         this.lector.anexar(evento.delta)
@@ -589,7 +630,19 @@ export class PanelChat {
       case 'aviso':
         this.lista.agregarAviso(evento.texto)
         break
+      case 'accion':
+        this.alAccion(turno, evento.accion)
+        break
+      case 'confirmar': {
+        const { confirmacion } = evento
+        void this.confirmacionAccion.pedir(confirmacion).then((permitir) => {
+          // Si el turno ya terminó (o se detuvo) la respuesta no tiene a quién llegar.
+          if (this.turno?.id === turno.id) window.orbe.chatConfirmar(turno.id, confirmacion.confirmacionId, permitir)
+        })
+        break
+      }
       case 'fin':
+        this.confirmacionAccion.cancelar()
         this.ocultarEstado()
         turno.respuesta.finalizar(evento.motivo)
         this.lector.terminar()
@@ -604,9 +657,26 @@ export class PanelChat {
     }
   }
 
+  /** Una acción del agente empieza o termina: se pinta su línea y el orbe pasa a «actuando» (o vuelve a «pensando»). */
+  private alAccion(turno: TurnoEnCurso, accion: AccionVista): void {
+    const primera = !turno.conAcciones
+    turno.conAcciones = true
+    this.ocultarEstado()
+    turno.respuesta.agregarAccion(accion)
+    if (accion.estado === 'en_curso') {
+      this.cambiarEstadoOrbe('actuando')
+    } else {
+      // La acción terminó: el modelo decide qué hacer con el resultado, y su próximo texto abre un tramo nuevo.
+      turno.recibioTexto = false
+      this.cambiarEstadoOrbe('pensando')
+    }
+    if (primera) this.actualizarBoton()
+  }
+
   private terminarTurnoConError(error: ErrorOrbe): void {
     const turno = this.turno
     if (!turno) return
+    this.confirmacionAccion.cancelar()
     this.lector.parar()
     this.turno = null
     this.ocultarEstado()
@@ -661,5 +731,9 @@ export class PanelChat {
     this.botonEnviar.setAttribute('aria-label', enCurso ? 'Detener la respuesta' : 'Enviar')
     this.botonEnviar.title = enCurso ? 'Detener la respuesta' : 'Enviar (Enter)'
     this.botonEnviar.disabled = !enCurso && !this.entrada.hayTexto()
+    // Mientras el agente trabaja hay un «Detener» más a la vista: sobre el campo y, con el panel plegado, sobre el orbe.
+    const actuando = this.turno?.conAcciones === true
+    this.botonDetenerAccion.hidden = !actuando
+    this.botonDetenerOrbe.hidden = !actuando
   }
 }

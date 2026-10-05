@@ -1,6 +1,7 @@
+import type { AccionVista } from '../../shared/tipos'
 import { ErrorChat, crearError } from './errores'
 import type { TurnoEntrada } from './contenido'
-import type { ManejadoresTurno, ProveedorChat, ResultadoTurno } from './proveedor'
+import type { Esfuerzo, ManejadoresTurno, ProveedorChat, ResultadoTurno } from './proveedor'
 
 const RESPUESTA_DEMO = `Claro, esto es una **respuesta de demostración** para ver cómo se pinta el chat.
 
@@ -37,18 +38,58 @@ function acuseContexto(turno: TurnoEntrada): string {
   return partes.length > 0 ? `*(Recibí ${partes.join('; ')}.)*\n\n` : ''
 }
 
+/** Una acción del agente de mentira, para ver cómo se pinta (la demo no usa ninguna herramienta de verdad). */
+function accionDemo(id: string, titulo: string, estado: AccionVista['estado'], resultado?: string): AccionVista {
+  return { accionId: id, herramienta: 'demo', titulo, parametros: '{"demo":true}', estado, ...(resultado ? { resultado } : {}) }
+}
+
 /** Proveedor de mentira para las pruebas visuales (--smoke): emite un texto fijo con ritmo de streaming. */
 export class ProveedorDemo implements ProveedorChat {
   readonly nombre = 'cli' as const
   readonly modelo = 'demo'
+  readonly aplicaEsfuerzo = 'ahora' as const
+  /** El último nivel del marcador de potencia que se pidió (las pruebas lo consultan). */
+  esfuerzo: Esfuerzo = 'medium'
   private cancelado = false
 
+  establecerEsfuerzo(nivel: Esfuerzo): void {
+    this.esfuerzo = nivel
+  }
+
   constructor(private readonly ritmo = { pensarMs: 700, trozoMs: 30, trozo: 6 }) {}
+
+  /**
+   * «/acciones»: texto, una búsqueda, una confirmación del usuario y más texto, como haría el agente.
+   * «/colgada»: una acción que no termina hasta que el usuario pulsa Detener.
+   */
+  private async simularAgente(texto: string, m: ManejadoresTurno): Promise<ResultadoTurno> {
+    m.alTexto('Voy a buscarlo.')
+    await esperar(150)
+    m.alAccion?.(accionDemo('demo-1', 'Buscando: tiempo en Lima', 'en_curso'))
+    if (texto.startsWith('/colgada')) {
+      while (!this.cancelado) await esperar(40)
+      m.alAccion?.(accionDemo('demo-1', 'Buscando: tiempo en Lima', 'cancelada', 'Detenida.'))
+      return { motivo: 'cancelado' }
+    }
+    await esperar(900)
+    m.alAccion?.(accionDemo('demo-1', 'Buscando: tiempo en Lima', 'ok', '3 resultados'))
+    const permitido = m.confirmar
+      ? await m.confirmar({ titulo: 'Enviar el formulario de contacto', detalle: 'Pulsará «Enviar» en example.com. No se puede deshacer.' })
+      : false
+    m.alAccion?.(accionDemo('demo-2', 'Enviando el formulario', 'en_curso'))
+    await esperar(500)
+    m.alAccion?.(
+      permitido ? accionDemo('demo-2', 'Enviando el formulario', 'ok', 'Enviado') : accionDemo('demo-2', 'Enviando el formulario', 'denegada', 'No la permitiste.')
+    )
+    m.alTexto(permitido ? 'Listo: formulario enviado.' : 'No envié el formulario, como pediste.')
+    return { motivo: this.cancelado ? 'cancelado' : 'completo' }
+  }
 
   async enviar(turno: TurnoEntrada, m: ManejadoresTurno): Promise<ResultadoTurno> {
     this.cancelado = false
     await esperar(this.ritmo.pensarMs)
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
+    if (turno.texto.startsWith('/acciones') || turno.texto.startsWith('/colgada')) return this.simularAgente(turno.texto, m)
     const respuesta = acuseContexto(turno) + RESPUESTA_DEMO
     for (let i = 0; i < respuesta.length && !this.cancelado; i += this.ritmo.trozo) {
       m.alTexto(respuesta.slice(i, i + this.ritmo.trozo))

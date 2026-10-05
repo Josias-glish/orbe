@@ -4,6 +4,8 @@ import { registrarConfiguracion } from './configuracion'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { RegistroHerramientas } from './agente/registro'
+import { guardarAjustes, leerAjustes } from './ajustes'
 import { liberarAtajos, registrarAtajos } from './atajos'
 import { crearProveedor, infoChat } from './chat/fabrica'
 import { registrarChat } from './chat/ipc'
@@ -15,6 +17,7 @@ import { procesarConElectron } from './fondos-electron'
 import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
 import { registrarFondos } from './fondos-ipc'
 import { ejecutarHumo } from './humo'
+import { nivelInicial, registrarPotencia } from './potencia'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -174,9 +177,21 @@ app.whenReady().then(() => {
     }
   })
 
+  // Las herramientas del agente: cada fase del modo agente añade las suyas aquí. Sin herramientas, el chat solo conversa.
+  const registro = new RegistroHerramientas([])
   const proveedor =
-    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt())
-  const info = modoHumo && !humoReal ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo' } : infoChat(config)
+    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro)
+  const info =
+    modoHumo && !humoReal
+      ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo', agente: true }
+      : infoChat(config, registro)
+  // El marcador de potencia de la cabecera: sube o baja cuánto «piensa» el modelo y recuerda el nivel entre sesiones.
+  registrarPotencia({
+    ventana: orbe.ventana,
+    proveedor,
+    nivel: nivelInicial(leerAjustes().esfuerzo, config.esfuerzo),
+    guardar: (nivel) => guardarAjustes({ esfuerzo: nivel })
+  })
   servicioChat = registrarChat(
     orbe.ventana,
     proveedor,
@@ -209,10 +224,12 @@ app.whenReady().then(() => {
           orbe.ventana.webContents.send(CANALES.appOrden, 'nueva-conversacion')
         },
         leerPantalla: () => void pantalla.leerConAtajo(),
+        detenerAccion: () => servicioChat?.cancelarActivo(),
         salir: () => app.quit()
       },
       () => orbe.estaVisible,
-      app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources')
+      app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
+      () => servicioChat?.hayTurno ?? false
     )
   }
 

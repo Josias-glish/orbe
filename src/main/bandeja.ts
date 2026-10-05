@@ -6,11 +6,15 @@ export interface AccionesBandeja {
   mostrarPanel(): void
   nuevaConversacion(): void
   leerPantalla(): void
+  /** Corta la respuesta o la tarea del agente que esté en curso. */
+  detenerAccion(): void
   salir(): void
 }
 
 export interface EstadoBandeja {
   visible: boolean
+  /** Hay una respuesta o una tarea en curso: solo entonces se ofrece «Detener». */
+  hayTurno?: boolean
   /** Solo se ofrece «Iniciar con Windows» en la app instalada: en desarrollo registraría electron.exe. */
   inicioDisponible: boolean
   iniciaConWindows: boolean
@@ -20,6 +24,7 @@ export interface EstadoBandeja {
 /** El menú de la bandeja, como datos (así se puede probar sin Electron). */
 export function plantillaBandeja(acciones: AccionesBandeja, estado: EstadoBandeja): MenuItemConstructorOptions[] {
   const plantilla: MenuItemConstructorOptions[] = [
+    ...(estado.hayTurno ? [{ label: 'Detener acción', click: acciones.detenerAccion } as MenuItemConstructorOptions, { type: 'separator' } as MenuItemConstructorOptions] : []),
     { label: estado.visible ? 'Ocultar Orbe' : 'Mostrar Orbe', click: acciones.alternarVisibilidad },
     { label: 'Abrir el chat', click: acciones.mostrarPanel },
     { label: 'Nueva conversación', click: acciones.nuevaConversacion },
@@ -52,7 +57,8 @@ export function fijarInicioConWindows(valor: boolean): void {
 export function crearBandeja(
   acciones: AccionesBandeja,
   estadoVisible: () => boolean,
-  carpetaRecursos: string
+  carpetaRecursos: string,
+  hayTurno: () => boolean = () => false
 ): Tray | null {
   const imagen = nativeImage.createFromPath(join(carpetaRecursos, 'tray.png'))
   if (imagen.isEmpty()) {
@@ -65,6 +71,7 @@ export function crearBandeja(
     Menu.buildFromTemplate(
       plantillaBandeja(acciones, {
         visible: estadoVisible(),
+        hayTurno: hayTurno(),
         inicioDisponible: app.isPackaged,
         iniciaConWindows: iniciaConWindows(),
         alCambiarInicio: fijarInicioConWindows

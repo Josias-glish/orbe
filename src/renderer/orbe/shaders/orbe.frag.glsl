@@ -9,8 +9,18 @@ uniform float uTurbulencia;  // 0 = suave, 1 = muy turbulento (más frecuencia y
 uniform float uBarrido;      // progreso del destello 0..1, negativo = apagado
 uniform float uEnergia;      // intensidad de las ondas al responder 0..1
 uniform float uBrillo;       // intensidad del halo exterior
+uniform float uAccion;       // intensidad de los arcos que giran por el borde (actuando) 0..1
+uniform float uGiro;         // ángulo acumulado de esos arcos, en radianes
 
 out vec4 salida;
+
+const float PI = 3.14159265;
+
+// Un arco con cabeza brillante y cola que se desvanece detrás: 1 en la cabeza (angulo = cabeza), 0 lejos.
+float cometa(float angulo, float cabeza, float cola) {
+  float da = mod(angulo - cabeza + PI, 2.0 * PI) - PI;   // -PI..PI, negativo = por detrás de la cabeza
+  return da <= 0.0 ? exp(da * cola) : exp(-da * 18.0);
+}
 
 // Ruido simplex 3D (Ian McEwan, Ashima Arts; licencia MIT).
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -77,7 +87,8 @@ void main() {
   float frecuencia = 0.9 + uTurbulencia * 0.9;
   float n1 = snoise(vec3(dir * frecuencia, uFase));
   float n2 = snoise(vec3(dir * frecuencia * 2.0 + 7.0, uFase * 1.7)) * uTurbulencia * 0.45;
-  float ondaContorno = sin(atan(dir.y, dir.x) * 3.0 + uFaseOnda * 0.6) * uEnergia * 0.035;
+  float angulo = atan(dir.y, dir.x);
+  float ondaContorno = sin(angulo * 3.0 + uFaseOnda * 0.6) * uEnergia * 0.035;
   float radio = 0.56 * (1.0 + uAmplitud * (n1 + 0.5 * n2)) + ondaContorno + uEnergia * 0.025;
 
   float ancho = fwidth(r) * 1.2;
@@ -114,11 +125,22 @@ void main() {
     color += vec3(0.85, 0.97, 1.0) * banda * 0.9;
   }
 
+  // Actuando: dos arcos de luz giran en sentidos opuestos por el borde, como un instrumento que trabaja.
+  float arcos = 0.0;
+  if (uAccion > 0.001) {
+    float banda = smoothstep(radio * 0.78, radio * 0.95, r) * (1.0 - smoothstep(radio * 0.95, radio * 1.01, r));
+    float banda2 = smoothstep(radio * 0.58, radio * 0.66, r) * (1.0 - smoothstep(radio * 0.66, radio * 0.74, r));
+    arcos = cometa(angulo, uGiro, 2.1) * banda + 0.55 * cometa(angulo, PI - uGiro * 0.6, 3.0) * banda2;
+    color += mix(CIAN, vec3(1.0), 0.65) * arcos * uAccion * 2.1;
+  }
+
   // Halo exterior con caída exponencial.
   float fuera = max(r - radio, 0.0);
   float halo = exp(-fuera * 6.5) * (1.0 - cuerpo) * uBrillo;
   vec3 colorHalo = mix(VIOLETA, CIAN, 0.5 + 0.5 * n1);
   float bordeSuave = 1.0 - smoothstep(0.92, 1.0, r);   // evita que el halo se corte en el borde del canvas
+  // El arco principal también deja luz fuera del cuerpo, para que se note a pequeño tamaño.
+  halo += cometa(angulo, uGiro, 2.1) * exp(-fuera * 11.0) * (1.0 - cuerpo) * uAccion * 0.8;
   halo *= bordeSuave;
 
   // Alfa premultiplicado: cuerpo opaco + halo translúcido.

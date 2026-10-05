@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import type { NivelEsfuerzo } from '../shared/tipos'
 
 export interface Ajustes {
   /** Esquina superior izquierda de la ventana colapsada, en píxeles de pantalla. */
@@ -9,6 +10,8 @@ export interface Ajustes {
   panel?: { ancho: number; alto: number }
   /** El panel abierto se queda por encima de las demás ventanas (por defecto sí). */
   fijada?: boolean
+  /** El nivel del marcador de potencia que dejó el usuario (si no, vale ORBE_ESFUERZO). */
+  esfuerzo?: NivelEsfuerzo
 }
 
 const ruta = (): string => join(app.getPath('userData'), 'ajustes.json')

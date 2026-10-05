@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { NIVELES_ESFUERZO } from '../shared/tipos'
 import type { Esfuerzo } from './chat/proveedor'
 
 /** Lee un archivo .env: líneas CLAVE=valor, comentarios con #, valores opcionalmente entre comillas. */
@@ -59,7 +60,9 @@ export const INSTRUCCIONES_VOZ_POR_DEFECTO =
   'Habla en español con un tono sereno, elegante y ligeramente británico, como un mayordomo digital muy competente: ' +
   'voz grave y pausada, cortés, con un toque de ingenio discreto. Sin exagerar ni dramatizar.'
 export const ESFUERZO_POR_DEFECTO: Esfuerzo = 'medium'
-const ESFUERZOS: readonly Esfuerzo[] = ['low', 'medium', 'high', 'xhigh', 'max']
+export const ESFUERZOS: readonly Esfuerzo[] = NIVELES_ESFUERZO
+export const PASOS_AGENTE_POR_DEFECTO = 15
+export const BUSQUEDAS_MAX_POR_DEFECTO = 5
 
 export interface Config {
   proveedor: 'cli' | 'api' | 'openai'
@@ -86,7 +89,26 @@ export interface Config {
   memoriaMax: number
   /** Carpetas de memoria de Claude de donde importar; null = las de Claude Code (`~/.claude/projects/*\/memory`). */
   memoriaOrigenes: string[] | null
+  /** Modo agente: Claude (u otro modelo con herramientas) puede buscar, abrir y navegar. Solo con los proveedores `api` y `openai`. */
+  agente: {
+    /** ORBE_AGENTE: encendido salvo que se apague con 0/no/off. */
+    activo: boolean
+    /** Máximo de rondas de herramientas por tarea. */
+    pasos: number
+    /** Máximo de búsquedas web por petición (búsqueda nativa de la API de Claude). */
+    busquedaMax: number
+    /** Dejar que el agente llegue a localhost y a redes privadas (apagado por defecto). */
+    permitirLocal: boolean
+  }
   avisos: string[]
+}
+
+/** Lee un valor tipo sí/no del .env; devuelve `undefined` si no es ninguno de los reconocidos. */
+export function leerBooleano(valor: string): boolean | undefined {
+  const v = valor.trim().toLowerCase()
+  if (/^(1|true|si|sí|yes|on|auto)$/.test(v)) return true
+  if (/^(0|false|no|off)$/.test(v)) return false
+  return undefined
 }
 
 /**
@@ -119,6 +141,38 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     const n = Number(memoriaLeida)
     if (Number.isInteger(n) && n >= 1000 && n <= 12_000) memoriaMax = n
     else avisos.push(`ORBE_MEMORIA_MAX="${memoriaLeida}" no es válido (un entero entre 1000 y 12000); uso ${memoriaMax}.`)
+  }
+
+  let pasosAgente = PASOS_AGENTE_POR_DEFECTO
+  const pasosLeidos = leer('ORBE_AGENTE_PASOS')
+  if (pasosLeidos) {
+    const n = Number(pasosLeidos)
+    if (Number.isInteger(n) && n >= 1 && n <= 25) pasosAgente = n
+    else avisos.push(`ORBE_AGENTE_PASOS="${pasosLeidos}" no es válido (un entero entre 1 y 25); uso ${pasosAgente}.`)
+  }
+
+  let busquedaMax = BUSQUEDAS_MAX_POR_DEFECTO
+  const busquedaLeida = leer('ORBE_BUSQUEDA_MAX')
+  if (busquedaLeida) {
+    const n = Number(busquedaLeida)
+    if (Number.isInteger(n) && n >= 1 && n <= 10) busquedaMax = n
+    else avisos.push(`ORBE_BUSQUEDA_MAX="${busquedaLeida}" no es válido (un entero entre 1 y 10); uso ${busquedaMax}.`)
+  }
+
+  const agenteLeido = leer('ORBE_AGENTE')
+  let agenteActivo = true
+  if (agenteLeido) {
+    const b = leerBooleano(agenteLeido)
+    if (b === undefined) avisos.push(`ORBE_AGENTE="${agenteLeido}" no es válido (auto, 1 o 0); lo dejo activo.`)
+    else agenteActivo = b
+  }
+
+  const permitirLocalLeido = leer('ORBE_PERMITIR_LOCAL')
+  let permitirLocal = false
+  if (permitirLocalLeido) {
+    const b = leerBooleano(permitirLocalLeido)
+    if (b === undefined) avisos.push(`ORBE_PERMITIR_LOCAL="${permitirLocalLeido}" no es válido (1 o 0); queda apagado.`)
+    else permitirLocal = b
   }
 
   // ORBE_MEMORIA_CLAUDE: carpetas separadas por «;», o «ninguna» para no importar nada.
@@ -189,6 +243,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     fondosCarpeta: leer('ORBE_FONDOS'),
     memoriaMax,
     memoriaOrigenes,
+    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal },
     avisos
   }
 }

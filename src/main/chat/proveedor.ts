@@ -1,4 +1,5 @@
-import type { MotivoFin } from '../../shared/tipos'
+import type { AccionVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
+import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 
 export interface ManejadoresTurno {
@@ -8,6 +9,10 @@ export interface ManejadoresTurno {
   alReintento?(intento: number, maximo: number): void
   /** Mensaje informativo que no es parte de la respuesta (p. ej. «la sesión se reinició»). */
   alAviso?(texto: string): void
+  /** El agente empieza o termina una acción (llega dos veces con el mismo `accionId`). */
+  alAccion?(accion: AccionVista): void
+  /** El agente pide permiso al usuario para una acción; resuelve `true` si la permite. */
+  confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
 }
 
 export interface ResultadoTurno {
@@ -28,7 +33,11 @@ export interface ProveedorChat {
   reiniciar(): void
   /** Prepara lo necesario para que el primer mensaje salga rápido. */
   precalentar?(): void
+  /** Cuándo se nota un cambio del marcador de potencia; ausente si este proveedor no tiene niveles. */
+  readonly aplicaEsfuerzo?: InfoPotencia['aplica']
+  /** Cambia cuánto «piensa» el modelo (el marcador de potencia de la cabecera). */
+  establecerEsfuerzo?(nivel: Esfuerzo): void
   cerrar(): void
 }
 
-export type Esfuerzo = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+export type Esfuerzo = NivelEsfuerzo

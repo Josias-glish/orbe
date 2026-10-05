@@ -7,6 +7,7 @@ function acciones(): AccionesBandeja {
     mostrarPanel: vi.fn(),
     nuevaConversacion: vi.fn(),
     leerPantalla: vi.fn(),
+    detenerAccion: vi.fn(),
     salir: vi.fn()
   }
 }
@@ -53,10 +54,17 @@ describe('plantillaBandeja', () => {
     expect(alCambiarInicio).toHaveBeenCalledWith(false)
   })
 
+  it('solo ofrece «Detener acción» (arriba del todo) cuando hay una respuesta o tarea en curso', () => {
+    expect(etiquetas(plantillaBandeja(acciones(), estado()))).not.toContain('Detener acción')
+    const conTurno = etiquetas(plantillaBandeja(acciones(), estado({ hayTurno: true })))
+    expect(conTurno.slice(0, 3)).toEqual(['Detener acción', '---', 'Ocultar Orbe'])
+  })
+
   it('cada entrada lanza su acción', () => {
     const a = acciones()
-    const plantilla = plantillaBandeja(a, estado())
+    const plantilla = plantillaBandeja(a, estado({ hayTurno: true }))
     const pulsar = (etiqueta: string): void => (plantilla.find((i) => i.label === etiqueta)!.click as () => void)()
+    pulsar('Detener acción')
     pulsar('Ocultar Orbe')
     pulsar('Abrir el chat')
     pulsar('Nueva conversación')

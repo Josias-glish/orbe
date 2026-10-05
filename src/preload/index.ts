@@ -33,7 +33,10 @@ const api: ApiOrbe = {
   chatInfo: () => ipcRenderer.invoke(CANALES.chatInfo),
   chatEnviar: (peticion) => ipcRenderer.invoke(CANALES.chatEnviar, peticion),
   chatCancelar: (id) => ipcRenderer.send(CANALES.chatCancelar, id),
+  chatConfirmar: (id, confirmacionId, permitir) => ipcRenderer.send(CANALES.chatConfirmar, id, confirmacionId, permitir),
   chatNueva: () => ipcRenderer.invoke(CANALES.chatNueva),
+  potenciaInfo: () => ipcRenderer.invoke(CANALES.potenciaInfo),
+  potenciaFijar: (nivel) => ipcRenderer.invoke(CANALES.potenciaFijar, nivel),
   chatPrecalentar: () => ipcRenderer.send(CANALES.chatPrecalentar),
   alEventoChat: (cb) => suscribir<EventoChat>(CANALES.chatEvento, cb),
 

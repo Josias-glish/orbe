@@ -141,7 +141,7 @@ w.__orbeDiagnostico = () => orbe.diagnostico()
 // El selector de estados solo existe con el servidor de desarrollo (npm run dev); Ctrl+Alt+D lo muestra u oculta.
 if (location.protocol === 'http:') {
   const barra = document.getElementById('depuracion') as HTMLDivElement
-  for (const estado of ['reposo', 'leyendo', 'pensando', 'respondiendo'] as EstadoOrbe[]) {
+  for (const estado of ['reposo', 'leyendo', 'pensando', 'respondiendo', 'escuchando', 'actuando'] as EstadoOrbe[]) {
     const boton = document.createElement('button')
     boton.textContent = estado
     boton.addEventListener('click', () => {

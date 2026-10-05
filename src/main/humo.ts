@@ -933,6 +933,174 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(400)
   }
 
+  /**
+   * Modo agente: líneas de acción, estado «actuando», tarjeta de permiso y Detener, ensayados con el proveedor de
+   * demostración (que simula acciones: no se usa ninguna herramienta de verdad ni se toca nada del equipo).
+   */
+  const pasosAgente = async (): Promise<void> => {
+    const a: Record<string, unknown> = {}
+    informe.agente = a
+    const nuevaConversacion = async (): Promise<void> => {
+      await pulsar('#nueva')
+      await esperar(400)
+    }
+    const estadosAcciones = (): Promise<string[]> => js(`[...document.querySelectorAll('.msg.asistente .accion')].map((e) => e.dataset.estado)`)
+    const tarjetaVisible = (): Promise<boolean> => existe('#confirmacion:not([hidden]) .confirmacion-permitir')
+    const detenerVisible = (selector: string): Promise<boolean> =>
+      js(`(() => { const b = document.querySelector(${JSON.stringify(selector)}); return !!b && !b.hidden && getComputedStyle(b).display !== 'none' })()`)
+
+    // 11a. Una tarea con acciones: búsqueda, tarjeta de permiso (se permite) y más texto
+    await nuevaConversacion()
+    await escribirYEnviar('/acciones')
+    a.hayAccionEnCurso = await esperarSelector('.msg.asistente .accion[data-estado="en_curso"]', 6000)
+    comprobar('aparece la línea de la acción en curso', a.hayAccionEnCurso === true)
+    await esperar(300)
+    a.orbeActuando = await estadoOrbe()
+    comprobar('el orbe pasa a «actuando» mientras la acción corre', a.orbeActuando === 'actuando', a.orbeActuando)
+    a.detenerTarea = await detenerVisible('#detener-accion')
+    comprobar('«Detener la tarea» está a la vista mientras el agente actúa', a.detenerTarea === true)
+    await capturar('11a-accion')
+    a.tarjeta = await esperarSelector('#confirmacion:not([hidden]) .confirmacion-permitir', 6000)
+    comprobar('aparece la tarjeta de permiso del agente', a.tarjeta === true)
+    a.tituloTarjeta = await textoDe('#confirmacion .confirmacion-titulo')
+    comprobar('la tarjeta dice la acción exacta', String(a.tituloTarjeta).includes('Enviar el formulario de contacto'), a.tituloTarjeta)
+    comprobar('la tarjeta no roba el foco al campo de texto', await js<boolean>(`document.activeElement?.closest('#confirmacion') === null`))
+    await capturar('11a-tarjeta')
+    await pulsar('#confirmacion .confirmacion-permitir')
+    comprobar('la tarea termina tras permitirla', await esperarFin(8000))
+    await esperar(1300)
+    a.estados = await estadosAcciones()
+    a.tramos = (await textosDe('.msg.asistente .contenido')).map((t) => t.trim())
+    comprobar('las dos acciones quedan en el chat, hechas', mismos(a.estados, ['ok', 'ok']), a.estados)
+    comprobar(
+      'el texto de antes y de después va en tramos separados',
+      mismos(a.tramos, ['Voy a buscarlo.', 'Listo: formulario enviado.']),
+      a.tramos
+    )
+    comprobar('la tarjeta se cierra', !(await tarjetaVisible()))
+    comprobar('«Detener la tarea» desaparece al terminar', !(await detenerVisible('#detener-accion')))
+    a.orbeFinal = await estadoOrbe()
+    comprobar('el orbe vuelve a reposo', a.orbeFinal === 'reposo', a.orbeFinal)
+    await capturar('11a-final')
+    // El detalle se despliega con sus parámetros y su resultado.
+    await pulsar('.msg.asistente .accion .accion-cabecera')
+    a.detalle = await textoDe('.msg.asistente .accion .accion-detalle')
+    comprobar('el detalle de la acción trae parámetros y resultado', String(a.detalle).includes('Parámetros') && String(a.detalle).includes('3 resultados'), a.detalle)
+
+    // 11b. El usuario no permite la acción: queda como «no permitida» y el agente lo acepta
+    await nuevaConversacion()
+    await escribirYEnviar('/acciones')
+    comprobar('la tarjeta aparece otra vez', await esperarSelector('#confirmacion:not([hidden]) .confirmacion-cancelar', 8000))
+    await pulsar('#confirmacion .confirmacion-cancelar')
+    comprobar('la tarea termina tras cancelar', await esperarFin(8000))
+    await esperar(500)
+    a.estadosCancelada = await estadosAcciones()
+    comprobar('la segunda acción queda como «no permitida»', mismos(a.estadosCancelada, ['ok', 'denegada']), a.estadosCancelada)
+    comprobar('el agente acepta la negativa', String(await textosDe('.msg.asistente .contenido').then((t) => t.at(-1))).includes('No envié'))
+
+    // 11c. Detener con el botón de la tarea
+    await nuevaConversacion()
+    await escribirYEnviar('/colgada')
+    comprobar('la acción colgada está en curso', await esperarSelector('.msg.asistente .accion[data-estado="en_curso"]', 6000))
+    await esperar(400)
+    await capturar('11c-colgada')
+    await pulsar('#detener-accion')
+    comprobar('Detener corta la tarea', await esperarFin(4000))
+    await esperar(500)
+    a.estadosDetenida = await estadosAcciones()
+    comprobar('la acción queda como detenida', mismos(a.estadosDetenida, ['cancelada']), a.estadosDetenida)
+    comprobar('la burbuja avisa de que la tarea se detuvo', (await textoDe('.msg.asistente .nota')).includes('Tarea detenida'))
+    await capturar('11c-detenida')
+
+    // 11d. Esc también detiene al agente (en lugar de plegar el panel)
+    await nuevaConversacion()
+    await escribirYEnviar('/colgada')
+    comprobar('la acción colgada empieza de nuevo', await esperarSelector('.msg.asistente .accion[data-estado="en_curso"]', 6000))
+    await esperar(300)
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    comprobar('Esc detiene la tarea', await esperarFin(4000))
+    comprobar('con Esc el panel sigue abierto', orbe.estaExpandido)
+
+    // 11e. Con el panel plegado, el orbe lleva su propio «Detener»
+    await nuevaConversacion()
+    await escribirYEnviar('/colgada')
+    comprobar('la acción colgada empieza otra vez', await esperarSelector('.msg.asistente .accion[data-estado="en_curso"]', 6000))
+    orbe.establecerExpandido(false)
+    await esperar(600)
+    a.detenerOrbe = await detenerVisible('#detener-orbe')
+    comprobar('el orbe plegado muestra su «Detener»', a.detenerOrbe === true)
+    await capturar('11e-plegado')
+    await pulsar('#detener-orbe')
+    comprobar('el «Detener» del orbe corta la tarea', await esperarFin(4000))
+    await esperar(400)
+    comprobar('el «Detener» del orbe se esconde al terminar', !(await detenerVisible('#detener-orbe')))
+    orbe.establecerExpandido(true)
+    await esperar(600)
+    await nuevaConversacion()
+  }
+
+  /** El marcador de potencia de la cabecera: se abre, se mueve, se guarda y se cierra con Esc. */
+  const pasosPotencia = async (): Promise<void> => {
+    const p: Record<string, unknown> = {}
+    informe.potencia = p
+    const menuAbierto = (): Promise<boolean> => existe('#potencia-menu:not([hidden])')
+    /** Mueve el deslizador como lo haría una persona: arrastra (input) y suelta (change). */
+    const moverA = (posicion: number): Promise<unknown> =>
+      js(`(() => {
+        const r = document.querySelector('#potencia-menu input[type=range]');
+        r.value = ${posicion};
+        r.dispatchEvent(new Event('input', { bubbles: true }));
+        r.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`)
+    const aguja = (): Promise<string> => js(`document.getElementById('potencia-boton').style.getPropertyValue('--aguja')`)
+
+    p.nivelInicial = await js(`document.getElementById('potencia-boton').dataset.nivel`)
+    comprobar('el marcador empieza en «medium»', p.nivelInicial === 'medium', p.nivelInicial)
+    await pulsar('#potencia-boton')
+    comprobar('el marcador abre su menú', await esperarSelector('#potencia-menu:not([hidden])', 3000))
+    p.menuInicial = await textoDe('#potencia-menu')
+    comprobar('el menú dice el nivel y explica cuándo se aplica', /Equilibrado/.test(String(p.menuInicial)) && /próximo mensaje/.test(String(p.menuInicial)), p.menuInicial)
+    comprobar('con el nivel medio no avisa del gasto', await js<boolean>(`document.querySelector('#potencia-menu .potencia-costo').hidden`))
+    await capturar('12a-potencia')
+
+    await moverA(4)
+    await esperar(300)
+    p.nivelMax = await js(`document.getElementById('potencia-boton').dataset.nivel`)
+    p.agujaMax = await aguja()
+    p.guardado = leerAjustes().esfuerzo
+    p.menuMax = await textoDe('#potencia-menu')
+    comprobar('al llevarlo al máximo el botón lo refleja', p.nivelMax === 'max', p.nivelMax)
+    comprobar('la aguja gira hasta el final', p.agujaMax === '70deg', p.agujaMax)
+    comprobar('el nivel se guarda para la próxima vez', p.guardado === 'max', p.guardado)
+    comprobar('el menú explica el nivel y avisa del gasto', /Máximo/.test(String(p.menuMax)) && /más gasto/.test(String(p.menuMax)), p.menuMax)
+    comprobar('el aviso de gasto se ve con potencia alta', !(await js<boolean>(`document.querySelector('#potencia-menu .potencia-costo').hidden`)))
+    await capturar('12b-maximo')
+
+    await moverA(0)
+    await esperar(300)
+    p.nivelBajo = await js(`document.getElementById('potencia-boton').dataset.nivel`)
+    p.agujaBaja = await aguja()
+    comprobar('y al bajarlo vuelve a «low» con la aguja a la izquierda', p.nivelBajo === 'low' && p.agujaBaja === '-70deg', [p.nivelBajo, p.agujaBaja])
+    comprobar('el título del botón dice el nivel', (await js<string>(`document.getElementById('potencia-boton').title`)).includes('Rápido'))
+
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(200)
+    comprobar('Esc cierra el menú sin cerrar el panel', !(await menuAbierto()) && orbe.estaExpandido)
+
+    // Reabrir enseña lo guardado, y abrir el menú de voz cierra el de potencia (comparten sitio).
+    await pulsar('#potencia-boton')
+    comprobar('al reabrir enseña el nivel guardado', (await textoDe('#potencia-menu')).includes('Rápido'))
+    await pulsar('#voz-boton')
+    await esperar(300)
+    comprobar('abrir otro menú cierra el de potencia', !(await menuAbierto()))
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    // Se deja en el punto medio, como empezó.
+    await pulsar('#potencia-boton')
+    await moverA(1)
+    await esperar(300)
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+  }
+
   try {
     await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
     await esperar(1200)
@@ -958,7 +1126,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       informe.burbujas = { usuario: await contar('.msg.usuario'), asistente: await contar('.msg.asistente') }
     } else {
       // 1. Estados del orbe
-      for (const estado of ['reposo', 'leyendo', 'pensando', 'respondiendo']) {
+      for (const estado of ['reposo', 'leyendo', 'pensando', 'respondiendo', 'actuando']) {
         await js(`window.__orbeEstado(${JSON.stringify(estado)})`)
         await esperar(estado === 'leyendo' ? 500 : 900)
         await capturar(`1-${estado}`)
@@ -1015,6 +1183,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosMemoria(extras)
         await pasosCaptura(extras)
         await pasosPanel()
+        await pasosAgente()
+        await pasosPotencia()
         await pasosVoz()
         await pasosBandeja()
         await pasosAjustes()

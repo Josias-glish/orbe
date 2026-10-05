@@ -114,7 +114,10 @@ interface TurnoActivo {
 export class ProveedorCli implements ProveedorChat {
   readonly nombre = 'cli' as const
   readonly modelo: string
+  /** El CLI recibe el esfuerzo al arrancar su proceso: un cambio se nota al empezar la conversación siguiente. */
+  readonly aplicaEsfuerzo = 'proxima_conversacion' as const
 
+  private esfuerzo: Esfuerzo
   private hijo: ChildProcess | null = null
   private readonly lector = new LectorLineas()
   private turno: TurnoActivo | null = null
@@ -131,9 +134,14 @@ export class ProveedorCli implements ProveedorChat {
 
   constructor(private readonly opciones: OpcionesProveedorCli) {
     this.modelo = opciones.modelo
+    this.esfuerzo = opciones.esfuerzo
     this.reintentosMax = opciones.reintentosMax ?? 3
     this.silencioMaxMs = opciones.silencioMaxMs ?? 120_000
     this.esperaInterrupcionMs = opciones.esperaInterrupcionMs ?? 4000
+  }
+
+  establecerEsfuerzo(nivel: Esfuerzo): void {
+    this.esfuerzo = nivel
   }
 
   precalentar(): void {
@@ -227,7 +235,7 @@ export class ProveedorCli implements ProveedorChat {
       ahora: this.opciones.ahora?.(),
       memoria: this.opciones.memoria?.()
     })
-    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.opciones.esfuerzo, prompt), {
+    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.esfuerzo, prompt), {
       cwd: this.opciones.directorioTrabajo,
       env
     })

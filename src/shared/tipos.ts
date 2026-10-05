@@ -1,6 +1,10 @@
 /** Tipos y canales compartidos entre el proceso principal, el preload y la interfaz. */
 
-export type EstadoOrbe = 'reposo' | 'leyendo' | 'pensando' | 'respondiendo' | 'escuchando'
+export type EstadoOrbe = 'reposo' | 'leyendo' | 'pensando' | 'respondiendo' | 'escuchando' | 'actuando'
+
+/** Cuánto «piensa» el modelo antes de contestar: más nivel, respuestas más cuidadas pero más lentas y más caras. */
+export const NIVELES_ESFUERZO = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type NivelEsfuerzo = (typeof NIVELES_ESFUERZO)[number]
 
 export const CANALES = {
   alternar: 'ventana:alternar',
@@ -19,6 +23,9 @@ export const CANALES = {
   chatInfo: 'chat:info',
   chatPrecalentar: 'chat:precalentar',
   chatEvento: 'chat:evento',
+  chatConfirmar: 'chat:confirmar',
+  potenciaInfo: 'potencia:info',
+  potenciaFijar: 'potencia:fijar',
   pantallaLeer: 'pantalla:leer',
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
@@ -84,13 +91,43 @@ export interface ErrorOrbe {
   detalle?: string
 }
 
-export type MotivoFin = 'completo' | 'cancelado' | 'limite_tokens'
+export type MotivoFin = 'completo' | 'cancelado' | 'limite_tokens' | 'limite_pasos'
+
+/** En qué punto está una acción del agente: `denegada` es la que la política prohibió o el usuario no permitió. */
+export type EstadoAccion = 'en_curso' | 'ok' | 'error' | 'denegada' | 'cancelada'
+
+/** Una acción del agente tal como se enseña en el chat: qué herramienta, con qué parámetros y qué resultó. */
+export interface AccionVista {
+  /** Identifica la acción: llega dos veces (al empezar y al terminar) con el mismo id. */
+  accionId: string
+  herramienta: string
+  /** Línea compacta, p. ej. «Buscando: tiempo en Lima». */
+  titulo: string
+  /** Parámetros ya recortados, para el detalle desplegable. */
+  parametros: string
+  estado: EstadoAccion
+  /** Resultado recortado (o el motivo del error o de la negativa). */
+  resultado?: string
+}
+
+/** Lo que el agente quiere hacer y necesita que el usuario permita: la acción exacta, con Permitir y Cancelar. */
+export interface ConfirmacionVista {
+  confirmacionId: string
+  titulo: string
+  detalle: string
+  /** Se avisa con más énfasis (p. ej. un archivo ejecutable o una página con instrucciones sospechosas). */
+  peligrosa?: boolean
+  etiquetaPermitir?: string
+  etiquetaCancelar?: string
+}
 
 export type EventoChat =
   | { tipo: 'inicio'; id: string }
   | { tipo: 'texto'; id: string; delta: string }
   | { tipo: 'reintento'; id: string; intento: number; maximo: number }
   | { tipo: 'aviso'; id: string; texto: string }
+  | { tipo: 'accion'; id: string; accion: AccionVista }
+  | { tipo: 'confirmar'; id: string; confirmacion: ConfirmacionVista }
   | { tipo: 'fin'; id: string; motivo: MotivoFin }
   | { tipo: 'error'; id: string; error: ErrorOrbe }
 
@@ -106,6 +143,18 @@ export interface InfoChat {
   modelo: string
   /** Nombre legible para la cabecera, p. ej. «Sonnet 5.5». */
   modeloLegible: string
+  /** El modo agente (buscar, abrir, navegar) está activo en esta sesión. */
+  agente: boolean
+}
+
+/** El marcador de potencia de la cabecera: el nivel actual y cuándo se nota un cambio con el proveedor en uso. */
+export interface InfoPotencia {
+  nivel: NivelEsfuerzo
+  /**
+   * `ahora`: desde el próximo mensaje. `proxima_conversacion`: el CLI de Claude lo fija al arrancar. `segun_servicio`:
+   * un servicio compatible con OpenAI solo lo aplica si su modelo tiene niveles de razonamiento.
+   */
+  aplica: 'ahora' | 'proxima_conversacion' | 'segun_servicio'
 }
 
 /** Lo que Orbe sabe de la pantalla; se rellena en las fases 3 y 4 y nunca sin que el usuario lo pida. */
@@ -297,7 +346,12 @@ export interface ApiOrbe {
   chatInfo(): Promise<InfoChat>
   chatEnviar(peticion: PeticionChat): Promise<ResultadoEnvio>
   chatCancelar(id: string): void
+  /** Responde a una confirmación del agente (Permitir o Cancelar). */
+  chatConfirmar(id: string, confirmacionId: string, permitir: boolean): void
   chatNueva(): Promise<void>
+  /** El marcador de potencia: el nivel actual del modelo y cuándo se aplica un cambio. */
+  potenciaInfo(): Promise<InfoPotencia>
+  potenciaFijar(nivel: NivelEsfuerzo): Promise<InfoPotencia>
   chatPrecalentar(): void
   alEventoChat(cb: (evento: EventoChat) => void): () => void
 

@@ -35,6 +35,8 @@ interface TurnoRegistrado {
   respuesta: string
   /** El mensaje llevó la conversación anterior: se da por usada cuando el turno termina. */
   conHistorial: boolean
+  /** Hubo una acción del agente desde el último texto: el próximo tramo empieza en párrafo nuevo. */
+  separar?: boolean
 }
 
 /** Conecta el chat con la interfaz. Devuelve el servicio para poder cerrarlo al salir. */
@@ -64,7 +66,12 @@ export function registrarChat(
     }
     if (turnoRegistrado && evento.id === turnoRegistrado.id) {
       if (evento.tipo === 'texto') {
+        // Si hubo acciones entre dos tramos de texto, en la memoria se separan como párrafos.
+        if (turnoRegistrado.separar && turnoRegistrado.respuesta) turnoRegistrado.respuesta += '\n\n'
+        turnoRegistrado.separar = false
         turnoRegistrado.respuesta += evento.delta
+      } else if (evento.tipo === 'accion') {
+        turnoRegistrado.separar = true
       } else if (evento.tipo === 'fin') {
         memoria?.turnoCompletado(turnoRegistrado.usuario, turnoRegistrado.respuesta)
         if (turnoRegistrado.conHistorial) memoria?.confirmarHistorialUsado()
@@ -110,6 +117,11 @@ export function registrarChat(
 
   ipcMain.on(CANALES.chatCancelar, (e, id: unknown) => {
     if (propia(e) && typeof id === 'string') servicio.cancelar(id)
+  })
+  ipcMain.on(CANALES.chatConfirmar, (e, id: unknown, confirmacionId: unknown, permitir: unknown) => {
+    if (!propia(e)) return
+    if (typeof id !== 'string' || typeof confirmacionId !== 'string' || typeof permitir !== 'boolean') return
+    servicio.responderConfirmacion(id, confirmacionId, permitir)
   })
   ipcMain.handle(CANALES.chatNueva, (e) => {
     if (!propia(e)) return

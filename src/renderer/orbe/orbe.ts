@@ -1,7 +1,7 @@
 import type { EstadoOrbe } from '../../shared/tipos'
 import fuenteFragmento from './shaders/orbe.frag.glsl?raw'
 import fuenteVertice from './shaders/orbe.vert.glsl?raw'
-import { DURACION_BARRIDO, PARAMETROS, fpsMaximos, suavizar, type ParametrosOrbe } from './estados'
+import { DURACION_BARRIDO, PARAMETROS, VELOCIDAD_GIRO, fpsMaximos, suavizar, type ParametrosOrbe } from './estados'
 
 const NOMBRES_UNIFORMS = [
   'uResolucion',
@@ -11,7 +11,9 @@ const NOMBRES_UNIFORMS = [
   'uTurbulencia',
   'uBarrido',
   'uEnergia',
-  'uBrillo'
+  'uBrillo',
+  'uAccion',
+  'uGiro'
 ] as const
 
 type NombreUniform = (typeof NOMBRES_UNIFORMS)[number]
@@ -25,6 +27,8 @@ export class Orbe {
   private actual: ParametrosOrbe = { ...PARAMETROS.reposo }
   private fase = Math.random() * 100
   private faseOnda = 0
+  /** Ángulo acumulado de los arcos de «actuando»; avanza a la velocidad que marca la intensidad de la acción. */
+  private giro = 0
   /** Energía añadida por los pulsos del streaming; decae sola. */
   private pulsoEnergia = 0
   private progresoBarrido = -1
@@ -171,6 +175,8 @@ export class Orbe {
     a.turbulencia = suavizar(a.turbulencia, objetivo.turbulencia, dt, tau)
     a.brillo = suavizar(a.brillo, objetivo.brillo, dt, tau)
     a.energia = suavizar(a.energia, objetivo.energia, dt, tau)
+    a.accion = suavizar(a.accion, objetivo.accion, dt, tau)
+    this.giro = (this.giro + dt * VELOCIDAD_GIRO * a.accion) % (Math.PI * 2)
 
     this.pulsoEnergia = suavizar(this.pulsoEnergia, 0, dt, 0.28)
     this.fase += dt * a.velocidad
@@ -198,6 +204,8 @@ export class Orbe {
     gl.uniform1f(u.uBarrido, this.progresoBarrido > 1 ? -1 : this.progresoBarrido)
     gl.uniform1f(u.uEnergia, Math.min(1, a.energia + this.pulsoEnergia))
     gl.uniform1f(u.uBrillo, a.brillo)
+    gl.uniform1f(u.uAccion, a.accion)
+    gl.uniform1f(u.uGiro, this.giro)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 }

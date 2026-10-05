@@ -168,6 +168,50 @@ describe('resolverConfig: memoria', () => {
   })
 })
 
+describe('resolverConfig: modo agente', () => {
+  it('por defecto el agente está activo, con 15 pasos, 5 búsquedas y sin permiso para la red local', () => {
+    expect(resolverConfig({}, {}).agente).toEqual({ activo: true, pasos: 15, busquedaMax: 5, permitirLocal: false })
+  })
+
+  it('ORBE_AGENTE=0 (o no, off, false) lo apaga y auto/1/sí lo deja activo', () => {
+    for (const v of ['0', 'no', 'OFF', 'false']) expect(resolverConfig({ ORBE_AGENTE: v }, {}).agente.activo).toBe(false)
+    for (const v of ['auto', '1', 'sí', 'si', 'on', 'true']) expect(resolverConfig({ ORBE_AGENTE: v }, {}).agente.activo).toBe(true)
+  })
+
+  it('un ORBE_AGENTE que no se entiende deja el agente activo y avisa', () => {
+    const c = resolverConfig({ ORBE_AGENTE: 'quizás' }, {})
+    expect(c.agente.activo).toBe(true)
+    expect(c.avisos.some((a) => a.includes('ORBE_AGENTE'))).toBe(true)
+  })
+
+  it('ORBE_AGENTE_PASOS acepta de 1 a 25 y avisa con lo demás', () => {
+    expect(resolverConfig({ ORBE_AGENTE_PASOS: '8' }, {}).agente.pasos).toBe(8)
+    expect(resolverConfig({ ORBE_AGENTE_PASOS: '25' }, {}).agente.pasos).toBe(25)
+    for (const v of ['0', '26', '3.5', 'muchos']) {
+      const c = resolverConfig({ ORBE_AGENTE_PASOS: v }, {})
+      expect(c.agente.pasos).toBe(15)
+      expect(c.avisos.some((a) => a.includes('ORBE_AGENTE_PASOS'))).toBe(true)
+    }
+  })
+
+  it('ORBE_BUSQUEDA_MAX acepta de 1 a 10 y avisa con lo demás', () => {
+    expect(resolverConfig({ ORBE_BUSQUEDA_MAX: '3' }, {}).agente.busquedaMax).toBe(3)
+    for (const v of ['0', '11', 'x']) {
+      const c = resolverConfig({ ORBE_BUSQUEDA_MAX: v }, {})
+      expect(c.agente.busquedaMax).toBe(5)
+      expect(c.avisos.some((a) => a.includes('ORBE_BUSQUEDA_MAX'))).toBe(true)
+    }
+  })
+
+  it('ORBE_PERMITIR_LOCAL solo se enciende si se pide con claridad', () => {
+    expect(resolverConfig({ ORBE_PERMITIR_LOCAL: '1' }, {}).agente.permitirLocal).toBe(true)
+    expect(resolverConfig({ ORBE_PERMITIR_LOCAL: 'no' }, {}).agente.permitirLocal).toBe(false)
+    const c = resolverConfig({ ORBE_PERMITIR_LOCAL: 'tal vez' }, {})
+    expect(c.agente.permitirLocal).toBe(false)
+    expect(c.avisos.some((a) => a.includes('ORBE_PERMITIR_LOCAL'))).toBe(true)
+  })
+})
+
 describe('nombreLegibleModelo', () => {
   it.each([
     ['claude-sonnet-5-5', 'Sonnet 5.5'],
