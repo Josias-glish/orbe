@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Versión 1.0: chat con Claude (o con otras IA), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema e instalador de Windows.
+> Versión 1.1: chat con Claude (o con otras IA), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
 ## Instalar (usuarios)
 Descarga `Orbe-Setup-<versión>.exe` de la sección **Releases** del repositorio y ejecútalo.
@@ -135,6 +135,17 @@ La imagen entera vive solo en memoria del proceso principal (caduca a los 5 minu
 ### Errores
 Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando tiene sentido y los detalles técnicos plegados:
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.
+
+## Modo agente (buscar y abrir)
+Además de conversar, Orbe puede **actuar**: buscar en internet, abrir una página en tu navegador y abrir una aplicación por su nombre. Funciona con Claude por el **CLI** (tu sesión, sin clave) o por la **API**, y con servicios compatibles con OpenAI que admitan llamadas a funciones (si el tuyo no las admite, Orbe lo avisa y sigue solo conversando). Se apaga con `ORBE_AGENTE=0`.
+
+- **Qué hace hoy:** `buscar_web` (con el CLI y la API de Claude trae su propia búsqueda; con otros servicios hace falta un buscador, Tavily o SearXNG, ver `.env.example`), `abrir_url` y `abrir_aplicacion`. Cada acción sale como una línea en el chat con sus parámetros y su resultado, el orbe pasa al estado «actuando» y hay un botón **Detener** siempre a mano (en el panel, sobre el orbe plegado, en la bandeja y con Esc). Una tarea tiene un máximo de 15 pasos.
+- **Tres niveles:** lo *libre* (buscar, abrir una página o una aplicación de la lista); lo que *pide permiso* en una tarjeta con la acción exacta (lo irreversible, como enviar un formulario); y lo *prohibido*, que no se hace ni con permiso: contraseñas, datos de pago, compras, la configuración de Windows, consolas y scripts. Ante lo prohibido, Orbe se detiene y te pide que lo hagas tú.
+- **Lo que viene de fuera es dato, nunca una orden:** resultados de búsqueda y páginas van marcados con una etiqueta única por tarea, y el modelo tiene instrucciones de no obedecer lo que digan y de avisarte.
+- **Abrir páginas:** solo `http` y `https`, sin usuario ni contraseña en la dirección y sin llegar a este equipo ni a tu red local (salvo `ORBE_PERMITIR_LOCAL=1`). Solo las abre: el agente no ve la página.
+- **Abrir aplicaciones:** por el nombre del menú Inicio (se entienden «calculadora» y «calculator»). El agente solo da un nombre; la ruta con que se abre sale de tu menú Inicio, sin argumentos. Con `%APPDATA%\orbe\aplicaciones.json` pones tus propios nombres o escondes alguna: `{ "alias": { "navegador": "Google Chrome" }, "excluir": ["Nombre"] }`.
+- **Con el CLI de Claude** las herramientas viajan por un pequeño servidor local de Orbe (solo accesible desde tu equipo y con un secreto aleatorio); el CLI no puede usar nada más.
+- Está pendiente el navegador controlado (leer páginas, hacer clic y escribir), con sus confirmaciones.
 
 ## Crear el instalador
 ```bash
