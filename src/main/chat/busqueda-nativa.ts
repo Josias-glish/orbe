@@ -115,3 +115,24 @@ export function quitarBloquesIncompletos<T extends { type: string }>(contenido: 
 export function esBusquedaNoDisponible(e: unknown): boolean {
   return e instanceof Anthropic.BadRequestError && /web[_ ]?search/i.test(e.message)
 }
+
+/**
+ * Cuenta, para la línea del chat, el resultado de la búsqueda web que trae el CLI de Claude: su texto lleva una línea
+ * «Links: [{"title":…,"url":…},…]». Si el formato cambia, se dice solo que terminó.
+ */
+export function describirResultadoBusquedaCli(texto: string): string {
+  const linea = /^Links:\s*(\[.*\])\s*$/m.exec(texto)
+  if (linea) {
+    try {
+      const lista = JSON.parse(linea[1]) as unknown
+      if (Array.isArray(lista)) {
+        const titulos = lista.flatMap((r) => (esObjeto(r) && typeof r['title'] === 'string' ? [r['title']] : []))
+        const cuantos = lista.length === 1 ? '1 resultado' : `${lista.length} resultados`
+        return recortar(titulos.length > 0 ? `${cuantos}: ${titulos.slice(0, 3).join(' · ')}` : cuantos, MAX_VISTA)
+      }
+    } catch {
+      // Se cae al texto genérico.
+    }
+  }
+  return 'Búsqueda terminada'
+}

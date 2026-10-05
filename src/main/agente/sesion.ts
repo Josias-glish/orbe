@@ -16,18 +16,23 @@ export interface OpcionesAgente {
    * `api`. `maxUsos` es el máximo de búsquedas por petición.
    */
   busquedaNativa?: { maxUsos: number }
+  /**
+   * La búsqueda web que trae el propio CLI de Claude (la ejecuta con tu sesión, sin clave): solo existe con el proveedor
+   * `cli`. Orbe no puede limitar cuántas hace; solo encenderla o apagarla.
+   */
+  busquedaCli?: boolean
 }
 
 export const PASOS_POR_DEFECTO = 15
 
 /** El agente solo se ofrece si hay algo que ofrecer: sin herramientas el chat sigue exactamente como antes. */
 export function agenteActivo(agente: OpcionesAgente | undefined): agente is OpcionesAgente {
-  return agente !== undefined && (!agente.registro.vacio || agente.busquedaNativa !== undefined)
+  return agente !== undefined && (!agente.registro.vacio || agente.busquedaNativa !== undefined || agente.busquedaCli === true)
 }
 
-/** ¿Puede buscar en internet, con la búsqueda de la API de Claude o con la herramienta `buscar_web`? */
+/** ¿Puede buscar en internet, con la búsqueda de la API de Claude, la del CLI o la herramienta `buscar_web`? */
 export function hayBusquedaWeb(agente: OpcionesAgente): boolean {
-  return agente.busquedaNativa !== undefined || agente.registro.buscar(NOMBRE_BUSCAR_WEB) !== undefined
+  return agente.busquedaNativa !== undefined || agente.busquedaCli === true || agente.registro.buscar(NOMBRE_BUSCAR_WEB) !== undefined
 }
 
 /** Cómo se llama la herramienta propia de búsqueda (con la API de Claude la búsqueda es la nativa, `web_search`). */

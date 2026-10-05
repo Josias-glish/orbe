@@ -25,10 +25,13 @@ const LIMITES_SOLO_CHAT = `Límites
 - Solo conversas y analizas lo que se te muestra. No puedes controlar el ratón ni el teclado, abrir programas, navegar ni ejecutar nada.`
 
 /** Instrucciones del modo agente: sustituyen a «Límites» cuando Orbe te da herramientas para actuar. */
-function reglasAgente(pasos: number, busquedaWeb: boolean): string {
+function reglasAgente(pasos: number, busquedaWeb: boolean, fuentesEnApp: boolean): string {
+  const citar = fuentesEnApp
+    ? 'di de qué fuentes lo sacaste: la aplicación enseña los enlaces bajo tu respuesta, así que no hace falta que pegues direcciones largas.'
+    : 'cierra con las fuentes que usaste, como enlaces en Markdown.'
   const busqueda = busquedaWeb
     ? `
-- Puedes buscar en internet. Hazlo cuando la respuesta dependa de información reciente o que no conoces (noticias, precios, versiones, resultados, horarios), no para lo que ya sabes. Cuenta con tus palabras lo que encontraste y di de qué fuentes lo sacaste: la aplicación enseña los enlaces bajo tu respuesta, así que no hace falta que pegues direcciones largas.`
+- Puedes buscar en internet. Hazlo cuando la respuesta dependa de información reciente o que no conoces (noticias, precios, versiones, resultados, horarios), no para lo que ya sabes. Cuenta con tus palabras lo que encontraste y ${citar}`
     : ''
   return `Acciones
 - Además de conversar, tienes herramientas para actuar: solo las de tu lista de herramientas. No prometas acciones para las que no tengas una. Úsalas cuando el usuario te pida algo que las necesite, y antes de la primera acción cuéntale en una frase corta qué vas a hacer.${busqueda}
@@ -50,8 +53,8 @@ Permisos
 export const PROMPT_SISTEMA = `${PROMPT_BASE}\n\n${LIMITES_SOLO_CHAT}`
 
 /** Las instrucciones fijas de una conversación en modo agente (el mismo comienzo, con acciones en lugar de límites). */
-export function promptSistemaAgente(pasos: number, busquedaWeb = false): string {
-  return `${PROMPT_BASE}\n\n${reglasAgente(pasos, busquedaWeb)}`
+export function promptSistemaAgente(pasos: number, busquedaWeb = false, fuentesEnApp = true): string {
+  return `${PROMPT_BASE}\n\n${reglasAgente(pasos, busquedaWeb, fuentesEnApp)}`
 }
 
 /** «domingo 4 de octubre de 2026». */
@@ -69,14 +72,16 @@ export interface OpcionesPrompt {
   pasosAgente?: number
   /** El agente puede buscar en internet: las instrucciones explican cuándo y cómo contar lo encontrado. */
   busquedaWeb?: boolean
+  /** La aplicación enseña los enlaces de las fuentes bajo la respuesta (por defecto sí); si no, el modelo los cita él. */
+  fuentesEnApp?: boolean
 }
 
 /**
  * El prompt de una conversación: las instrucciones fijas, la fecha de hoy y la memoria del usuario.
  * Se calcula al empezar la conversación y no cambia hasta la siguiente: así la caché del prompt se mantiene.
  */
-export function construirPromptSistema({ ahora = new Date(), memoria, pasosAgente, busquedaWeb }: OpcionesPrompt = {}): string {
-  const base = pasosAgente === undefined ? PROMPT_SISTEMA : promptSistemaAgente(pasosAgente, busquedaWeb)
+export function construirPromptSistema({ ahora = new Date(), memoria, pasosAgente, busquedaWeb, fuentesEnApp }: OpcionesPrompt = {}): string {
+  const base = pasosAgente === undefined ? PROMPT_SISTEMA : promptSistemaAgente(pasosAgente, busquedaWeb, fuentesEnApp)
   const partes = [base, `Fecha\n- Hoy es ${describirFecha(ahora)}.`]
   if (memoria?.trim()) partes.push(memoria.trim())
   return partes.join('\n\n')

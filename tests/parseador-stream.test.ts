@@ -132,3 +132,55 @@ describe('interpretarLinea', () => {
     ])
   })
 })
+
+describe('interpretarLinea: herramientas', () => {
+  const asistente = (content: unknown[], extra: Record<string, unknown> = {}) => ({
+    type: 'assistant',
+    message: { model: 'claude-sonnet-5-5', content },
+    ...extra
+  })
+
+  it('un mensaje del asistente que pide una herramienta da el evento con sus parámetros completos', () => {
+    const ev = asistente([{ type: 'tool_use', id: 'toolu_1', name: 'mcp__orbe__abrir_url', input: { url: 'https://example.com' } }])
+    expect(interpretarLinea(linea(ev))).toEqual([{ k: 'herramienta_pedida', id: 'toolu_1', nombre: 'mcp__orbe__abrir_url', entrada: { url: 'https://example.com' } }])
+  })
+
+  it('con texto y herramienta a la vez da los dos, y varias herramientas dan varios eventos', () => {
+    const ev = asistente([
+      { type: 'text', text: 'Voy a buscarlo.' },
+      { type: 'tool_use', id: 'a', name: 'WebSearch', input: { query: 'x' } },
+      { type: 'tool_use', id: 'b', name: 'WebSearch', input: { query: 'y' } }
+    ])
+    expect(interpretarLinea(linea(ev)).map((e) => e.k)).toEqual(['mensaje_completo', 'herramienta_pedida', 'herramienta_pedida'])
+  })
+
+  it('una herramienta sin parámetros válidos se pide con un objeto vacío, y las malformadas se ignoran', () => {
+    const ev = asistente([
+      { type: 'tool_use', id: 'a', name: 'WebSearch', input: 'raro' },
+      { type: 'tool_use', name: 'sin_id' },
+      { type: 'tool_use', id: 'c' }
+    ])
+    expect(interpretarLinea(linea(ev))).toEqual([{ k: 'herramienta_pedida', id: 'a', nombre: 'WebSearch', entrada: {} }])
+  })
+
+  it('las herramientas de un subagente no cuentan', () => {
+    const ev = asistente([{ type: 'tool_use', id: 'a', name: 'WebSearch', input: {} }], { parent_tool_use_id: 'toolu_padre' })
+    expect(interpretarLinea(linea(ev))).toEqual([])
+  })
+
+  it('el resultado de una herramienta (texto suelto o en bloques) llega como evento, con su marca de error', () => {
+    const suelto = { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'Links: []' }] } }
+    expect(interpretarLinea(linea(suelto))).toEqual([{ k: 'herramienta_resultado', id: 'a', texto: 'Links: []', error: false }])
+    const bloques = {
+      type: 'user',
+      message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'b', is_error: true, content: [{ type: 'text', text: 'no ' }, { type: 'text', text: 'pudo' }] }] }
+    }
+    expect(interpretarLinea(linea(bloques))).toEqual([{ k: 'herramienta_resultado', id: 'b', texto: 'no pudo', error: true }])
+  })
+
+  it('un mensaje de usuario que no es un resultado de herramienta, o de un subagente, se ignora', () => {
+    expect(interpretarLinea(linea({ type: 'user', message: { role: 'user', content: 'hola' } }))).toEqual([])
+    expect(interpretarLinea(linea({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: 'hola' }] } }))).toEqual([])
+    expect(interpretarLinea(linea({ type: 'user', parent_tool_use_id: 'x', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'x' }] } }))).toEqual([])
+  })
+})

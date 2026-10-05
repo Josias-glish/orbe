@@ -12,6 +12,10 @@ export type EventoCli =
   | { k: 'reintento'; intento: number; maximo: number; estadoHttp: number | null; error: string }
   | { k: 'limite'; estado: string; reinicioSeg: number | null; tipo: string | null }
   | { k: 'error_mensaje'; codigo: string; texto: string }
+  /** Claude pide usar una herramienta (con sus parámetros ya completos). */
+  | { k: 'herramienta_pedida'; id: string; nombre: string; entrada: Record<string, unknown> }
+  /** El resultado de una herramienta, que el CLI devuelve a Claude. */
+  | { k: 'herramienta_resultado'; id: string; texto: string; error: boolean }
   | {
       k: 'resultado'
       error: boolean
@@ -65,6 +69,8 @@ export function interpretarLinea(linea: string): EventoCli[] {
       return interpretarFlujo(ev)
     case 'assistant':
       return interpretarAsistente(ev)
+    case 'user':
+      return interpretarUsuario(ev)
     case 'rate_limit_event':
       return interpretarLimite(ev)
     case 'result':
@@ -134,7 +140,32 @@ function interpretarAsistente(ev: Json): EventoCli[] {
   // Los fallos (sin sesión, límite…) llegan como un mensaje «sintético» del asistente con un código de error.
   if (codigoError) return [{ k: 'error_mensaje', codigo: codigoError, texto }]
   if (mensaje.model === '<synthetic>') return []
-  return texto ? [{ k: 'mensaje_completo', texto }] : []
+
+  const eventos: EventoCli[] = []
+  if (texto) eventos.push({ k: 'mensaje_completo', texto })
+  // Una herramienta pedida (con los parámetros completos, que en el flujo de deltas llegan a trozos). Los subagentes
+  // (parent_tool_use_id) no se cuentan: Orbe no los usa.
+  if (ev.parent_tool_use_id == null) {
+    for (const b of bloques) {
+      if (esObjeto(b) && b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
+        eventos.push({ k: 'herramienta_pedida', id: b.id, nombre: b.name, entrada: esObjeto(b.input) ? b.input : {} })
+      }
+    }
+  }
+  return eventos
+}
+
+/** Los resultados de herramientas llegan como un mensaje «de usuario» que el CLI le manda a Claude. */
+function interpretarUsuario(ev: Json): EventoCli[] {
+  const mensaje = ev.message
+  if (!esObjeto(mensaje) || !Array.isArray(mensaje.content) || ev.parent_tool_use_id != null) return []
+  const eventos: EventoCli[] = []
+  for (const b of mensaje.content) {
+    if (!esObjeto(b) || b.type !== 'tool_result' || typeof b.tool_use_id !== 'string') continue
+    const texto = typeof b.content === 'string' ? b.content : Array.isArray(b.content) ? b.content.map((c) => (esObjeto(c) ? comoTexto(c.text) : '')).join('') : ''
+    eventos.push({ k: 'herramienta_resultado', id: b.tool_use_id, texto, error: b.is_error === true })
+  }
+  return eventos
 }
 
 function interpretarLimite(ev: Json): EventoCli[] {

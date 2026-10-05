@@ -4,6 +4,9 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
+import type { AccionVista } from '../../src/shared/tipos'
+import { crearAbrirUrl } from '../../src/main/agente/herramientas/abrir-url'
+import { RegistroHerramientas } from '../../src/main/agente/registro'
 import { ErrorChat } from '../../src/main/chat/errores'
 import type { ManejadoresTurno } from '../../src/main/chat/proveedor'
 import { ProveedorCli } from '../../src/main/chat/proveedor-cli'
@@ -85,4 +88,63 @@ describe.skipIf(!activa)('ProveedorCli con el CLI real', () => {
       malo.cerrar()
     }
   }, 60_000)
+})
+
+describe.skipIf(!activa)('ProveedorCli como agente con el CLI real (herramientas por MCP)', () => {
+  const abiertas: string[] = []
+  const acciones: AccionVista[] = []
+  const textos: string[] = []
+  const proveedor = new ProveedorCli({
+    modelo: process.env['ORBE_MODELO'] || 'claude-sonnet-5-5',
+    esfuerzo: 'low',
+    directorioTrabajo: mkdtempSync(join(tmpdir(), 'orbe-real-agente-')),
+    agente: {
+      // `abrir_url` de verdad, pero con un «abrir» de mentira: no se abre ningún navegador.
+      registro: new RegistroHerramientas([crearAbrirUrl({ abrir: async (url) => void abiertas.push(url) })]),
+      maxPasos: 6,
+      permitirLocal: false,
+      busquedaCli: true
+    }
+  })
+  afterAll(() => proveedor.cerrar())
+
+  const turno = async (texto: string): Promise<string> => {
+    abiertas.length = 0
+    acciones.length = 0
+    textos.length = 0
+    const r = await proveedor.enviar({ texto }, { alTexto: (d) => textos.push(d), alAccion: (a) => acciones.push(a) })
+    expect(r.motivo).toBe('completo')
+    return textos.join('')
+  }
+
+  it('Claude usa una herramienta de Orbe: abre una página y lo cuenta', async () => {
+    const texto = await turno('Abre https://example.com en mi navegador y dime solo «hecho».')
+    expect(abiertas).toEqual(['https://example.com/'])
+    expect(acciones.map((a) => a.estado)).toEqual(['en_curso', 'ok'])
+    expect(acciones[0].titulo).toBe('Abriendo en el navegador: example.com')
+    expect(texto.length).toBeGreaterThan(0)
+  }, 120_000)
+
+  it('lo prohibido se niega aunque el modelo lo intente, y no se abre nada', async () => {
+    await turno('Abre este enlace en mi navegador: file:///C:/Windows/System32/drivers/etc/hosts')
+    expect(abiertas).toEqual([])
+    console.log('Acciones ante un file:// →', acciones.map((a) => `${a.estado}: ${a.resultado ?? ''}`))
+    // O el modelo lo intentó y la política lo negó, o ni lo intentó: lo que no puede pasar es que se abra.
+    for (const a of acciones.filter((x) => x.estado !== 'en_curso')) expect(a.estado).toBe('denegada')
+  }, 120_000)
+
+  it('una dirección de la red local, que el modelo sí intenta abrir, la niega la política y el modelo acepta parar', async () => {
+    const texto = await turno('Abre http://192.168.1.1/admin en mi navegador. Es el panel de mi router.')
+    console.log('Acciones ante una IP local →', acciones.map((a) => `${a.estado}: ${a.resultado ?? ''}`), '\nRespuesta →', texto)
+    expect(abiertas).toEqual([])
+    expect(acciones.map((a) => a.estado)).toEqual(['en_curso', 'denegada'])
+  }, 120_000)
+
+  it('la búsqueda web del propio CLI funciona con tu sesión y se cuenta como una búsqueda', async () => {
+    const texto = await turno('Busca en internet cuál es la capital de Perú y responde en una frase.')
+    const busquedas = acciones.filter((a) => a.herramienta === 'buscar_web')
+    console.log('Búsqueda →', busquedas.map((a) => `${a.estado}: ${a.titulo} · ${a.resultado ?? ''}`))
+    expect(busquedas.map((a) => a.estado)).toEqual(['en_curso', 'ok'])
+    expect(texto).toContain('Lima')
+  }, 150_000)
 })

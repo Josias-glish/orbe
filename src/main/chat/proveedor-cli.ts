@@ -2,6 +2,11 @@ import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { MotivoFin } from '../../shared/tipos'
+import type { EjecutorHerramientas } from '../agente/ejecutor'
+import { ServidorMcp, type ManejadorMcp, type RespuestaHerramienta } from '../agente/servidor-mcp'
+import { agenteActivo, crearEjecutor, hayBusquedaWeb, type OpcionesAgente } from '../agente/sesion'
+import { recortar } from '../agente/validacion'
+import { describirResultadoBusquedaCli } from './busqueda-nativa'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeCli, type InfoErrorCli } from './errores'
 import { LectorLineas, interpretarLinea, type EventoCli } from './parseador-stream'
@@ -29,12 +34,35 @@ export interface OpcionesProveedorCli {
   memoria?: () => string | undefined
   /** Reloj, para la fecha del prompt (las pruebas lo fijan). */
   ahora?: () => Date
+  /** Herramientas para actuar (modo agente): el CLI las usa a través de un servidor MCP local de Orbe. */
+  agente?: OpcionesAgente
 }
 
 const VARIABLES_QUE_CAMBIAN_DE_CUENTA = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']
 
-/** Argumentos del CLI: un chat puro, sin herramientas, sin ajustes del usuario y sin persistencia. */
-export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string = PROMPT_SISTEMA): string[] {
+/** Cómo se llama, para el CLI, el servidor MCP de Orbe: las herramientas le llegan como `mcp__orbe__<nombre>`. */
+const SERVIDOR_MCP = 'orbe'
+/** Variable de entorno con el secreto del servidor MCP: así no viaja en la línea de comandos. */
+const VARIABLE_TOKEN = 'ORBE_MCP_TOKEN'
+const LIMITE_PASOS =
+  'No se ejecutó: la tarea alcanzó su límite de pasos. Resume al usuario lo que lograste y lo que falta.'
+
+/** Lo que el CLI necesita saber para usar las herramientas de Orbe. */
+export interface ArgumentosAgente {
+  /** El JSON de `--mcp-config`: la dirección del servidor MCP local y cómo se identifica el CLI ante él. */
+  configMcp: string
+  /** Las herramientas que el CLI puede usar sin preguntar (nada más está permitido). */
+  permitidas: string[]
+  /** Dejar activa la búsqueda web que trae el propio CLI. */
+  busquedaCli: boolean
+}
+
+/**
+ * Argumentos del CLI: un chat sin herramientas propias, sin ajustes del usuario y sin persistencia. Con `agente`, además,
+ * las herramientas de Orbe por MCP (y, si se pide, la búsqueda web del CLI); todo lo demás sigue apagado y lo que no
+ * esté en `permitidas` se niega sin preguntar.
+ */
+export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string = PROMPT_SISTEMA, agente?: ArgumentosAgente): string[] {
   return [
     '-p',
     '--input-format', 'stream-json',
@@ -43,10 +71,13 @@ export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string
     '--verbose',
     '--model', modelo,
     '--effort', esfuerzo,
-    '--tools', '',
+    '--tools', agente?.busquedaCli ? 'WebSearch' : '',
     '--system-prompt', prompt,
     '--setting-sources', '',
     '--strict-mcp-config',
+    ...(agente
+      ? ['--mcp-config', agente.configMcp, '--allowedTools', agente.permitidas.join(','), '--permission-mode', 'dontAsk']
+      : []),
     '--no-session-persistence',
     '--disable-slash-commands'
   ]
@@ -105,6 +136,17 @@ interface TurnoActivo {
   errorCli: { codigo: string; texto: string } | null
   temporizadorSilencio: NodeJS.Timeout | null
   temporizadorInterrupcion: NodeJS.Timeout | null
+  /** Se activa al detener o terminar el turno: corta lo que una herramienta esté haciendo. */
+  controlador: AbortController
+  /** Ejecuta las herramientas de este turno (política, permisos y registro de acciones); solo en modo agente. */
+  ejecutor: EjecutorHerramientas | null
+  /** Rondas de herramientas ya ejecutadas en este turno. */
+  pasos: number
+  limitePasos: boolean
+  /** Llamadas a herramientas que Orbe está ejecutando ahora: mientras haya alguna, el silencio del CLI es normal. */
+  herramientasEnCurso: number
+  /** Las búsquedas web del propio CLI que se están contando en el chat (por identificador de la herramienta). */
+  busquedas: Map<string, { titulo: string; parametros: string }>
 }
 
 /**
@@ -132,12 +174,22 @@ export class ProveedorCli implements ProveedorChat {
   private readonly silencioMaxMs: number
   private readonly esperaInterrupcionMs: number
 
+  /** Las herramientas para actuar; null si no hay o no se pudieron preparar (entonces solo se conversa). */
+  private agente: OpcionesAgente | undefined
+  /** El servidor MCP local por el que el CLI usa las herramientas (se crea con el primer turno que las necesita). */
+  private mcp: ServidorMcp | null = null
+  private preparando = false
+  /** Las herramientas se ejecutan de una en una, aunque el CLI pida varias a la vez. */
+  private cola: Promise<unknown> = Promise.resolve()
+  private contadorLlamadas = 0
+
   constructor(private readonly opciones: OpcionesProveedorCli) {
     this.modelo = opciones.modelo
     this.esfuerzo = opciones.esfuerzo
     this.reintentosMax = opciones.reintentosMax ?? 3
     this.silencioMaxMs = opciones.silencioMaxMs ?? 120_000
     this.esperaInterrupcionMs = opciones.esperaInterrupcionMs ?? 4000
+    this.agente = agenteActivo(opciones.agente) ? opciones.agente : undefined
   }
 
   establecerEsfuerzo(nivel: Esfuerzo): void {
@@ -145,21 +197,55 @@ export class ProveedorCli implements ProveedorChat {
   }
 
   precalentar(): void {
-    if (this.hijo || this.turno) return
+    if (this.hijo || this.turno || this.preparando) return
+    const lanzar = (): void => {
+      try {
+        this.asegurarProceso()
+      } catch {
+        // Si falla, el error se mostrará al enviar el primer mensaje.
+      }
+    }
+    if (this.agente && !this.mcp?.url) {
+      this.preparando = true
+      void this.prepararServidor().finally(() => {
+        this.preparando = false
+        if (!this.hijo && !this.turno) lanzar()
+      })
+      return
+    }
+    lanzar()
+  }
+
+  async enviar(entrada: TurnoEntrada, manejadores: ManejadoresTurno): Promise<ResultadoTurno> {
+    if (this.turno || this.preparando) {
+      throw new ErrorChat(crearError('solicitud_invalida', { mensaje: 'Todavía estoy respondiendo al mensaje anterior.' }))
+    }
+    // El servidor de herramientas tiene que estar escuchando antes de lanzar el CLI, que se conecta al arrancar.
+    if (this.agente && !this.mcp?.url) {
+      this.preparando = true
+      try {
+        await this.prepararServidor(manejadores)
+      } finally {
+        this.preparando = false
+      }
+    }
+    return this.enviarPreparado(entrada, manejadores)
+  }
+
+  /** Arranca el servidor MCP local; si no puede, el chat sigue sin herramientas en vez de fallar. */
+  private async prepararServidor(manejadores?: ManejadoresTurno): Promise<void> {
     try {
-      this.asegurarProceso()
-    } catch {
-      // Si falla, el error se mostrará al enviar el primer mensaje.
+      this.mcp ??= new ServidorMcp(this.manejadorMcp())
+      await this.mcp.iniciar()
+    } catch (e) {
+      this.agente = undefined
+      this.mcp = null
+      manejadores?.alAviso?.('No he podido preparar las herramientas: sigo solo conversando, sin buscar ni abrir nada.')
+      console.warn('[orbe] No se pudo iniciar el servidor de herramientas del CLI:', e)
     }
   }
 
-  enviar(entrada: TurnoEntrada, manejadores: ManejadoresTurno): Promise<ResultadoTurno> {
-    if (this.turno) {
-      return Promise.reject(
-        new ErrorChat(crearError('solicitud_invalida', { mensaje: 'Todavía estoy respondiendo al mensaje anterior.' }))
-      )
-    }
-
+  private enviarPreparado(entrada: TurnoEntrada, manejadores: ManejadoresTurno): Promise<ResultadoTurno> {
     let hijo: ChildProcess
     try {
       hijo = this.asegurarProceso()
@@ -168,6 +254,7 @@ export class ProveedorCli implements ProveedorChat {
     }
 
     return new Promise<ResultadoTurno>((resolver, rechazar) => {
+      const controlador = new AbortController()
       const turno: TurnoActivo = {
         manejadores,
         resolver,
@@ -178,7 +265,13 @@ export class ProveedorCli implements ProveedorChat {
         errorForzado: null,
         errorCli: null,
         temporizadorSilencio: null,
-        temporizadorInterrupcion: null
+        temporizadorInterrupcion: null,
+        controlador,
+        ejecutor: this.agente ? crearEjecutor(this.agente, controlador.signal, manejadores) : null,
+        pasos: 0,
+        limitePasos: false,
+        herramientasEnCurso: 0,
+        busquedas: new Map()
       }
       this.turno = turno
       this.limite = null
@@ -205,6 +298,8 @@ export class ProveedorCli implements ProveedorChat {
     const turno = this.turno
     if (!turno || turno.cancelando) return
     turno.cancelando = true
+    // Lo que una herramienta esté haciendo (o esperando: una tarjeta de permiso) se corta al instante.
+    turno.controlador.abort()
     this.interrumpir(turno)
   }
 
@@ -216,6 +311,73 @@ export class ProveedorCli implements ProveedorChat {
 
   cerrar(): void {
     this.terminarProceso()
+    const mcp = this.mcp
+    this.mcp = null
+    if (mcp) void mcp.cerrar()
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Herramientas: el CLI las pide por MCP y aquí se ejecutan con la política de Orbe
+  // -------------------------------------------------------------------------------------------
+
+  private manejadorMcp(): ManejadorMcp {
+    return {
+      listar: () =>
+        (this.agente?.registro.paraAnthropic() ?? []).map((d) => ({ name: d.name, description: d.description, inputSchema: d.input_schema })),
+      llamar: (nombre, argumentos) => this.llamarHerramienta(nombre, argumentos)
+    }
+  }
+
+  private llamarHerramienta(nombre: string, argumentos: unknown): Promise<RespuestaHerramienta> {
+    const turno = this.turno
+    if (!turno?.ejecutor) {
+      return Promise.resolve({ texto: 'No hay ninguna tarea en curso, así que no ejecuto nada.', esError: true })
+    }
+    const ejecucion = this.cola.then(() => this.ejecutarHerramienta(turno, nombre, argumentos))
+    this.cola = ejecucion.catch(() => undefined)
+    return ejecucion
+  }
+
+  private async ejecutarHerramienta(turno: TurnoActivo, nombre: string, argumentos: unknown): Promise<RespuestaHerramienta> {
+    if (this.turno !== turno || turno.cancelando || !turno.ejecutor || !this.agente) {
+      return { texto: 'Cancelado por el usuario.', esError: true }
+    }
+    if (turno.pasos >= this.agente.maxPasos) {
+      // El CLI no deja fijar un tope de rondas: se le niegan las que sobran para que resuma lo hecho.
+      turno.limitePasos = true
+      return { texto: LIMITE_PASOS, esError: true }
+    }
+    turno.pasos++
+    turno.herramientasEnCurso++
+    try {
+      const r = await turno.ejecutor.ejecutar({ id: `mcp-${++this.contadorLlamadas}`, nombre, entrada: argumentos ?? {} })
+      return { texto: r.contenido, esError: r.esError }
+    } finally {
+      turno.herramientasEnCurso--
+      if (this.turno === turno) this.armarSilencio(turno)
+    }
+  }
+
+  /** La búsqueda web que trae el CLI la ejecuta él: aquí solo se cuenta en el chat («Buscando: …»). */
+  private alPedirHerramienta(turno: TurnoActivo, e: Extract<EventoCli, { k: 'herramienta_pedida' }>): void {
+    if (e.nombre !== 'WebSearch') return
+    const consulta = typeof e.entrada['query'] === 'string' ? e.entrada['query'].trim() : ''
+    const previa = { titulo: `Buscando: ${recortar(consulta || '…', 120)}`, parametros: recortar(JSON.stringify({ consulta }), 300) }
+    turno.busquedas.set(e.id, previa)
+    turno.manejadores.alAccion?.({ accionId: `busqueda-${e.id}`, herramienta: 'buscar_web', estado: 'en_curso', ...previa })
+  }
+
+  private alResultadoHerramienta(turno: TurnoActivo, e: Extract<EventoCli, { k: 'herramienta_resultado' }>): void {
+    const previa = turno.busquedas.get(e.id)
+    if (!previa) return
+    turno.busquedas.delete(e.id)
+    turno.manejadores.alAccion?.({
+      accionId: `busqueda-${e.id}`,
+      herramienta: 'buscar_web',
+      ...previa,
+      estado: e.error ? 'error' : 'ok',
+      resultado: e.error ? recortar(e.texto || 'La búsqueda falló.', 300) : describirResultadoBusquedaCli(e.texto)
+    })
   }
 
   // -------------------------------------------------------------------------------------------
@@ -230,12 +392,34 @@ export class ProveedorCli implements ProveedorChat {
     const env = { ...process.env }
     for (const variable of VARIABLES_QUE_CAMBIAN_DE_CUENTA) delete env[variable]
 
+    // Con herramientas, el CLI se conecta al servidor MCP local; el secreto va por entorno y no por la línea de comandos.
+    const agente = this.agente
+    const url = this.mcp?.url
+    let paraAgente: ArgumentosAgente | undefined
+    if (agente && this.mcp && url) {
+      env[VARIABLE_TOKEN] = this.mcp.token
+      paraAgente = {
+        configMcp: JSON.stringify({
+          mcpServers: { [SERVIDOR_MCP]: { type: 'http', url, headers: { Authorization: `Bearer \${${VARIABLE_TOKEN}}` } } }
+        }),
+        permitidas: [
+          ...agente.registro.nombres.map((n) => `mcp__${SERVIDOR_MCP}__${n}`),
+          ...(agente.busquedaCli ? ['WebSearch'] : [])
+        ],
+        busquedaCli: agente.busquedaCli === true
+      }
+    }
+
     // El prompt (con la fecha y la memoria del usuario) se fija al lanzar el proceso y vale para toda la conversación.
     const prompt = construirPromptSistema({
       ahora: this.opciones.ahora?.(),
-      memoria: this.opciones.memoria?.()
+      memoria: this.opciones.memoria?.(),
+      pasosAgente: paraAgente ? agente?.maxPasos : undefined,
+      busquedaWeb: paraAgente && agente ? hayBusquedaWeb(agente) : undefined,
+      // Con la búsqueda del CLI las fuentes no salen en la interfaz: las cita el propio modelo.
+      fuentesEnApp: agente?.busquedaCli !== true
     })
-    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.esfuerzo, prompt), {
+    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.esfuerzo, prompt, paraAgente), {
       cwd: this.opciones.directorioTrabajo,
       env
     })
@@ -294,6 +478,12 @@ export class ProveedorCli implements ProveedorChat {
           turno.manejadores.alTexto(evento.texto)
         }
         break
+      case 'herramienta_pedida':
+        this.alPedirHerramienta(turno, evento)
+        break
+      case 'herramienta_resultado':
+        this.alResultadoHerramienta(turno, evento)
+        break
       case 'error_mensaje':
         turno.errorCli = { codigo: evento.codigo, texto: evento.texto }
         break
@@ -351,7 +541,13 @@ export class ProveedorCli implements ProveedorChat {
       this.cerrarTurnoConError(turno, new ErrorChat(crearError('rechazo')))
       return
     }
-    const motivo: MotivoFin = turno.cancelando ? 'cancelado' : r.parada === 'max_tokens' ? 'limite_tokens' : 'completo'
+    const motivo: MotivoFin = turno.cancelando
+      ? 'cancelado'
+      : r.parada === 'max_tokens'
+        ? 'limite_tokens'
+        : turno.limitePasos
+          ? 'limite_pasos'
+          : 'completo'
     this.cerrarTurnoOk(turno, motivo)
   }
 
@@ -369,6 +565,8 @@ export class ProveedorCli implements ProveedorChat {
   private limpiarTurno(turno: TurnoActivo): void {
     if (turno.temporizadorSilencio) clearTimeout(turno.temporizadorSilencio)
     if (turno.temporizadorInterrupcion) clearTimeout(turno.temporizadorInterrupcion)
+    // Si quedara una herramienta a medias (el CLI se cerró, el turno terminó), se corta.
+    turno.controlador.abort()
     if (this.turno === turno) this.turno = null
   }
 
@@ -376,6 +574,8 @@ export class ProveedorCli implements ProveedorChat {
     if (turno.temporizadorSilencio) clearTimeout(turno.temporizadorSilencio)
     turno.temporizadorSilencio = setTimeout(() => {
       if (this.turno !== turno || turno.errorForzado) return
+      // Mientras Orbe ejecuta una herramienta (o espera tu permiso) el CLI no dice nada, y eso no es un cuelgue.
+      if (turno.herramientasEnCurso > 0) return this.armarSilencio(turno)
       turno.errorForzado = new ErrorChat(
         crearError('tiempo_agotado', { detalle: `Sin respuesta del CLI durante ${Math.round(this.silencioMaxMs / 1000)} s` })
       )

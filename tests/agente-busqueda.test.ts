@@ -9,6 +9,7 @@ import { Politica } from '../src/main/agente/politica'
 import { RegistroHerramientas } from '../src/main/agente/registro'
 import { resolverConfig } from '../src/main/entorno'
 import type { AccionVista, FuenteVista } from '../src/shared/tipos'
+import { describirResultadoBusquedaCli } from '../src/main/chat/busqueda-nativa'
 
 const config = (env: Record<string, string>) => resolverConfig(env, {})
 
@@ -370,5 +371,19 @@ describe('crearRegistro', () => {
     expect(crearRegistro(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' })).vacio).toBe(true)
     expect(crearRegistro(config({ ORBE_PROVEEDOR: 'api', ANTHROPIC_API_KEY: 'k', ORBE_BUSQUEDA_KEY: 'tvly-1' })).vacio).toBe(true)
     expect(crearRegistro(config({ ORBE_PROVEEDOR: 'cli', ORBE_BUSQUEDA_KEY: 'tvly-1' })).vacio).toBe(true)
+  })
+})
+
+describe('describirResultadoBusquedaCli', () => {
+  it('cuenta los resultados de la búsqueda del CLI y enseña los primeros títulos', () => {
+    const texto = `Web search results for query: "x"\n\nLinks: ${JSON.stringify([{ title: 'Uno', url: 'https://a' }, { title: 'Dos', url: 'https://b' }, { title: 'Tres', url: 'https://c' }, { title: 'Cuatro', url: 'https://d' }])}\n\nResumen`
+    expect(describirResultadoBusquedaCli(texto)).toBe('4 resultados: Uno · Dos · Tres')
+    expect(describirResultadoBusquedaCli(`Links: [{"title":"Solo","url":"https://a"}]`)).toBe('1 resultado: Solo')
+  })
+
+  it('si el formato cambia o no hay enlaces, solo dice que terminó', () => {
+    expect(describirResultadoBusquedaCli('texto libre')).toBe('Búsqueda terminada')
+    expect(describirResultadoBusquedaCli('Links: [no es json]')).toBe('Búsqueda terminada')
+    expect(describirResultadoBusquedaCli('Links: {"a":1}')).toBe('Búsqueda terminada')
   })
 })

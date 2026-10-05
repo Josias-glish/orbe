@@ -9,17 +9,19 @@ import { ProveedorCli } from './proveedor-cli'
 import { ProveedorOpenai } from './proveedor-openai'
 
 /**
- * Las opciones del modo agente, o `undefined` si no corresponde: está apagado (ORBE_AGENTE=0), no hay nada que
- * ofrecer (ni herramientas ni búsqueda nativa) o el proveedor es el CLI (que va con `--tools ""` y no admite las nuestras).
+ * Las opciones del modo agente, o `undefined` si no corresponde: está apagado (ORBE_AGENTE=0) o no hay nada que
+ * ofrecer (ni herramientas ni búsqueda). Con el CLI de Claude las herramientas viajan por un servidor MCP local.
  */
 export function opcionesAgente(config: Config, registro: RegistroHerramientas | undefined): OpcionesAgente | undefined {
-  if (!registro || !config.agente.activo || config.proveedor === 'cli') return undefined
+  if (!registro || !config.agente.activo) return undefined
   const opciones: OpcionesAgente = {
     registro,
     maxPasos: config.agente.pasos,
     permitirLocal: config.agente.permitirLocal,
     // La búsqueda de Claude solo existe con su API; ORBE_BUSQUEDA_MAX=0 la apaga.
-    ...(config.proveedor === 'api' && config.agente.busquedaMax > 0 ? { busquedaNativa: { maxUsos: config.agente.busquedaMax } } : {})
+    ...(config.proveedor === 'api' && config.agente.busquedaMax > 0 ? { busquedaNativa: { maxUsos: config.agente.busquedaMax } } : {}),
+    // El CLI trae su propia búsqueda: ORBE_BUSQUEDA_MAX=0 la apaga, pero no hay forma de limitar cuántas hace.
+    ...(config.proveedor === 'cli' && config.agente.busquedaMax > 0 ? { busquedaCli: true } : {})
   }
   return agenteActivo(opciones) ? opciones : undefined
 }
@@ -48,7 +50,8 @@ export function crearProveedor(
     rutaCli: config.rutaCli || undefined,
     // Carpeta vacía: así el CLI no encuentra ningún CLAUDE.md ni proyecto que cargar.
     directorioTrabajo: join(datosApp, 'cli-vacio'),
-    memoria
+    memoria,
+    agente
   })
 }
 

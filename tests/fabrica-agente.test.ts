@@ -35,8 +35,16 @@ describe('opcionesAgente', () => {
     expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), conHerramientas())?.busquedaNativa).toBeUndefined()
   })
 
-  it('con el CLI no hay agente: va con --tools "" y no admite las herramientas de Orbe', () => {
-    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli' }), conHerramientas())).toBeUndefined()
+  it('con el CLI de Claude también hay agente: las herramientas viajan por MCP y la búsqueda es la del propio CLI', () => {
+    const registro = conHerramientas()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli' }), registro)).toMatchObject({ registro, busquedaCli: true })
+    // Sin herramientas propias, la búsqueda del CLI basta para activarlo; con ORBE_BUSQUEDA_MAX=0 se apaga.
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli' }), new RegistroHerramientas())?.busquedaCli).toBe(true)
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli', ORBE_BUSQUEDA_MAX: '0' }), new RegistroHerramientas())).toBeUndefined()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli', ORBE_BUSQUEDA_MAX: '0' }), registro)?.busquedaCli).toBeUndefined()
+    // La búsqueda nativa de la API no se mezcla con la del CLI.
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'cli' }), registro)?.busquedaNativa).toBeUndefined()
+    expect(opcionesAgente(config({ ORBE_PROVEEDOR: 'api' }), registro)?.busquedaCli).toBeUndefined()
   })
 
   it('apagado con ORBE_AGENTE=0, o sin herramientas que ofrecer, no hay agente', () => {
@@ -52,7 +60,8 @@ describe('infoChat y crearProveedor con el agente', () => {
     expect(infoChat(config({ ORBE_PROVEEDOR: 'api' }), new RegistroHerramientas()).agente).toBe(true) // búsqueda nativa
     expect(infoChat(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm' }), new RegistroHerramientas()).agente).toBe(false)
     expect(infoChat(config({ ORBE_PROVEEDOR: 'api' })).agente).toBe(false)
-    expect(infoChat(config({ ORBE_PROVEEDOR: 'cli' }), conHerramientas()).agente).toBe(false)
+    expect(infoChat(config({ ORBE_PROVEEDOR: 'cli' }), conHerramientas()).agente).toBe(true)
+    expect(infoChat(config({ ORBE_PROVEEDOR: 'cli', ORBE_AGENTE: '0' }), conHerramientas()).agente).toBe(false)
   })
 
   it('crea el proveedor que toca para cada configuración', () => {
