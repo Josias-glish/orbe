@@ -12,8 +12,11 @@ import { crearBuscarWeb } from './buscar-web'
  * - `buscar_web`: solo con un servicio compatible con OpenAI y un buscador configurado (con la API de Claude la
  *   búsqueda web es la nativa, que no es una herramienta nuestra).
  * - `abrir_url` y `abrir_aplicacion`: con el sistema real (`deps`); sin él, p. ej. en las pruebas, no se ofrecen.
+ * - `conectores`: las de los servicios conectados (Gmail…), que se crean en el arranque con el cofre.
  */
-export function crearRegistro(config: Config, deps?: Pick<DepsSistema, 'abrirUrl' | 'catalogo' | 'lanzador'>): RegistroHerramientas {
+export function crearRegistro(config: Config, deps?: Pick<DepsSistema, 'abrirUrl' | 'catalogo' | 'lanzador'>,
+  conectores: readonly Herramienta[] = []
+): RegistroHerramientas {
   const herramientas: Herramienta[] = []
   if (config.proveedor === 'openai' && config.busqueda.proveedor) {
     herramientas.push(
@@ -21,5 +24,6 @@ export function crearRegistro(config: Config, deps?: Pick<DepsSistema, 'abrirUrl
     )
   }
   if (deps) herramientas.push(crearAbrirUrl(deps.abrirUrl), crearAbrirAplicacion(deps.catalogo, deps.lanzador))
+  herramientas.push(...conectores)
   return new RegistroHerramientas(herramientas)
 }

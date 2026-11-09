@@ -156,7 +156,7 @@ export class ProveedorApi implements ProveedorChat {
     let texto = ''
 
     try {
-      if (agente) return await this.turnoAgente(agente, mensajeUsuario, manejadores, controlador)
+      if (agente) return await this.turnoAgente(agente, mensajeUsuario, manejadores, controlador, entrada.texto)
 
       const flujo = this.cliente.beta.messages.stream(
         {
@@ -227,11 +227,12 @@ export class ProveedorApi implements ProveedorChat {
     agente: OpcionesAgente,
     mensajeUsuario: Mensaje,
     m: ManejadoresTurno,
-    controlador: AbortController
+    controlador: AbortController,
+    ordenUsuario: string
   ): Promise<ResultadoTurno> {
     const cliente = this.cliente as Anthropic
     const mensajes: Mensaje[] = [...this.historial, mensajeUsuario]
-    const ejecutor = crearEjecutor(agente, controlador.signal, m)
+    const ejecutor = crearEjecutor(agente, controlador.signal, m, ordenUsuario)
     // Las nuestras (que ejecutamos aquí) y, si toca, la búsqueda web de Anthropic (que ejecutan sus servidores).
     const herramientas: Anthropic.Beta.BetaToolUnion[] = [
       ...agente.registro.paraAnthropic(),

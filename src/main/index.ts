@@ -7,9 +7,12 @@ import { registrarCofre } from './cofre/electron'
 import { asegurarReglas } from './agente/reglas'
 import { registrarPersonaje } from './personaje'
 import { CANALES } from '../shared/tipos'
-import { rmSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
+import { crearHerramientasGmail } from './agente/herramientas/gmail'
+import { Gmail } from './conectores/gmail/cliente'
+import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
 import { crearDepsSistema } from './agente/sistema'
 import { guardarAjustes, leerAjustes } from './ajustes'
 import { liberarAtajos, registrarAtajos } from './atajos'
@@ -146,7 +149,8 @@ app.whenReady().then(async () => {
 
   // Seguridad (Etapa 0): el cofre cifrado de los conectores y las reglas de permisos. En la prueba de humo, `datos` es
   // la carpeta temporal de la prueba: nunca toca el cofre ni las reglas reales.
-  const cofre = registrarCofre(orbe.ventana, join(datos, 'cofre.bin'))
+  const rutaClienteGoogle = join(datos, 'google-cliente.json')
+  const cofre = registrarCofre(orbe.ventana, join(datos, 'cofre.bin'), rutaClienteGoogle)
   actividad.filtrarCon((texto) => cofre.tachar(texto))
   try {
     if (asegurarReglas(join(datos, 'reglas.json'))) console.warn('[orbe] He creado reglas.json con las reglas por defecto.')
@@ -224,7 +228,11 @@ app.whenReady().then(async () => {
 
   // Las herramientas del agente (según la configuración). Sin herramientas, el chat solo conversa.
   const sistema = crearDepsSistema(datos)
-  const registro = crearRegistro(config, sistema)
+  // Gmail se ofrece si existe google-cliente.json (guía de Google); sin conectar, las herramientas dicen cómo conectarlo.
+  const gmail = existsSync(rutaClienteGoogle)
+    ? crearHerramientasGmail(new Gmail(crearFuenteDeToken(() => leerClienteGoogle(rutaClienteGoogle), () => cofre.leer('gmail.refresh'))))
+    : []
+  const registro = crearRegistro(config, sistema, gmail)
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

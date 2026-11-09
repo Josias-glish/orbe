@@ -144,6 +144,15 @@ Base de seguridad para conectar Gmail, Instagram y Supabase (llegan en las sigui
 - **Reglas de permisos** (`%APPDATA%orbeeglas.json`, se crea solo la primera vez y se relee en cada tarea): cada acción de un conector tiene un modo: `libre` (sin preguntar), `si_lo_pediste` (sin preguntar solo si tu orden la nombraba), `preguntar`, `tu_lo_haces` (Orbe lo deja preparado y lo haces tú) o `bloqueado`. Lo que no esté en el archivo se pregunta.
 - **Mínimos que el archivo no puede relajar**: publicar y responder en Instagram siempre piden permiso; enviar correos, seguir, dar me gusta, comentar en cuentas ajenas, borrar publicaciones, compras y contraseñas están bloqueados.
 
+## Gmail (leer y crear borradores)
+Orbe puede buscar y leer tu correo y dejarte **borradores** listos; **no puede enviar, borrar ni archivar** (no pide esos permisos a Google, y no existe ninguna herramienta que lo haga).
+
+1. Sigue [`docs/fase3-borradores/02-guia-google.md`](docs/fase3-borradores/02-guia-google.md): proyecto en Google Cloud, Gmail API habilitada, permisos `gmail.readonly` y `gmail.compose`, y un cliente de tipo **App de escritorio**. Guarda su JSON como `%APPDATA%\orbe\google-cliente.json` y reinicia Orbe (las herramientas de Gmail se ofrecen cuando ese archivo existe).
+2. **Configuración → Conectores → Gmail → Conectar**. Se abre tu navegador con la pantalla de Google; al aceptar vuelve a `127.0.0.1` (OAuth de escritorio con PKCE) y Orbe guarda el permiso **cifrado en el cofre**. «Revocar» lo borra y avisa a Google.
+3. Pide cosas como «resume mi correo de hoy» o «redacta un borrador para responder a Ana». Leer es libre; crear un borrador va sin preguntar solo si tu mensaje lo pedía (`gmail.borrador` = `si_lo_pediste` en `reglas.json`), y si no, pide permiso.
+
+Lo que dice un correo llega al modelo como **datos de terceros**, nunca como instrucciones, y solo en texto (sin HTML, imágenes ni adjuntos; máximo 8000 caracteres por correo).
+
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 
@@ -305,6 +314,7 @@ src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
 src/main/conectores avisos de otras herramientas: bus de actividad, receptor local, hooks de Claude Code
+src/main/conectores/gmail  Gmail: OAuth de escritorio (loopback + PKCE) y cliente de la API (buscar, leer, borradores)
 src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
 src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú

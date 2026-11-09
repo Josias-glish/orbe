@@ -92,7 +92,8 @@ const api: ApiOrbe = {
 
   cofreEstado: () => ipcRenderer.invoke(CANALES.cofreEstado),
   cofreGuardar: (clave, valor) => ipcRenderer.invoke(CANALES.cofreGuardar, clave, valor),
-  cofreBorrar: (clave) => ipcRenderer.invoke(CANALES.cofreBorrar, clave)
+  cofreBorrar: (clave) => ipcRenderer.invoke(CANALES.cofreBorrar, clave),
+  gmailConectar: () => ipcRenderer.invoke(CANALES.gmailConectar)
 }
 
 contextBridge.exposeInMainWorld('orbe', api)

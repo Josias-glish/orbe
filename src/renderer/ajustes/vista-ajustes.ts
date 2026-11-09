@@ -222,6 +222,19 @@ export class VistaAjustes {
         if (e.key === 'Enter') enviar()
       })
       caja.append(entrada, guardar)
+    } else if (def.clave === 'gmail.refresh') {
+      // Gmail no se pega: se da el permiso en el navegador y Orbe lo guarda solo.
+      const conectar = el('button', 'boton-memoria primario', this.cofreOcupado ? 'Esperando…' : guardado ? 'Volver a conectar' : 'Conectar')
+      conectar.type = 'button'
+      conectar.disabled = this.cofreOcupado
+      conectar.addEventListener('click', () => {
+        void this.cofreAccion(
+          () => window.orbe.gmailConectar(),
+          'Gmail conectado: Orbe puede leer tu correo y crear borradores (no enviar).',
+          'Termina en tu navegador: elige tu cuenta de Google y marca los dos permisos.'
+        )
+      })
+      caja.append(conectar)
     }
     if (guardado) {
       const pendiente = this.borrarPendiente === def.clave
@@ -244,10 +257,10 @@ export class VistaAjustes {
     return fila
   }
 
-  private async cofreAccion(accion: () => Promise<ResultadoCofre>, exito: string): Promise<void> {
+  private async cofreAccion(accion: () => Promise<ResultadoCofre>, exito: string, mientras?: string): Promise<void> {
     if (this.cofreOcupado) return
     this.cofreOcupado = true
-    this.cofreMensaje = null
+    this.cofreMensaje = mientras ? { texto: mientras, error: false } : null
     this.pintar()
     try {
       const r = await accion()

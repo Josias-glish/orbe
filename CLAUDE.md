@@ -37,7 +37,7 @@ Versión actual: ver `package.json`. Historial de versiones en las releases de G
 | `src/main/tareas/` | Tareas de fondo: programación, cola, permisos, notificaciones |
 | `src/main/uso/` | Registro de consumo y tarifas |
 | `src/main/memoria/` | Memoria del usuario y detección de secretos (`secretos.ts`) |
-| `src/main/conectores/` | Receptor local de avisos (Claude Code, scripts) |
+| `src/main/conectores/` | Receptor local de avisos (Claude Code, scripts). `gmail/`: `oauth.ts` (loopback + PKCE) y `cliente.ts` (buscar, leer, borradores; sin enviar) |
 | `src/shared/` | Tipos y lógica común (`tipos.ts`, `identidad.ts`, `tareas.ts`…) |
 | `src/renderer/` | Interfaz: `chat/panel.ts`, `ajustes/`, `tareas/`, `uso/`, `personaje/` (3D, gestos), `estilos.css` |
 | `tests/` | Pruebas vitest |
@@ -76,14 +76,20 @@ prueba de humo, «control de visibilidad», «Esc corta la voz», «voz de Windo
 Hecho: v1.4.x (barra lateral, tareas tipo dots, consumo, gestos), v1.5.0 (Atlas), v1.5.1 (arreglo de Configuración),
 v1.6.0 (**Etapa 0, Seguridad**: cofre cifrado, `reglas.json`, Ajustes → Conectores, tachado de secretos en Actividad).
 
-Notas de la Etapa 0 para las siguientes: una herramienta de conector declara `accion` (p. ej. `gmail.borrador`) y la
-`Politica` aplica `reglas.json`; los conectores leen sus secretos con `cofre.leer()` en el proceso principal. Falta pasar
-la orden original del usuario a `Politica` (`ordenUsuario`) cuando exista la primera acción `si_lo_pediste` (Etapa 1):
-hasta entonces ese modo siempre pregunta.
+v1.7.0 (**Etapa 1, Gmail**: OAuth de escritorio, `gmail_buscar`, `gmail_leer`, `gmail_borrador`, botón Conectar).
+
+Cómo se añade un conector (molde de las Etapas 0 y 1): el cliente del servicio va en `src/main/conectores/<servicio>/` y
+recibe `fetch` inyectable para las pruebas; sus herramientas van en `src/main/agente/herramientas/<servicio>.ts`, declaran
+`accion` (p. ej. `gmail.borrador`) y devuelven `externo` para lo que venga de fuera; se crean en `src/main/index.ts` y se
+pasan a `crearRegistro(config, sistema, conectores)`. Los secretos se leen con `cofre.leer()` en el proceso principal.
+`Politica` recibe la orden del usuario (`entrada.texto`, sin contexto de pantalla) para decidir `si_lo_pediste`.
+
+Decisiones de la Etapa 1: no hay variables `ORBE_GMAIL*`; Gmail se ofrece si existe `%APPDATA%\orbe\google-cliente.json`.
+El aviso de correos nuevos por sondeo (`history`) queda para la Etapa 5. Fallo intermitente conocido bajo carga:
+`agente-proveedor-cli.test.ts` «una herramienta lenta… no cuentan como un CLI colgado» (pasa en solitario).
 
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-1. **Gmail**: API de Gmail con OAuth de escritorio (loopback 127.0.0.1 + PKCE), solo `gmail.readonly` y `gmail.compose`.
 2. **Instagram (lectura)**: API de Instagram con inicio de sesión de Instagram, Standard Access, sin revisión de Meta.
 3. **Contenido**: pestaña «Contenido»; textos con el CLI de Claude; diseños **exportados en PNG desde Claude Design**
    a `%APPDATA%\orbe\contenido\entrada\<marca>\` (respaldo: HTML → PNG en ventana oculta sin red). Marcas: jsdesign, morfy, personal.
