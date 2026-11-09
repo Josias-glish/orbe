@@ -29,9 +29,9 @@ const ventana = disposicionExpandida(colapsado, area).bounds
 
 describe('tamaño del panel', () => {
   it('la ventana expandida es el panel más la parte del orbe', () => {
-    expect(tamVentanaExpandida({ ancho: 380, alto: 520 })).toEqual({ width: 380, height: 624 })
-    expect(tamVentanaExpandida({ ancho: 500, alto: 700 })).toEqual({ width: 500, height: 804 })
-    expect(panelDeVentana({ x: 0, y: 0, width: 500, height: 804 })).toEqual({ ancho: 500, alto: 700 })
+    expect(tamVentanaExpandida({ ancho: 380, alto: 520 })).toEqual({ width: 380, height: 654 })
+    expect(tamVentanaExpandida({ ancho: 500, alto: 700 })).toEqual({ width: 500, height: 834 })
+    expect(panelDeVentana({ x: 0, y: 0, width: 500, height: 834 })).toEqual({ ancho: 500, alto: 700 })
   })
 
   it('limitarPanel respeta el mínimo, el máximo y el área de trabajo', () => {
@@ -42,9 +42,9 @@ describe('tamaño del panel', () => {
   })
 
   it('disposicionExpandida usa el panel que se le da y, por defecto, el de siempre', () => {
-    expect(disposicionExpandida(colapsado, area).bounds).toMatchObject({ width: 380, height: 624 })
+    expect(disposicionExpandida(colapsado, area).bounds).toMatchObject({ width: 380, height: 654 })
     const grande = disposicionExpandida(colapsado, area, { ancho: 520, alto: 700 })
-    expect(grande.bounds).toMatchObject({ width: 520, height: 804 })
+    expect(grande.bounds).toMatchObject({ width: 520, height: 834 })
     expect(grande.bounds.x + grande.bounds.width).toBe(colapsado.x + colapsado.width)
     expect(grande.bounds.y + grande.bounds.height).toBe(colapsado.y + colapsado.height)
   })

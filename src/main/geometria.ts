@@ -7,16 +7,16 @@ export interface Rect {
   height: number
 }
 
-export const TAM_COLAPSADO = { width: 120, height: 120 }
+export const TAM_COLAPSADO = { width: 150, height: 150 }
 /**
- * Panel de 380×520 más la caja del orbe (120). Se solapan 16 px, que es margen transparente del
- * orbe, así que entre el panel y la esfera queda un hueco visible de unos 8 px.
+ * Panel de 380×520 más la caja del personaje (150). Se solapan 16 px, que es margen transparente,
+ * así que entre el panel y el personaje queda un hueco visible de unos 8 px.
  */
-export const TAM_EXPANDIDO = { width: 380, height: 624 }
+export const TAM_EXPANDIDO = { width: 380, height: 654 }
 export const MARGEN_ESQUINA = 16
 
-/** Lo que la ventana expandida mide de más que el panel: la parte del orbe (624 - 520). */
-export const ALTO_EXTRA_ORBE = 104
+/** Lo que la ventana expandida mide de más que el panel: la parte del personaje (654 - 520). */
+export const ALTO_EXTRA_ORBE = 134
 export const TAM_PANEL_POR_DEFECTO = { ancho: 380, alto: 520 }
 export const TAM_PANEL_MIN = { ancho: 340, alto: 380 }
 export const TAM_PANEL_MAX = { ancho: 800, alto: 1000 }

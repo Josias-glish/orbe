@@ -35,6 +35,7 @@ export const CANALES = {
   pantallaFormula: 'pantalla:formula',
   personajeRecursos: 'personaje:recursos',
   personajeCursor: 'personaje:cursor',
+  personajeEntorno: 'personaje:entorno',
   actividadEvento: 'actividad:evento',
   actividadHistorial: 'actividad:historial',
   configElegirRive: 'config:elegir-rive',
@@ -334,6 +335,9 @@ export interface EstadoFondo {
 }
 
 /** La configuración que enseña la pantalla de ajustes: los valores del .env y qué claves existen, nunca las claves. */
+/** Lo que pasa en el equipo y a lo que reacciona el personaje. */
+export type EventoEntorno = 'ausente' | 'vuelve' | 'bloqueo' | 'desbloqueo' | 'suspension' | 'reanudacion' | 'bateria' | 'corriente'
+
 /** Qué figura vive en la esquina: el personaje 3D (por defecto), el dibujado, el orbe clásico o uno de Rive. */
 export type Apariencia = '3d' | 'personaje' | 'orbe' | 'rive'
 
@@ -488,6 +492,8 @@ export interface ApiOrbe {
   personajeRecursos(): Promise<RecursosPersonaje>
   /** Dónde está el cursor (coordenadas de pantalla), para que el personaje lo siga con la mirada. */
   alCursor(cb: (punto: { x: number; y: number }) => void): () => void
+  /** Lo que pasa en el equipo: te fuiste o volviste, bloqueaste la pantalla, pasó a batería… */
+  alEntorno(cb: (evento: EventoEntorno) => void): () => void
   /** Avisos de los conectores (Claude Code y otras herramientas). */
   alActividad(cb: (evento: EventoActividad) => void): () => void
   actividadHistorial(): Promise<EstadoActividad>

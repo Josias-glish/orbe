@@ -8,7 +8,7 @@
   --superficie: rgba(255, 255, 255, 0.055);
   --linea: rgba(255, 255, 255, 0.08);
   --error: #fb7185;
-  --caja-orbe: 120px;
+  --caja-orbe: 150px;
   --mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
 }
 
@@ -104,9 +104,9 @@ input {
 /* ---- Panel de chat ---- */
 .panel {
   position: absolute;
-  /* El panel ocupa la ventana menos la parte del orbe (104 px): así sigue el tamaño que elija el usuario. */
+  /* El panel ocupa la ventana menos la parte del personaje (134 px): así sigue el tamaño que elija el usuario. */
   width: 100%;
-  height: calc(100% - 104px);
+  height: calc(100% - 134px);
   display: flex;
   flex-direction: column;
   background: var(--panel-fondo);

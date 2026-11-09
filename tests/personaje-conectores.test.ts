@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// configuracion.ts importa electron; aquí no hace falta (y así la prueba no depende de descargar su binario).
+vi.mock('electron', () => ({ BrowserWindow: class {}, dialog: {}, ipcMain: { handle: () => undefined, on: () => undefined }, app: {}, powerMonitor: { getSystemIdleTime: () => 0, on: () => undefined } }))
 import { DISENOS, disenoPorId } from '../src/shared/disenos'
 import { EXPRESIONES, EXPRESION_DE_ESTADO, IDS_EXPRESION, esIdExpresion, indiceExpresion } from '../src/shared/expresiones'
 import { Director } from '../src/renderer/personaje/director'
@@ -256,5 +259,67 @@ describe('el director avisa para los sonidos', () => {
     d.actual()
     d.reaccionar('encima')
     expect(eventos).toEqual(['caricia', 'rueda', 'dormir', 'despertar'])
+  })
+})
+
+describe('expresiones según el texto y el entorno', async () => {
+  const { expresionDeTexto, EXPRESIONES_OCIOSAS } = await import('../src/shared/expresiones')
+  const { OCIO_MIN_MS } = await import('../src/renderer/personaje/director')
+  const { Vigia, AUSENTE_SEGUNDOS } = await import('../src/main/vigia')
+
+  it.each([
+    ['¡Listo! Ya está creado el archivo.', 'respuesta', 'orgulloso'],
+    ['Lo siento, no he podido abrir esa página.', 'respuesta', 'preocupado'],
+    ['¿Quieres que lo guarde también en PDF?', 'respuesta', 'curioso'],
+    ['Aquí tienes el resumen.', 'respuesta', 'feliz'],
+    ['jaja buenísimo', 'respuesta', 'risa'],
+    ['muchas gracias!', 'usuario', 'timido'],
+    ['no funciona el wifi, ayuda', 'usuario', 'preocupado'],
+    ['¿qué hora es?', 'usuario', null]
+  ] as const)('«%s» (%s) → %s', (texto, quien, esperado) => {
+    expect(expresionDeTexto(texto, quien)).toBe(esperado)
+  })
+
+  it('en reposo, de vez en cuando pone una cara tranquila un momento', () => {
+    let t = 0
+    const d = new Director(() => t, 10 * 60_000, () => undefined)
+    expect(d.actual()).toBe('neutral')
+    t = OCIO_MIN_MS + 1
+    expect(EXPRESIONES_OCIOSAS).toContain(d.actual())
+    d.establecerEstado('pensando')
+    expect(d.actual()).toBe('pensativo') // la cara del estado manda
+    d.establecerEstado('reposo')
+    t += 3000
+    expect(d.actual()).toBe('neutral')
+  })
+
+  it('si te vas se duerme; al volver se despierta sorprendido', () => {
+    let t = 0
+    const eventos: string[] = []
+    const d = new Director(() => t, 10 * 60_000, (e) => eventos.push(e))
+    d.reaccionar('ausente')
+    expect(d.actual()).toBe('dormido')
+    d.reaccionar('vuelve')
+    expect(d.actual()).toBe('sorprendido')
+    expect(eventos).toEqual(['despertar'])
+  })
+
+  it('el vigía avisa al irte, al volver, al bloquear y al pasar a batería', () => {
+    let inactivo = 0
+    const oyentes = new Map<string, () => void>()
+    const avisos: string[] = []
+    const v = new Vigia((e) => avisos.push(e), { segundosInactivo: () => inactivo, alEvento: (n, cb) => void oyentes.set(n, cb) })
+    v.iniciar()
+    v.revisar()
+    inactivo = AUSENTE_SEGUNDOS
+    v.revisar()
+    v.revisar() // sigue fuera: no repite
+    inactivo = 2
+    v.revisar()
+    oyentes.get('lock-screen')!()
+    oyentes.get('unlock-screen')!()
+    oyentes.get('on-battery')!()
+    v.detener()
+    expect(avisos).toEqual(['ausente', 'vuelve', 'bloqueo', 'desbloqueo', 'bateria'])
   })
 })

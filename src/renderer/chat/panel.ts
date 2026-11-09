@@ -10,6 +10,7 @@ import type {
   ResultadoEnvio
 } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
+import { expresionDeTexto } from '../../shared/expresiones'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
@@ -33,6 +34,8 @@ interface TurnoEnCurso {
   recibioTexto: boolean
   /** El agente ya hizo alguna acción en este turno: hace falta un Detener bien visible. */
   conAcciones: boolean
+  /** El texto de la respuesta (hasta 4000 caracteres), para elegir la cara al terminar. */
+  acumulado: string
 }
 
 /** Pausa antes de volver a «reposo» al terminar, para que las ondas del orbe se apaguen con suavidad. */
@@ -552,7 +555,9 @@ export class PanelChat {
   private async iniciarTurno(texto: string, burbuja: HTMLElement | null): Promise<void> {
     const id = crypto.randomUUID()
     const respuesta = this.lista.iniciarRespuesta()
-    this.turno = { id, texto, respuesta, recibioTexto: false, conAcciones: false }
+    this.turno = { id, texto, respuesta, recibioTexto: false, conAcciones: false, acumulado: '' }
+    const caraUsuario = expresionDeTexto(texto, 'usuario')
+    if (caraUsuario) this.orbe.expresar(caraUsuario, 1800)
     this.ocultarEstado()
     this.cambiarEstadoOrbe('pensando')
     this.entrada.bloquear(false)
@@ -672,6 +677,7 @@ export class PanelChat {
           if (turno.conAcciones) this.lector.anexar('\n\n')
         }
         turno.respuesta.anexar(evento.delta)
+        if (turno.acumulado.length < 4000) turno.acumulado += evento.delta
         this.lector.anexar(evento.delta)
         // Cada fragmento mueve el orbe: más texto de golpe, onda más fuerte.
         this.orbe.pulso(Math.min(0.7, 0.18 + evento.delta.length / 40))
@@ -700,6 +706,11 @@ export class PanelChat {
         this.confirmacionAccion.cancelar()
         this.ocultarEstado()
         turno.respuesta.finalizar(evento.motivo)
+        // Al terminar, la cara acompaña lo que dijo (contento, orgulloso si lo hizo, preocupado si no pudo…).
+        if (evento.motivo === 'completo') {
+          const cara = expresionDeTexto(turno.acumulado, 'respuesta')
+          if (cara) this.orbe.expresar(cara, 3500)
+        }
         this.lector.terminar()
         this.turno = null
         this.programarReposo()
@@ -736,6 +747,7 @@ export class PanelChat {
     this.turno = null
     this.ocultarEstado()
     turno.respuesta.descartarSiVacia()
+    this.orbe.expresar('preocupado', 4000)
     this.lista.agregarError(error, () => void this.reintentar(turno.texto))
     this.programarReposo()
     this.actualizarBoton()
