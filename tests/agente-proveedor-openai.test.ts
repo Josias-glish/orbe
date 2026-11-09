@@ -477,3 +477,48 @@ describe('ProveedorOpenai con buscar_web', () => {
     expect(herramienta?.content).toContain('https://www.ejemplo.org/lima')
   })
 })
+
+describe('ProveedorOpenai con Gemini 3: firma de pensamiento', () => {
+  it('devuelve tal cual el extra_content (thought_signature) de cada llamada en el turno siguiente', async () => {
+    const { herramienta } = eco()
+    const firma = { google: { thought_signature: 'FIRMA-SECRETA-123' } }
+    respuestas.push(async (res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' })
+      res.write(dato({ tool_calls: [{ index: 0, id: 'call_g', type: 'function', function: { name: 'eco', arguments: '' }, extra_content: firma }] }))
+      res.write(dato({ tool_calls: [{ index: 0, function: { arguments: JSON.stringify({ texto: 'hola' }) } }] }))
+      res.write(dato({}, 'tool_calls'))
+      res.write('data: [DONE]\n\n')
+      res.end()
+    })
+    respuestas.push(flujo(['Hecho']))
+    await crear([herramienta]).enviar({ texto: 'Usa eco' }, recolector().m)
+    const segundo = recibidas[1].cuerpo['messages'] as Array<Record<string, any>>
+    const asistente = segundo.find((m) => m.role === 'assistant' && m.tool_calls)
+    expect(asistente?.tool_calls[0].extra_content).toEqual(firma)
+  })
+
+  it('sin firma (otros servicios), no añade extra_content', async () => {
+    const { herramienta } = eco()
+    respuestas.push(flujo([], [usaEco('hola')]))
+    respuestas.push(flujo(['Hecho']))
+    await crear([herramienta]).enviar({ texto: 'Usa eco' }, recolector().m)
+    const asistente = (recibidas[1].cuerpo['messages'] as Array<Record<string, any>>).find((m) => m.role === 'assistant' && m.tool_calls)
+    expect('extra_content' in (asistente?.tool_calls[0] ?? {})).toBe(false)
+  })
+})
+
+describe('errores HTTP de servicios como Gemini', () => {
+  it('400 «Please pass a valid API key» es clave inválida', () => {
+    expect(errorDesdeHttp(400, JSON.stringify([{ error: { code: 400, message: 'Please pass a valid API key' } }].at(0))).error.codigo).toBe('clave_invalida')
+  })
+  it('404 «no longer available» es el modelo, y sugiere uno que funciona', () => {
+    const e = errorDesdeHttp(404, JSON.stringify({ error: { message: 'models/gemini-2.5-flash is no longer available to new users' } })).error
+    expect(e.codigo).toBe('modelo')
+    expect(e.mensaje).toContain('gemini-3.5-flash')
+  })
+  it('5xx no habla de Claude', () => {
+    const e = errorDesdeHttp(503, JSON.stringify({ error: { message: 'high demand' } })).error
+    expect(e.titulo).not.toMatch(/Claude/)
+    expect(e.mensaje).not.toMatch(/Claude/)
+  })
+})

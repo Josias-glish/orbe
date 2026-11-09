@@ -34,6 +34,11 @@ interface LlamadaApi {
   id: string
   type: 'function'
   function: { name: string; arguments: string }
+  /**
+   * Datos propios del servicio que hay que devolver tal cual en el turno siguiente. Gemini 3 manda aquí su «firma de
+   * pensamiento» (`extra_content.google.thought_signature`) y responde 400 si no se la devuelven.
+   */
+  extra_content?: unknown
 }
 
 interface MensajeApi {
@@ -50,7 +55,7 @@ interface TrozoSse {
   choices?: Array<{
     delta?: {
       content?: unknown
-      tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>
+      tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string }; extra_content?: unknown }>
     }
     finish_reason?: string | null
   }>
@@ -111,11 +116,17 @@ export function errorDesdeHttp(estado: number, cuerpo: string): ErrorChat {
   }
   const detalle = `HTTP ${estado}${mensajeApi ? `: ${mensajeApi.slice(0, 400)}` : ''}`
 
-  if (estado === 401)
+  // Gemini (Google AI Studio) responde 400 en lugar de 401 cuando la clave no vale.
+  if (estado === 401 || (estado === 400 && /api[ _-]?key/i.test(mensajeApi)))
     return new ErrorChat(crearError('clave_invalida', { mensaje: 'El servicio ha rechazado la clave. Revisa ORBE_OPENAI_KEY en el archivo .env.', detalle }))
   if (estado === 403) return new ErrorChat(crearError('cuenta', { detalle }))
-  if (estado === 404 || (estado === 400 && /model/i.test(mensajeApi) && /(not found|does not exist|unknown|invalid)/i.test(mensajeApi)))
-    return new ErrorChat(crearError('modelo', { mensaje: 'El modelo configurado no existe en ese servicio. Revisa ORBE_MODELO en .env.', detalle }))
+  if (estado === 404 || (estado === 400 && /model/i.test(mensajeApi) && /(not found|does not exist|unknown|invalid|no longer available)/i.test(mensajeApi)))
+    return new ErrorChat(
+      crearError('modelo', {
+        mensaje: 'El modelo configurado no existe (o ya no está disponible) en ese servicio. Cámbialo en la configuración; con Google AI Studio usa, por ejemplo, gemini-3.5-flash.',
+        detalle
+      })
+    )
   if (estado === 408 || estado === 504) return new ErrorChat(crearError('tiempo_agotado', { detalle }))
   if (estado === 429) {
     const cuota = /quota|billing|credit/i.test(mensajeApi)
@@ -128,7 +139,15 @@ export function errorDesdeHttp(estado: number, cuerpo: string): ErrorChat {
       })
     )
   }
-  if (estado >= 500) return new ErrorChat(crearError('sobrecarga', { detalle }))
+  if (estado >= 500)
+    return new ErrorChat(
+      crearError('sobrecarga', {
+        titulo: 'El servicio está saturado',
+        mensaje:
+          'El servicio de IA está saturado o ha fallado en este momento. Inténtalo de nuevo en unos instantes; si con este modelo pasa siempre, prueba con otro (con Google AI Studio, gemini-3.5-flash).',
+        detalle
+      })
+    )
   return new ErrorChat(
     crearError('solicitud_invalida', {
       mensaje: /image|vision/i.test(mensajeApi)
@@ -143,7 +162,7 @@ export function errorDesdeHttp(estado: number, cuerpo: string): ErrorChat {
 
 /** Lo que dio una petición: el texto, las herramientas pedidas (aún con los parámetros sin interpretar) y el motivo de fin. */
 interface RespuestaFlujo {
-  llamadas: Array<{ id: string; nombre: string; argumentos: string }>
+  llamadas: Array<{ id: string; nombre: string; argumentos: string; extra?: unknown }>
   fin: string | null
 }
 
@@ -382,6 +401,7 @@ export class ProveedorOpenai implements ProveedorChat {
           if (tc.id && !actual.id) actual.id = tc.id
           if (tc.function?.name && !actual.nombre) actual.nombre = tc.function.name
           if (tc.function?.arguments) actual.argumentos += tc.function.arguments
+          if (tc.extra_content !== undefined) actual.extra = tc.extra_content
         }
         if (eleccion?.finish_reason) fin = eleccion.finish_reason
       }
@@ -439,7 +459,8 @@ export class ProveedorOpenai implements ProveedorChat {
                 tool_calls: llamadas.map((l, i) => ({
                   id: l.id,
                   type: 'function' as const,
-                  function: { name: l.nombre, arguments: pedidas[i].argumentos || '{}' }
+                  function: { name: l.nombre, arguments: pedidas[i].argumentos || '{}' },
+                  ...(pedidas[i].extra !== undefined ? { extra_content: pedidas[i].extra } : {})
                 }))
               }
             : { role: 'assistant', content: acumulado.texto }

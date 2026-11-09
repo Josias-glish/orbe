@@ -1,6 +1,6 @@
 {
   "name": "orbe",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Asistente de escritorio flotante con orbe de shaders y chat con Claude",
   "private": true,
   "main": "./out/main/index.js",

@@ -122,7 +122,7 @@ Gemini se usa con su API compatible con OpenAI, con plan gratuito:
 1. Entra en [aistudio.google.com](https://aistudio.google.com), pulsa **Get API key** y crea una clave.
 2. En Orbe abre la configuración (los controles deslizantes), elige **Otra IA compatible con OpenAI → Google AI Studio (Gemini)**, pega la clave y guarda.
 
-O a mano en el `.env`: `ORBE_PROVEEDOR=openai`, `ORBE_OPENAI_URL=https://generativelanguage.googleapis.com/v1beta/openai`, `ORBE_OPENAI_KEY=<tu clave>` y `ORBE_MODELO=gemini-flash-latest` (o el modelo que quieras, como `gemini-pro-latest`). Gemini ve imágenes y admite el modo agente. El dictado y la voz neuronal no van por Gemini: configúralos con otro servicio si los quieres.
+O a mano en el `.env`: `ORBE_PROVEEDOR=openai`, `ORBE_OPENAI_URL=https://generativelanguage.googleapis.com/v1beta/openai`, `ORBE_OPENAI_KEY=<tu clave>` y `ORBE_MODELO=gemini-3.5-flash` (o `gemini-3.8-flash`, más nuevo pero a veces saturado; los alias `…-latest` y la serie 2.5 no funcionan con esta API). Gemini ve imágenes y admite el modo agente. El dictado y la voz neuronal no van por Gemini: configúralos con otro servicio si los quieres.
 
 ## Voz
 **Leer en voz alta.** Orbe lee las respuestas frase a frase según llegan, se salta los bloques de código (dice que hay uno) y se calla en cuanto empieza otra respuesta, pulsas Esc o la apagas. Por defecto usa las **voces de Windows** (gratis, sin conexión). El botón **Estilo Jarvis** elige la voz masculina en español, la baja de tono y la pone pausada; si has configurado una voz neuronal, la usa. No se puede copiar la voz del actor original: es una voz grave, serena y elegante, no un clon.
