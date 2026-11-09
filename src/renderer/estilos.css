@@ -1444,6 +1444,9 @@ kbd {
   gap: 10px;
   user-select: text;
 }
+.ajustes-cuerpo > * {
+  flex-shrink: 0;
+}
 .memoria-cuerpo::-webkit-scrollbar {
   width: 8px;
 }
@@ -2455,6 +2458,8 @@ select.memoria-campo {
   display: none;
 }
 .ajustes-grupos {
+  /* No encoger: la página entera se desplaza. Con «overflow: hidden», un hijo flexible se aplastaba y escondía grupos. */
+  flex: none;
   display: flex;
   flex-direction: column;
   border-radius: 12px;

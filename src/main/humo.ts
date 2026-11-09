@@ -967,6 +967,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('tiene las cinco secciones (con «Personaje y conectores» e «Identidad»)', (await textosDe('#ajustes .ajuste-titulo')).length === 5, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
     comprobar('la configuración se organiza en 5 grupos', (await contar('#ajustes .ajustes-grupo')) === 5)
+    const lista = await js<{ visible: number; contenido: number }>(`(() => { const l = document.querySelector('#ajustes .ajustes-grupos'); return { visible: l.clientHeight, contenido: l.scrollHeight } })()`)
+    comprobar('la lista de grupos se ve entera (no se aplasta en un panel bajo)', lista.visible >= lista.contenido, lista)
     await esperar(300)
     await capturar('11a-ajustes')
     await js(`document.querySelector('#ajustes .ajustes-grupo').click()`)
