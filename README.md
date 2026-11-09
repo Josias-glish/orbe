@@ -94,6 +94,15 @@ En la esquina ya no hay solo un orbe: hay un **personaje con 20 expresiones** (n
 ### Gestos (nunca se queda quieto)
 El conejo hace **10 gestos con todo el cuerpo**: saludar (con una manita), saltar, asentir, negar, dar una vuelta, bailar, estirarse, mirar alrededor, sacudirse y hacer una reverencia. Saluda al arrancar y cuando vuelves al ordenador, salta al abrir el panel, celebra (reverencia o baile) cuando termina algo, niega con la cabeza si hay un error y te saluda cuando una tarea o Claude Code te necesita. En reposo hace uno tranquilo cada 16–38 s y pone una cara distinta cada 12–28 s. En el menú de la carita, **Gestos** los lanza al momento.
 
+## Identidad: Orbe o Atlas
+
+Además del Orbe de siempre (cercano, de tú), puedes elegir a **Atlas**, una entidad con identidad propia de mayordomo
+digital: sereno, leal, con humor seco y franco con tacto. Te trata de usted (te llama «señor» o como elijas), te da
+el **parte de situación** al abrir el panel cada día (agenda, tareas terminadas, permisos pendientes y consumo) y
+convierte tus tareas en **protocolos**: escribe «protocolo Informe semanal» y lo pone en marcha. «parte» y «protocolo»
+se resuelven en tu equipo, sin gastar tokens. Se activa en Configuración → Identidad (o `ORBE_IDENTIDAD=atlas`).
+Investigación y diseño del personaje: [docs/IDENTIDAD-ATLAS.md](docs/IDENTIDAD-ATLAS.md).
+
 ## Tareas de fondo (al estilo de los agentes «siempre encendidos»)
 El botón del reloj abre **Tareas**: instrucciones que Orbe hace **solo**, sin que estés mirando, con la IA que tengas configurada, tu memoria y las herramientas del agente. Es la misma idea que los agentes «siempre encendidos» como ChatGPT Dots, pero en tu equipo y con tu IA.
 

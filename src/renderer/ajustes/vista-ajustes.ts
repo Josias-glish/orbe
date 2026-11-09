@@ -1,3 +1,4 @@
+import { esIdIdentidad, perfilDe, type ConfigIdentidad } from '../../shared/identidad'
 import { DISENOS } from '../../shared/disenos'
 import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
 import { crearIcono } from '../chat/contexto-ui'
@@ -67,6 +68,7 @@ interface Borrador {
   diseno: string
   riveArchivo: string
   eventos: boolean
+  identidad: ConfigIdentidad
 }
 
 /**
@@ -79,7 +81,7 @@ export class VistaAjustes {
   private borrador: Borrador | null = null
   private mensaje: { texto: string; error: boolean } | null = null
   private guardando = false
-  /** El grupo abierto (0…3) o null para ver la lista de grupos: así no está todo en una sola lista larga. */
+  /** El grupo abierto (0…4) o null para ver la lista de grupos: así no está todo en una sola lista larga. */
   private grupo: number | null = null
 
   constructor(
@@ -109,7 +111,8 @@ export class VistaAjustes {
         apariencia: v.apariencia,
         diseno: v.diseno,
         riveArchivo: v.riveArchivo,
-        eventos: v.eventos
+        eventos: v.eventos,
+        identidad: { ...v.identidad }
       }
       this.pintar()
     } catch {
@@ -138,7 +141,8 @@ export class VistaAjustes {
       `${quien}${b.modelo ? ` · ${b.modelo}` : ''}`,
       `${figura} · avisos de Claude Code ${b.eventos ? 'activados' : 'apagados'}`,
       b.dictado.url ? `${host(b.dictado.url)} · ${b.dictado.modelo}` : 'Sin configurar',
-      b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows'
+      b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows',
+      b.identidad.id === 'orbe' ? 'Orbe (cercano, de tú)' : `${perfilDe(b.identidad).nombre} · trata de «${perfilDe(b.identidad).trato}»`
     ]
   }
 
@@ -230,7 +234,7 @@ export class VistaAjustes {
     volver.title = 'Volver al chat'
     volver.setAttribute('aria-label', 'Volver al chat')
     volver.append(crearIcono('volver', 18))
-    const grupos = ['Inteligencia', 'Personaje y conectores', 'Dictado (micrófono)', 'Voz neuronal']
+    const grupos = ['Inteligencia', 'Personaje y conectores', 'Dictado (micrófono)', 'Voz neuronal', 'Identidad']
     volver.addEventListener('click', () => {
       if (this.grupo === null) this.alVolver()
       else {
@@ -404,18 +408,46 @@ export class VistaAjustes {
       )
     )
 
+    // --- Identidad ---
+    const identidad = this.selector(
+      [
+        { id: 'orbe', nombre: 'Orbe: asistente cercano (de tú)' },
+        { id: 'atlas', nombre: 'Atlas: mayordomo digital con identidad propia (de usted)' }
+      ],
+      b.identidad.id,
+      (nuevo) => {
+        b.identidad.id = esIdIdentidad(nuevo) ? nuevo : 'orbe'
+        this.pintar()
+      },
+      'Identidad'
+    )
+    const secIdentidad: (HTMLElement | null)[] = [this.campo('Quién habla', identidad)]
+    if (b.identidad.id !== 'orbe') {
+      const p = perfilDe(b.identidad)
+      secIdentidad.push(
+        this.campo('Nombre', this.texto(b.identidad.nombre, (x) => (b.identidad.nombre = x), p.nombre, 'Nombre de la identidad'), 'Déjalo en blanco para usar el suyo.'),
+        this.campo('Cómo te llama', this.texto(b.identidad.trato, (x) => (b.identidad.trato = x), p.trato, 'Trato'), 'Por ejemplo «señor», «jefe» o tu nombre.'),
+        el(
+          'p',
+          'memoria-nota',
+          'Atlas tiene carácter propio: sereno, leal, con humor seco y franco con tacto. Al abrir el panel por primera vez cada día te da el parte de situación. Escribe «parte» para pedirlo y «protocolo <nombre>» para lanzar una de tus tareas. Los permisos no cambian.'
+        )
+      )
+    }
+
     const secciones = [
       this.seccion('Quién responde', ...responde),
       this.seccion('Personaje y conectores', ...secPersonaje),
       this.seccion('Dictado (micrófono)', ...secDictado),
-      this.seccion('Voz neuronal (leer en voz alta)', ...secVoz)
+      this.seccion('Voz neuronal (leer en voz alta)', ...secVoz),
+      this.seccion('Identidad', ...secIdentidad)
     ]
     // Todas las secciones siguen en la página (lo que cambies en una no se pierde al ir a otra), pero solo se ve
     // la del grupo abierto; sin grupo abierto se ve la lista de grupos con lo que tiene puesto cada uno.
     secciones.forEach((sec, i) => (sec.hidden = this.grupo !== i))
     if (this.grupo === null) {
       const lista = el('div', 'ajustes-grupos')
-      const iconos = ['🧠', '🐰', '🎙', '🔊']
+      const iconos = ['🧠', '🐰', '🎙', '🔊', '🎩']
       const resumen = this.resumenes(b)
       grupos.forEach((nombre, i) => {
         const g = el('button', 'ajustes-grupo')
@@ -476,7 +508,8 @@ export class VistaAjustes {
       apariencia: b.apariencia,
       diseno: b.diseno,
       riveArchivo: b.riveArchivo,
-      eventos: b.eventos
+      eventos: b.eventos,
+      identidad: { ...b.identidad }
     }
     this.guardando = true
     this.mensaje = null

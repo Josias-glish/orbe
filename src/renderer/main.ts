@@ -309,6 +309,7 @@ function aplicarEstadoVentana(estado: EstadoVentana): void {
       window.orbe.chatPrecalentar()
     }
     window.setTimeout(() => panel.enfocar(), 60)
+    window.setTimeout(() => panel.alAbrirPanel(), 400)
   }
 }
 

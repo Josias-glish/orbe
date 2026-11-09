@@ -1,6 +1,9 @@
 # Fase 3 · Borradores (sin ejecutar)
 
-> Estado: **BORRADOR PARA REVISIÓN**. Nada de esto está conectado a Orbe todavía. El código vive en estos documentos, no en
+> Estado: **APROBADO** (9-nov-2026) con tres cambios: marca personal, PNG desde Claude Design e identidad Atlas.
+> Fase 4 en construcción, por etapas.
+>
+> Antes: Nada de esto está conectado a Orbe todavía. El código vive en estos documentos, no en
 > `src/`, y no se ejecuta hasta que apruebes la Fase 4.
 
 ## Decisiones que recogen estos borradores
@@ -8,7 +11,9 @@
 | Decisión | Origen |
 |---|---|
 | Claude se usa **solo por el CLI** (`claude -p`), con tu suscripción. No se usa la API de Anthropic. | Tu indicación de la Fase 3 |
-| El diseño de cada publicación sale de **Claude Design**: tu marca vive allí y el CLI la usa como referencia | Tu indicación |
+| El diseño de cada publicación sale de **Claude Design**, que **exporta en PNG**; el HTML → PNG de Orbe es solo respaldo | Tu indicación (aprobación de la Fase 3) |
+| **Tres marcas**: J&S Design, morfy y tu **marca personal** | Tu indicación (aprobación de la Fase 3) |
+| **Atlas**: identidad propia de mayordomo digital (ya construida en la v1.5.0) | Tu indicación (aprobación de la Fase 3) |
 | Las imágenes se suben a **Supabase Storage** (bucket privado + enlace firmado de 15 min) | Tu indicación; Meta exige una URL pública |
 | Instagram se publica con la **API oficial de Meta** (Instagram Login, Standard Access) | Plan aprobado |
 | Correo: **API de Gmail con OAuth**, solo leer y crear borradores | Plan aprobado |
@@ -31,11 +36,12 @@
  │ Orbe → Claude CLI  │◄──────────────────────────── Instagram API
  │ (claude -p + MCP)  │
  └────────┬───────────┘
-          │ 1. idea + texto + diseño en HTML (con tu sistema de diseño de Claude Design)
+          │ 1. idea + texto (CLI) → encargo para Claude Design
           ▼
  ┌────────────────────┐
- │ Orbe: renderizador │  HTML → PNG 1080×1350 en una ventana oculta, sin internet
- └────────┬───────────┘
+ │ Claude Design      │  tu proyecto de marca (J&S Design, morfy o personal) → Export PNG
+ └────────┬───────────┘  (respaldo: el CLI hace HTML y Orbe lo convierte en PNG sin internet)
+          │ Orbe detecta el PNG en contenido\entrada\<marca>\ y comprueba tamaño y peso
           │ 2. vista previa en la pestaña «Contenido»  ──►  TÚ APRUEBAS ✅ (o pides cambios)
           ▼
  ┌────────────────────┐

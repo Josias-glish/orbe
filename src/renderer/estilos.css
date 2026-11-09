@@ -2622,3 +2622,10 @@ select.memoria-campo {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Identidad Atlas: acento ámbar y dorado, como un panel de mando. Solo cambia el color, no la disposición. */
+:root[data-identidad='atlas'] {
+  --cian: #fbbf24;
+  --violeta: #d97706;
+  --panel-borde: rgba(251, 191, 36, 0.24);
+}

@@ -15,6 +15,8 @@ export interface OpcionesProveedorOpenai {
   modelo: string
   /** Bloque de memoria del usuario; se consulta al empezar cada conversación. */
   memoria?: () => string | undefined
+  /** Quién habla: la presentación de la identidad para el prompt (por defecto, Orbe). */
+  identidad?: string
   ahora?: () => Date
   /** Para pruebas. */
   fetch?: typeof fetch
@@ -272,6 +274,7 @@ export class ProveedorOpenai implements ProveedorChat {
       this.prompt = construirPromptSistema({
         ahora: this.opciones.ahora?.(),
         memoria: this.opciones.memoria?.(),
+        identidad: this.opciones.identidad,
         pasosAgente: agente?.maxPasos,
         busquedaWeb: agente ? hayBusquedaWeb(agente) : undefined
       })

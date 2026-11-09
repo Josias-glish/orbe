@@ -940,6 +940,19 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await capturar('13f-consumo')
     await pulsar('#uso-boton')
     await esperar(200)
+
+    // La identidad responde sola a «parte» y «protocolo …» (sin llamar al modelo)
+    const respuestas = await contar('#mensajes .msg.asistente')
+    await escribirYEnviar('parte')
+    await esperar(800)
+    v.parte = await js<string>(`[...document.querySelectorAll('#mensajes .msg.asistente')].pop()?.textContent ?? ''`)
+    comprobar('«parte» da el parte de situación al momento', (await contar('#mensajes .msg.asistente')) === respuestas + 1 && /Son las \d\d:\d\d/.test(String(v.parte)) && /Desde la última vez|Programado|Nada programado/.test(String(v.parte)), v.parte)
+    await escribirYEnviar('protocolo inexistente')
+    await esperar(800)
+    v.protocolo = await js<string>(`[...document.querySelectorAll('#mensajes .msg.asistente')].pop()?.textContent ?? ''`)
+    comprobar('un protocolo desconocido lista los que hay', /No encuentro «inexistente»|No tengo ningún protocolo/.test(String(v.protocolo)), v.protocolo)
+    await esperar(300)
+    await capturar('13g-parte')
   }
 
   const pasosAjustes = async (): Promise<void> => {
@@ -951,9 +964,9 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('#ajustes-boton')
     await esperarSelector('#ajustes:not([hidden]) .ajuste-seccion', 3000)
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
-    comprobar('tiene las cuatro secciones (con «Personaje y conectores»)', (await textosDe('#ajustes .ajuste-titulo')).length === 4, await textosDe('#ajustes .ajuste-titulo'))
+    comprobar('tiene las cinco secciones (con «Personaje y conectores» e «Identidad»)', (await textosDe('#ajustes .ajuste-titulo')).length === 5, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
-    comprobar('la configuración se organiza en 4 grupos', (await contar('#ajustes .ajustes-grupo')) === 4)
+    comprobar('la configuración se organiza en 5 grupos', (await contar('#ajustes .ajustes-grupo')) === 5)
     await esperar(300)
     await capturar('11a-ajustes')
     await js(`document.querySelector('#ajustes .ajustes-grupo').click()`)
