@@ -11,6 +11,7 @@ import { aErrorOrbe, crearError } from '../chat/errores'
 import type { VentanaOrbe } from '../ventana'
 import type { ServicioCaptura } from './captura'
 import { ServicioPantalla, type FuenteUia } from './contexto'
+import type { ServicioFormula } from './formula'
 import type { ServicioTextoImagen } from './ocr'
 import { ContextoPendiente } from './pendiente'
 
@@ -39,6 +40,8 @@ export function registrarPantalla(opciones: {
   captura?: ServicioCaptura
   /** Texto de una imagen (OCR en el equipo); sin él, el botón devuelve un error. */
   textoImagen?: ServicioTextoImagen
+  /** Fórmulas y estructuras químicas (la IA ve la imagen); sin él, el botón devuelve un error. */
+  formula?: ServicioFormula
 }): PantallaRegistrada {
   const { ventana } = opciones
   const emitir = (evento: EventoPantalla): void => {
@@ -86,6 +89,24 @@ export function registrarPantalla(opciones: {
         return { ok: true, ...(actual ?? { partes: [], avisos: [], sugerirCaptura: false }) }
       }
       return { ok: true, ...pendiente.agregarTextoImagen(hecho) }
+    } catch (error) {
+      return { ok: false, error: aErrorOrbe(error) }
+    }
+  })
+
+  // Fórmulas y química: aquí sí viaja la imagen (el OCR de texto plano pierde fracciones, exponentes y enlaces), así
+  // que el chip enseña la miniatura antes de enviar. El usuario elige la imagen; nunca es un pantallazo del monitor.
+  ipcMain.handle(CANALES.pantallaFormula, async (e, origen: unknown): Promise<RespuestaLectura> => {
+    if (!propia(e)) throw new Error('Remitente no autorizado')
+    if (!esOrigen(origen)) return { ok: false, error: crearError('ocr_sin_imagen') }
+    if (!opciones.formula) return { ok: false, error: crearError('ocr_no_disponible') }
+    try {
+      const hecha = await opciones.formula.leer(origen)
+      if (!hecha) {
+        const actual = pendiente.lectura()
+        return { ok: true, ...(actual ?? { partes: [], avisos: [], sugerirCaptura: false }) }
+      }
+      return { ok: true, ...pendiente.agregarImagen(hecha) }
     } catch (error) {
       return { ok: false, error: aErrorOrbe(error) }
     }

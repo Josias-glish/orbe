@@ -619,6 +619,38 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('.tarjeta-error .boton-secundario')
     comprobar('«Reintentar» vuelve a leer', await esperarSelector('#pendiente .chip-texto_imagen', 5000))
     await pulsar('.pendiente-descartar')
+
+    // 8n. Fórmulas y química: modo «Fórmula», chip con miniatura, pedido escrito solo, y respuesta con KaTeX
+    await nueva()
+    await js(`(() => { const t = document.getElementById('entrada'); t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await pulsar('#texto-imagen')
+    await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-modo', 2000)
+    await pulsar('#texto-imagen-menu .ocr-modo[data-modo="formula"]')
+    await esperar(200)
+    o.tituloFormula = await textoDe('#texto-imagen-menu .ocr-menu-titulo')
+    comprobar('el modo fórmula cambia el menú', /fórmula o una estructura química/.test(String(o.tituloFormula)), o.tituloFormula)
+    await capturar('8n-menu-formula')
+    await pulsar('#texto-imagen-menu .ocr-opcion[data-origen="portapapeles"]')
+    comprobar('aparece el chip de la fórmula', await esperarSelector('#pendiente .chip-imagen', 5000))
+    await esperar(300)
+    o.chipsFormula = await chipsPendientes()
+    comprobar('es una fórmula', mismos(o.chipsFormula, ['Fórmula']), o.chipsFormula)
+    o.miniaturaFormula = await js(`(() => { const i = document.querySelector('#pendiente .chip-miniatura'); return i ? i.naturalWidth : 0 })()`)
+    comprobar('con su miniatura para ver lo que se enviará', (o.miniaturaFormula as number) > 50, o.miniaturaFormula)
+    o.pedido = await js(`document.getElementById('entrada').value`)
+    comprobar('escribe el pedido si el campo estaba vacío', /resuélvela paso a paso/.test(String(o.pedido)), o.pedido)
+    comprobar('tampoco se ocultó Orbe', captura.ocultadas === ocultadasAntes, [captura.ocultadas, ocultadasAntes])
+    await capturar('8n-formula')
+    await pulsar('#enviar')
+    await esperarFin(15_000)
+    await esperar(500)
+    o.acuseFormula = (await ultimaRespuesta()).slice(0, 60)
+    comprobar('el modelo recibió la fórmula', String(o.acuseFormula).includes('fórmula'), o.acuseFormula)
+    o.katex = await js(`(() => { const m = [...document.querySelectorAll('.msg.asistente')].at(-1); return { linea: m.querySelectorAll('.katex').length, bloque: m.querySelectorAll('.katex-display').length, fraccion: m.querySelectorAll('.mfrac').length } })()`)
+    const k = o.katex as { linea: number; bloque: number; fraccion: number }
+    comprobar('las fórmulas se ven con KaTeX (en línea y en bloque)', k.linea >= 4 && k.bloque === 1 && k.fraccion >= 1, o.katex)
+    o.fuenteKatex = await js(`document.fonts.check('16px KaTeX_Main')`)
+    await capturar('8o-respuesta-formula')
   }
 
   /** Tamaño del panel (se puede cambiar arrastrando un borde) y fondo del chat. */

@@ -13,6 +13,7 @@ import {
   type TextoReconocido
 } from '../src/main/pantalla/ocr'
 import { ContextoPendiente } from '../src/main/pantalla/pendiente'
+import { AVISO_FORMULA, ServicioFormula, VISTA_FORMULA } from '../src/main/pantalla/formula'
 import type { VentanaOrbe } from '../src/main/ventana'
 
 type Manejador = (evento: unknown, ...args: unknown[]) => unknown
@@ -301,5 +302,67 @@ describe('pantalla:texto-imagen (IPC)', () => {
     const t = montar()
     const r = (await t.invocar(CANALES.pantallaTextoImagen, true, 'portapapeles')) as { ok: false; error: { codigo: string } }
     expect(r.error.codigo).toBe('ocr_no_disponible')
+  })
+})
+
+describe('fórmulas y química (la IA ve la imagen)', () => {
+  /** Una imagen de mentira con las operaciones que usa la compresión. */
+  const imagenFalsa = (negra = false) => {
+    const img = {
+      tamano: () => ({ ancho: 800, alto: 300 }),
+      reducir: () => img,
+      aJpeg: () => new Uint8Array(2048),
+      esNegra: () => negra
+    }
+    return img
+  }
+
+  it('prepara la imagen con su miniatura y la marca como fórmula; libera la copia temporal', async () => {
+    const { deps, registro } = depsFalsas()
+    const servicio = new ServicioFormula({ obtener: deps.obtener, cargar: async () => imagenFalsa() })
+    const hecha = await servicio.leer('portapapeles')
+    expect(hecha!.imagen.proposito).toBe('formula')
+    expect(hecha!.imagen.tipoMime).toBe('image/jpeg')
+    expect(hecha!.parte).toMatchObject({ clave: 'imagen', etiqueta: 'Fórmula', vista: VISTA_FORMULA })
+    expect(hecha!.parte.miniatura).toMatch(/^data:image\/jpeg;base64,/)
+    expect(hecha!.avisos).toEqual([AVISO_FORMULA])
+    expect(registro.liberadas).toBe(1)
+    expect(registro.reconocidas).toEqual([]) // no pasa por el OCR de texto
+  })
+
+  it('una imagen que no se puede abrir da un error claro (y libera la copia)', async () => {
+    const { deps, registro } = depsFalsas()
+    const servicio = new ServicioFormula({ obtener: deps.obtener, cargar: async () => null })
+    const error = await servicio.leer('archivo').catch((e) => e)
+    expect((error as ErrorChat).error.codigo).toBe('ocr_sin_imagen')
+    expect((error as ErrorChat).error.mensaje).toMatch(/PNG o JPG/)
+    expect(registro.liberadas).toBe(1)
+  })
+
+  it('cancelar el diálogo devuelve null', async () => {
+    const { deps } = depsFalsas({ cancelar: true })
+    expect(await new ServicioFormula({ obtener: deps.obtener, cargar: async () => imagenFalsa() }).leer('archivo')).toBeNull()
+  })
+
+  it('otra fuente a la vez se rechaza en lugar de devolver la imagen equivocada', async () => {
+    const { deps } = depsFalsas()
+    const servicio = new ServicioFormula({ obtener: deps.obtener, cargar: async () => imagenFalsa() })
+    const a = servicio.leer('ventana')
+    await expect(servicio.leer('archivo')).rejects.toBeInstanceOf(ErrorChat)
+    expect(await a).not.toBeNull()
+  })
+
+  it('al modelo le llega la imagen y un aviso de que es una fórmula, no un pantallazo', () => {
+    const contexto = { imagen: { tipoMime: 'image/jpeg' as const, base64: 'AAAA', ancho: 10, alto: 10, proposito: 'formula' as const } }
+    const bloques = construirBloques({ texto: 'Resuélvela', contexto })
+    expect(bloques[0].type).toBe('image')
+    const texto = (bloques[1] as { text: string }).text
+    expect(texto).toContain('<captura tipo="formula">')
+    expect(texto).not.toContain('captura de la pantalla del usuario')
+  })
+
+  it('una captura normal sigue diciendo que es de la pantalla', () => {
+    const texto = describirContexto({ imagen: { tipoMime: 'image/jpeg', base64: 'AAAA', ancho: 10, alto: 10 } })
+    expect(texto).toContain('<captura>Se adjunta una captura de la pantalla del usuario.</captura>')
   })
 })

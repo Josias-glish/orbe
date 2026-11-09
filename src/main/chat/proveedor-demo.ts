@@ -19,6 +19,15 @@ function saludar(nombre: string): string {
 
 ¿Quieres que profundice en algo?`
 
+/** Respuesta de mentira a una fórmula, con LaTeX en línea y en bloque, para ver cómo se pinta. */
+const RESPUESTA_FORMULA_DEMO = `En la imagen hay una ecuación de segundo grado: $x^2 - 5x + 6 = 0$.
+
+Con la fórmula general:
+
+$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} = \\frac{5 \\pm 1}{2}$$
+
+**Resultado:** $x_1 = 3$ y $x_2 = 2$. Y el agua es $\\mathrm{H_2O}$ (SMILES: \`O\`).`
+
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 /** Frase con la que la demo confirma qué le llegó (pantalla, nota de la app, conversación anterior), para poder comprobarlo en las pruebas visuales. */
@@ -31,7 +40,7 @@ function acuseContexto(turno: TurnoEntrada): string {
     if (contexto.seleccion) pantalla.push('selección')
     if (contexto.contenido) pantalla.push('contenido')
     if (contexto.textoImagen) pantalla.push('texto de imagen')
-    if (contexto.imagen) pantalla.push('captura')
+    if (contexto.imagen) pantalla.push(contexto.imagen.proposito === 'formula' ? 'fórmula' : 'captura')
     if (pantalla.length > 0) partes.push(`contexto de pantalla: ${pantalla.join(', ')}`)
   }
   if (turno.notaApp) partes.push('nota de la app')
@@ -112,7 +121,8 @@ export class ProveedorDemo implements ProveedorChat {
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
     if (turno.texto.startsWith('/busca')) return this.simularBusqueda(m)
     if (turno.texto.startsWith('/acciones') || turno.texto.startsWith('/colgada')) return this.simularAgente(turno.texto, m)
-    const respuesta = acuseContexto(turno) + RESPUESTA_DEMO
+    const respuesta =
+      acuseContexto(turno) + (turno.contexto?.imagen?.proposito === 'formula' ? RESPUESTA_FORMULA_DEMO : RESPUESTA_DEMO)
     for (let i = 0; i < respuesta.length && !this.cancelado; i += this.ritmo.trozo) {
       m.alTexto(respuesta.slice(i, i + this.ritmo.trozo))
       await esperar(this.ritmo.trozoMs)

@@ -34,7 +34,8 @@ import { ClienteHelper } from './pantalla/helper-uia'
 import { registrarPantalla } from './pantalla/ipc'
 import { ServicioTextoImagen } from './pantalla/ocr'
 import { OcrDemo } from './pantalla/ocr-demo'
-import { crearDepsOcrReales } from './pantalla/ocr-electron'
+import { cargarImagenElectron, crearDepsOcrReales } from './pantalla/ocr-electron'
+import { ServicioFormula } from './pantalla/formula'
 import { VentanaOrbe } from './ventana'
 
 const modoHumo = process.argv.includes('--smoke')
@@ -108,16 +109,20 @@ app.whenReady().then(() => {
   const captura = new ServicioCaptura(capturaDemo ?? crearDepsReales(orbe, () => fuente.ventana()))
   // Texto de imagen (OCR de Windows, en el equipo): en la prueba de humo, de mentira (ni lee nada real ni lanza PowerShell).
   const ocrDemo = modoHumo ? new OcrDemo() : null
-  const textoImagen = new ServicioTextoImagen(
-    ocrDemo ?? crearDepsOcrReales({ ventana: orbe, ventanaObjetivo: () => fuente.ventana(), carpetaHelper: carpetaHelper() }),
-    { contextoMax: config.contextoMax }
-  )
+  const depsOcr = ocrDemo ?? crearDepsOcrReales({ ventana: orbe, ventanaObjetivo: () => fuente.ventana(), carpetaHelper: carpetaHelper() })
+  const textoImagen = new ServicioTextoImagen(depsOcr, { contextoMax: config.contextoMax })
+  // Fórmulas y química: la misma forma de conseguir la imagen; en la prueba de humo, una imagen de mentira.
+  const formula = new ServicioFormula({
+    obtener: (origen) => depsOcr.obtener(origen),
+    cargar: ocrDemo ? () => ocrDemo.cargar() : cargarImagenElectron
+  })
   const pantalla = registrarPantalla({
     ventana: orbe,
     fuente,
     contextoMax: config.contextoMax,
     captura,
-    textoImagen
+    textoImagen,
+    formula
   })
 
   // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.

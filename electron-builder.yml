@@ -54,5 +54,5 @@ nsis:
 
 portable:
   artifactName: Orbe-Portable-${version}.${ext}
-  # Mensaje mientras se descomprime la primera vez (tarda unos segundos).
+  # Nombre de la carpeta de %TEMP% donde se descomprime al abrirse (tarda unos segundos).
   unpackDirName: Orbe

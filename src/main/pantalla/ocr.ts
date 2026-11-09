@@ -57,6 +57,7 @@ export const AVISO_OCR =
  */
 export class ServicioTextoImagen {
   private enCurso: Promise<TextoImagenHecho | null> | null = null
+  private origenEnCurso: OrigenTextoImagen | null = null
 
   constructor(
     private readonly deps: DepsOcr,
@@ -65,9 +66,15 @@ export class ServicioTextoImagen {
 
   /** Dos peticiones a la vez (doble clic) comparten el mismo reconocimiento. `null` si el usuario canceló. */
   leer(origen: OrigenTextoImagen): Promise<TextoImagenHecho | null> {
+    if (this.enCurso && this.origenEnCurso !== origen) {
+      // Otra fuente a la vez: no se le da el resultado de la primera con la etiqueta equivocada.
+      return Promise.reject(new ErrorChat(crearError('ocr_no_disponible', { mensaje: 'Ya estoy leyendo otra imagen. Espera a que termine.' })))
+    }
     if (!this.enCurso) {
+      this.origenEnCurso = origen
       this.enCurso = this.hacer(origen).finally(() => {
         this.enCurso = null
+        this.origenEnCurso = null
       })
     }
     return this.enCurso

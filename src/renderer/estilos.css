@@ -1807,6 +1807,31 @@ kbd {
   white-space: normal;
   overflow: visible;
 }
+.ocr-modos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.ocr-modo {
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ocr-modo[aria-checked='true'] {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--texto);
+}
+.ocr-modo:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+}
 .ocr-menu-titulo {
   margin: 0;
   font-size: 12.5px;
@@ -1840,4 +1865,16 @@ kbd {
 .ocr-opcion-ayuda {
   font-size: 11px;
   color: var(--texto-suave);
+}
+
+/* ---- Fórmulas (KaTeX) en las respuestas ---- */
+.contenido .katex {
+  font-size: 1.08em;
+  color: inherit;
+}
+.contenido .katex-display {
+  margin: 0.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
 }

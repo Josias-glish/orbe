@@ -19,7 +19,7 @@ import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
 import { MenuVoz } from '../voz/menu-voz'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
-import { MenuTextoImagen } from './ocr-ui'
+import { MenuTextoImagen, type ModoImagen } from './ocr-ui'
 import { ConfirmacionAccion } from './confirmacion-accion'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
@@ -99,7 +99,7 @@ export class PanelChat {
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
     this.botonTextoImagen = porId('texto-imagen')
-    this.menuTextoImagen = new MenuTextoImagen(this.botonTextoImagen, porId('texto-imagen-menu'), (origen) => void this.leerTextoImagen(origen))
+    this.menuTextoImagen = new MenuTextoImagen(this.botonTextoImagen, porId('texto-imagen-menu'), (modo, origen) => void this.leerImagen(modo, origen))
     this.botonMicro = porId('microfono')
     let almacen: Storage | null = null
     try {
@@ -435,21 +435,33 @@ export class PanelChat {
   // Texto de una imagen (OCR de Windows en el equipo, sin pantallazo del monitor)
   // -------------------------------------------------------------------------------------------
 
-  /** Reconoce el texto de una imagen (ventana, portapapeles o archivo) y lo deja pendiente con su vista previa. */
-  async leerTextoImagen(origen: OrigenTextoImagen): Promise<void> {
+  /** Lo que se escribe solo al preparar una fórmula, si el campo está vacío (se puede cambiar antes de enviar). */
+  static readonly PEDIDO_FORMULA = 'Reconoce la fórmula o la estructura de la imagen y resuélvela paso a paso.'
+
+  /**
+   * Texto: reconoce el texto de una imagen (ventana, portapapeles o archivo) en el equipo y lo deja pendiente.
+   * Fórmula: deja la imagen pendiente, con su miniatura, para que la IA la reconozca y la resuelva.
+   */
+  async leerImagen(modo: ModoImagen, origen: OrigenTextoImagen): Promise<void> {
     if (this.reconociendo || this.capturando || this.leyendo) return
     this.reconociendo = true
     this.botonTextoImagen.disabled = true
     this.botonTextoImagen.classList.add('leyendo')
     if (!this.turno) this.cambiarEstadoOrbe('leyendo')
     try {
-      const respuesta = await window.orbe.pantallaTextoImagen(origen)
+      const antes = this.lectura?.partes.find((p) => p.clave === (modo === 'formula' ? 'imagen' : 'texto_imagen'))?.resumen
+      const respuesta = modo === 'formula' ? await window.orbe.pantallaFormula(origen) : await window.orbe.pantallaTextoImagen(origen)
       if (respuesta.ok) {
         const lectura = { partes: respuesta.partes, avisos: respuesta.avisos, sugerirCaptura: respuesta.sugerirCaptura }
-        if (respuesta.partes.some((p) => p.clave === 'texto_imagen')) this.barra.abrir('texto_imagen')
+        const clave = modo === 'formula' ? 'imagen' : 'texto_imagen'
+        const nueva = respuesta.partes.find((p) => p.clave === clave)
+        // Solo si de verdad hay algo nuevo (cancelar el diálogo de archivo deja todo como estaba).
+        const hayNueva = !!nueva && nueva.resumen !== antes
+        if (hayNueva) this.barra.abrir(clave)
         if (respuesta.partes.length > 0) this.fijarLectura(lectura)
+        if (hayNueva && modo === 'formula' && !this.entrada.hayTexto()) this.entrada.insertar(PanelChat.PEDIDO_FORMULA)
       } else {
-        this.lista.agregarError(respuesta.error, respuesta.error.reintentable ? () => void this.leerTextoImagen(origen) : undefined)
+        this.lista.agregarError(respuesta.error, respuesta.error.reintentable ? () => void this.leerImagen(modo, origen) : undefined)
       }
     } catch (e) {
       this.lista.agregarError(this.errorLocal(e))

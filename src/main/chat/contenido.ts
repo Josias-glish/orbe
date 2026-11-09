@@ -51,7 +51,11 @@ export function describirContexto(contexto: ContextoPantalla | undefined): strin
     const recortado = contexto.textoImagenRecortado ? ' recortado="true"' : ''
     partes.push(`<texto_imagen${origen}${recortado}>\n${neutralizarEtiquetas(contexto.textoImagen)}\n</texto_imagen>`)
   }
-  if (contexto.imagen) {
+  if (contexto.imagen?.proposito === 'formula') {
+    partes.push(
+      '<captura tipo="formula">Se adjunta una imagen elegida por el usuario con una fórmula matemática, una ecuación o una estructura química para reconocerla y resolverla (no es una captura de su pantalla).</captura>'
+    )
+  } else if (contexto.imagen) {
     partes.push('<captura>Se adjunta una captura de la pantalla del usuario.</captura>')
   }
   if (partes.length === 0) return ''

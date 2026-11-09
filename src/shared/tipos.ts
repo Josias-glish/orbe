@@ -32,6 +32,7 @@ export const CANALES = {
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
   pantallaTextoImagen: 'pantalla:texto-imagen',
+  pantallaFormula: 'pantalla:formula',
   appOrden: 'app:orden',
   appSalir: 'app:salir',
   ventanaFijar: 'ventana:fijar',
@@ -178,7 +179,14 @@ export interface ContextoPantalla {
   /** Contenido de la ventana activa leído por UI Automation, ya limpio y recortado. */
   contenido?: string
   contenidoRecortado?: boolean
-  imagen?: { tipoMime: 'image/jpeg' | 'image/png'; base64: string; ancho: number; alto: number }
+  imagen?: {
+    tipoMime: 'image/jpeg' | 'image/png'
+    base64: string
+    ancho: number
+    alto: number
+    /** «formula»: una imagen elegida para reconocer y resolver una fórmula o una estructura química (no es un pantallazo). */
+    proposito?: 'captura' | 'formula'
+  }
   /** Texto reconocido en una imagen (OCR de Windows, en el propio equipo): solo viaja el texto, nunca la imagen. */
   textoImagen?: string
   textoImagenRecortado?: boolean
@@ -384,6 +392,11 @@ export interface ApiOrbe {
    * listo para el próximo mensaje. Solo viaja el texto. Solo cuando el usuario lo pide.
    */
   pantallaTextoImagen(origen: OrigenTextoImagen): Promise<RespuestaLectura>
+  /**
+   * Prepara una imagen con una fórmula matemática o una estructura química (de la ventana, el portapapeles o un
+   * archivo; sin pantallazo del monitor) para que la IA la reconozca y la resuelva. La imagen viaja solo si envías.
+   */
+  pantallaFormula(origen: OrigenTextoImagen): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
   alOrdenApp(cb: (orden: OrdenApp) => void): () => void
   /** Fija el panel por encima de las demás ventanas (o lo suelta). Sin argumento, solo dice cómo está. */

@@ -1,5 +1,5 @@
 # Reconoce el texto de una imagen con el OCR que trae Windows 10/11 (Windows.Media.Ocr), en el propio equipo.
-# Lo lanza Orbe cuando el usuario pulsa «Texto de imagen»; no esta pensado para usarse a mano.
+# Lo lanza Orbe cuando el usuario pulsa 'Texto de imagen'; no esta pensado para usarse a mano.
 #   powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ocr.ps1 -Ruta C:\ruta\imagen.png
 # Escribe una sola linea JSON: {"ok":true,"texto":"...","idioma":"es-ES"} o {"ok":false,"error":"..."}.
 # No envia nada a internet, no guarda nada y no toca la imagen.
@@ -26,6 +26,7 @@ try {
     $null = [Windows.Graphics.Imaging.SoftwareBitmap, Windows.Graphics, ContentType = WindowsRuntime]
     $null = [Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
     $null = [Windows.Media.Ocr.OcrResult, Windows.Foundation, ContentType = WindowsRuntime]
+    $null = [Windows.Globalization.Language, Windows.Globalization, ContentType = WindowsRuntime]
 
     # Las APIs de Windows son asincronas (IAsyncOperation<T>): se esperan como Task de .NET.
     $asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {

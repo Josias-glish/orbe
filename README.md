@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Versión 1.2: chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
+> Versión 1.2: chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
 ## Instalar (usuarios)
 En la sección **Releases** del repositorio (o en «Artifacts» de cada ejecución del flujo CI) hay tres opciones; elige la que prefieras:
@@ -53,7 +53,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
-- El botón **[T]** lee el **texto de una imagen sin pantallazo**: de la ventana que estabas usando, del portapapeles o de un archivo (ver «Texto de una imagen»).
+- El botón **[T]** lee el **texto de una imagen sin pantallazo** o **reconoce y resuelve una fórmula o una estructura química**: de la ventana que estabas usando, del portapapeles o de un archivo (ver «Texto de una imagen» y «Fórmulas»).
 - La **cámara** adjunta una **captura de pantalla** (último recurso; antes te pide confirmación).
 - **Cambiar el tamaño del panel**: arrastra el borde izquierdo o el superior (los libres, opuestos al orbe), o la esquina marcada. El orbe no se mueve de su esquina, hay un mínimo y un máximo (se ajusta a tu pantalla) y Orbe recuerda el tamaño que elijas.
 - El botón de la **imagen** de la cabecera (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
@@ -141,6 +141,15 @@ Para leer el texto que hay **dentro de una imagen** (un cartel, una factura esca
 El texto lo reconoce el **OCR que trae Windows** (`Windows.Media.Ocr`, en `helper/ocr.ps1`), en tu equipo, sin conexión y gratis. Aparece como un chip **«Texto de imagen»** con el texto exacto que se enviará; se suma a lo que haya leído el ojo y se quita con la ×. **Solo viaja el texto, y solo si envías el mensaje**: así sirve también con modelos que no ven imágenes (Groq, Ollama…) y gasta mucho menos que una captura. La imagen no llega a la interfaz; si hace falta una copia temporal para el OCR, se borra al terminar. Como todo lo de la pantalla, al modelo se le dice que ese texto es de terceros.
 
 Necesita el paquete de idioma con «Reconocimiento óptico de caracteres» (viene con Windows en español; si falta: Configuración → Hora e idioma → Idioma y región). La letra a mano o muy decorada se reconoce peor, y el contenido protegido (vídeo con DRM) sale en negro: para ver la imagen de verdad sigue estando la captura.
+
+### Fórmulas matemáticas y estructuras químicas
+En el mismo botón **[T]**, cambia arriba a **«Fórmula o química»** y elige la imagen igual que antes (ventana, portapapeles o archivo PNG/JPG). Sirve para ecuaciones, integrales, derivadas, matrices, problemas de física, estructuras moleculares, reacciones…
+
+- Aquí **sí viaja la imagen** (el texto plano del OCR pierde fracciones, exponentes y enlaces químicos), reducida, y solo si envías el mensaje. Antes de enviar ves su miniatura en el chip **«Fórmula»** y puedes quitarla. Sigue sin ser un pantallazo: Orbe no se oculta.
+- Si el campo está vacío, Orbe escribe por ti «Reconoce la fórmula o la estructura de la imagen y resuélvela paso a paso»; cámbialo si solo quieres, por ejemplo, transcribirla o comprobar tu resultado.
+- La IA primero **transcribe** lo que ve (matemáticas en LaTeX; química con nombre, fórmula molecular y SMILES), avisa de lo que no se lee bien, **resuelve paso a paso** y comprueba el resultado.
+- Las respuestas muestran las fórmulas bien escritas con **KaTeX** (`$…$` en línea y `$$…$$` en bloque), sin conexión.
+- Necesita un modelo que vea imágenes: Claude (CLI o API), Gemini de Google AI Studio, GPT-4o… Con modelos de solo texto, usa el modo «Texto».
 
 ### Captura de pantalla (último recurso)
 Cuando el texto no basta (una imagen, un gráfico, un diseño, una app que no expone su contenido), puedes adjuntar una captura con la **cámara** junto al campo de texto. Orbe te la propone cuando la ventana tenía muy poco texto o cuando lo que escribes suena a pregunta visual («cómo se ve…», «esta imagen…», «el gráfico…»), pero **nunca la hace por su cuenta**:

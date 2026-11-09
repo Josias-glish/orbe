@@ -6,7 +6,8 @@ import { clipboard, desktopCapturer, dialog, nativeImage, type NativeImage } fro
 import { ErrorChat, crearError } from '../chat/errores'
 import type { VentanaOrbe } from '../ventana'
 import type { VentanaUia } from './contexto'
-import { dimensionesReducidas } from './captura'
+import { dimensionesReducidas, type ImagenNativa } from './captura'
+import { envolverImagen } from './captura-electron'
 import { EXTENSIONES_OCR, LADO_MAX_OCR, MAX_BYTES_ARCHIVO, extensionAdmitida, interpretarSalidaOcr, type DepsOcr, type ImagenParaOcr } from './ocr'
 
 const TIEMPO_OCR_MS = 45_000
@@ -22,7 +23,13 @@ function ajustar(img: NativeImage): NativeImage {
 async function copiaTemporal(img: NativeImage, descripcion?: string): Promise<ImagenParaOcr> {
   const carpeta = await mkdtemp(join(tmpdir(), 'orbe-ocr-'))
   const ruta = join(carpeta, 'imagen.png')
-  await writeFile(ruta, ajustar(img).toPNG(), { mode: 0o600 })
+  try {
+    await writeFile(ruta, ajustar(img).toPNG(), { mode: 0o600 })
+  } catch (e) {
+    // Que no quede una carpeta a medias en %TEMP%.
+    await rm(carpeta, { recursive: true, force: true }).catch(() => undefined)
+    throw e
+  }
   return {
     ruta,
     ...(descripcion ? { descripcion } : {}),
@@ -120,4 +127,10 @@ export function crearDepsOcrReales(opciones: {
       })
     }
   }
+}
+
+/** Abre una imagen ya obtenida para enviarla a la IA (fórmulas): PNG y JPEG; null si Electron no sabe abrirla. */
+export async function cargarImagenElectron(ruta: string): Promise<ImagenNativa | null> {
+  const img = nativeImage.createFromPath(ruta)
+  return img.isEmpty() ? null : envolverImagen(img)
 }
