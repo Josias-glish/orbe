@@ -19,7 +19,7 @@ export const cifradorElectron: Cifrador = {
 export function registrarCofre(ventana: BrowserWindow, ruta: string, rutaClienteGoogle: string): Cofre {
   const cofre = new Cofre(ruta, cifradorElectron)
   const control = new ControladorCofre(cofre, { leer: () => clipboard.readText(), vaciar: () => clipboard.clear() })
-  const propia = (e: Electron.IpcMainInvokeEvent): boolean => e.sender === ventana.webContents
+  const propia = (e: { sender: Electron.WebContents }): boolean => e.sender === ventana.webContents
   ipcMain.handle(CANALES.cofreEstado, (e): EstadoCofre => {
     if (!propia(e)) throw new Error('Remitente no autorizado')
     return control.estado()
@@ -41,19 +41,23 @@ export function registrarCofre(ventana: BrowserWindow, ruta: string, rutaCliente
     }
     return control.borrar(clave)
   })
-  let conectando = false
+  // Si Google muestra un error en el navegador no vuelve a Orbe: «Cancelar» corta la espera.
+  let conectando: AbortController | null = null
+  ipcMain.on(CANALES.gmailCancelar, (e) => {
+    if (propia(e)) conectando?.abort()
+  })
   ipcMain.handle(CANALES.gmailConectar, async (e): Promise<ResultadoCofre> => {
     if (!propia(e)) throw new Error('Remitente no autorizado')
     if (conectando) return { ok: false, error: 'Ya hay una conexión en curso: termina en el navegador.', estado: control.estado() }
-    conectando = true
+    const control_ = (conectando = new AbortController())
     try {
       // El permiso va de Google al cofre sin pasar por la interfaz.
-      cofre.guardar('gmail.refresh', await conectarGmail(leerClienteGoogle(rutaClienteGoogle), { abrir: (url) => shell.openExternal(url) }))
+      cofre.guardar('gmail.refresh', await conectarGmail(leerClienteGoogle(rutaClienteGoogle), { abrir: (url) => shell.openExternal(url), senal: control_.signal }))
       return { ok: true, estado: control.estado() }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'No se pudo conectar Gmail.', estado: control.estado() }
     } finally {
-      conectando = false
+      conectando = null
     }
   })
   return cofre

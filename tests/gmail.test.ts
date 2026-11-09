@@ -61,6 +61,12 @@ describe('OAuth de Gmail (loopback + PKCE)', () => {
     expect(google.canjes).toHaveLength(0)
   })
 
+  it('se puede dejar de esperar (Google dio un error en el navegador y nunca volvió)', async () => {
+    const control = new AbortController()
+    const intento = conectarGmail(CLIENTE, { fetch: googleFalso({}).fetch, senal: control.signal, abrir: () => void setTimeout(() => control.abort(), 50) })
+    await expect(intento).rejects.toThrow(/cancelada/)
+  })
+
   it('si el usuario cancela en Google, lo dice', async () => {
     const intento = conectarGmail(CLIENTE, {
       fetch: googleFalso({}).fetch,

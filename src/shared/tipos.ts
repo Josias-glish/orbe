@@ -77,7 +77,8 @@ export const CANALES = {
   cofreGuardar: 'cofre:guardar',
   cofreBorrar: 'cofre:borrar',
   // Gmail: abre el navegador para dar permiso; el permiso va del proceso principal al cofre, nunca a la interfaz.
-  gmailConectar: 'gmail:conectar'
+  gmailConectar: 'gmail:conectar',
+  gmailCancelar: 'gmail:cancelar'
 } as const
 
 export interface EstadoVentana {
@@ -658,4 +659,6 @@ export interface ApiOrbe {
   cofreBorrar(clave: string): Promise<ResultadoCofre>
   /** Conecta Gmail con OAuth en el navegador (puede tardar: espera a que termines en Google). */
   gmailConectar(): Promise<ResultadoCofre>
+  /** Deja de esperar al navegador (la conexión en curso termina con «Conexión cancelada»). */
+  gmailCancelar(): void
 }

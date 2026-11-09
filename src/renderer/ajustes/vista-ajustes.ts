@@ -90,6 +90,7 @@ export class VistaAjustes {
   /** La clave cuyo «Borrar» ya se pulsó una vez (el segundo clic borra). */
   private borrarPendiente: string | null = null
   private cofreOcupado = false
+  private conectandoGmail = false
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -224,15 +225,21 @@ export class VistaAjustes {
       caja.append(entrada, guardar)
     } else if (def.clave === 'gmail.refresh') {
       // Gmail no se pega: se da el permiso en el navegador y Orbe lo guarda solo.
-      const conectar = el('button', 'boton-memoria primario', this.cofreOcupado ? 'Esperando…' : guardado ? 'Volver a conectar' : 'Conectar')
+      const conectar = el('button', 'boton-memoria primario', this.conectandoGmail ? 'Cancelar' : guardado ? 'Volver a conectar' : 'Conectar')
       conectar.type = 'button'
-      conectar.disabled = this.cofreOcupado
+      conectar.disabled = this.cofreOcupado && !this.conectandoGmail
       conectar.addEventListener('click', () => {
+        // Si Google da un error en el navegador, nunca vuelve: se puede dejar de esperar.
+        if (this.conectandoGmail) return window.orbe.gmailCancelar()
+        this.conectandoGmail = true
         void this.cofreAccion(
           () => window.orbe.gmailConectar(),
           'Gmail conectado: Orbe puede leer tu correo y crear borradores (no enviar).',
           'Termina en tu navegador: elige tu cuenta de Google y marca los dos permisos.'
-        )
+        ).finally(() => {
+          this.conectandoGmail = false
+          this.pintar()
+        })
       })
       caja.append(conectar)
     }

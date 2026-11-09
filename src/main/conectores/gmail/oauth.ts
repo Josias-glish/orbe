@@ -23,6 +23,8 @@ export interface DepsOAuth {
   fetch?: typeof fetch
   /** Cuánto se espera a que el usuario termine en el navegador. */
   esperaMs?: number
+  /** Para dejar de esperar (si Google da un error en el navegador, nunca vuelve a Orbe). */
+  senal?: AbortSignal
 }
 
 /** Lee el `google-cliente.json` que se descarga de Google Cloud (cliente de tipo «App de escritorio»). */
@@ -74,6 +76,14 @@ export async function conectarGmail(cliente: ClienteGoogle, deps: DepsOAuth): Pr
       clearTimeout(reloj)
       servidor.close()
     }
+    deps.senal?.addEventListener(
+      'abort',
+      () => {
+        terminar()
+        rechazar(new Error('Conexión cancelada.'))
+      },
+      { once: true }
+    )
     servidor.once('error', (e) => {
       clearTimeout(reloj)
       rechazar(e)
