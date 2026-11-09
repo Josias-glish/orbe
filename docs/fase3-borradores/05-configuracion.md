@@ -21,8 +21,9 @@ ORBE_IG=1
 ORBE_IG_APP_ID=000000000000000
 # Versión de la API de Meta: compruébala en developers.facebook.com/docs/graph-api/changelog
 ORBE_IG_VERSION=v25.0
-# Nombres internos de tus cuentas (los tokens se guardan con estos nombres).
-ORBE_IG_CUENTAS=jsdesign,morfy
+# Nombres internos de tus cuentas (los tokens se guardan con estos nombres). Añade «personal» si tu marca personal
+# tiene su propia cuenta de Instagram (tiene que ser profesional: Empresa o Creador).
+ORBE_IG_CUENTAS=jsdesign,morfy,personal
 # Tope propio de publicaciones por cuenta y día (Meta permite 50; nos quedamos muy por debajo).
 ORBE_IG_MAX_DIA=5
 # Cada cuántos minutos se miran comentarios y mensajes (5–60).
@@ -35,8 +36,11 @@ ORBE_SUPABASE_BUCKET=orbe-medios
 ORBE_SUPABASE_ENLACE_MIN=15
 
 # Contenido con Claude CLI + Claude Design
-# exportado = usa el HTML/zip exportado de Claude Design (verificado) · handoff = /design (no verificado aún)
-ORBE_DESIGN_MODO=exportado
+# png = Claude Design exporta PNG a contenido\entrada\<marca>\ (por defecto)
+# exportado = el CLI genera HTML con tu sistema de diseño y Orbe lo convierte en PNG (respaldo)
+ORBE_DESIGN_MODO=png
+# Marcas (carpetas en contenido\marcas\). «personal» es tu marca personal.
+ORBE_MARCAS=jsdesign,morfy,personal
 # Alias del CLI para cada trabajo: el texto y el diseño piden más calidad; el revisor, rapidez.
 ORBE_CONTENIDO_MODELO=sonnet
 ORBE_REVISOR_MODELO=haiku
@@ -100,6 +104,9 @@ explícitamente en esa orden), `preguntar` y `tu_lo_haces` (Orbe prepara todo y 
 
 ## 4. Ficha de marca: `%APPDATA%\orbe\contenido\marcas\<marca>\marca.md`
 
+Una por marca: `jsdesign`, `morfy` y `personal`. En la personal, el tono es el tuyo (primera persona) y los pilares
+suelen ser: lo que aprendes, lo que construyes (J&S Design, morfy, Orbe), y tu día a día como estudiante emprendedor.
+
 Plantilla para rellenar (la usa Claude en todos los textos):
 
 ```markdown
@@ -141,12 +148,12 @@ Plantilla para rellenar (la usa Claude en todos los textos):
   "piezas": [
     {
       "id": "p_8f2c",
-      "marca": "morfy",
+      "marca": "morfy",                   // jsdesign | morfy | personal
       "estado": "borrador",              // idea | borrador | aprobada | programada | publicada | error
       "formato": "imagen",                // imagen | carrusel | reel
       "idea": "3 errores al elegir colores para tu marca",
       "pie": "…", "hashtags": ["#…"],
-      "archivos": ["piezas/p_8f2c/1.png"],
+      "archivos": ["piezas/p_8f2c/1.png"], // PNG exportados de Claude Design
       "programada_para": "2026-11-12T18:00:00-05:00",
       "aprobada_por_ti": null,            // fecha de tu aprobación; sin esto nunca se publica
       "ig": { "media_id": null, "permalink": null },

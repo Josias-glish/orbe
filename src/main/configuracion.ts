@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electro
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, win32 } from 'node:path'
 import { DISENOS } from '../shared/disenos'
+import { esIdIdentidad } from '../shared/identidad'
 import { CANALES, type ConfigVista, type PeticionConfig, type ResultadoConfig } from '../shared/tipos'
 import type { Config } from './entorno'
 
@@ -23,7 +24,10 @@ export const CLAVES_EDITABLES = [
   'ORBE_APARIENCIA',
   'ORBE_DISENO',
   'ORBE_RIVE_ARCHIVO',
-  'ORBE_EVENTOS'
+  'ORBE_EVENTOS',
+  'ORBE_IDENTIDAD',
+  'ORBE_IDENTIDAD_NOMBRE',
+  'ORBE_TRATO'
 ] as const
 
 type Cambios = Record<string, string | null>
@@ -167,6 +171,20 @@ export function validarPeticion(p: unknown): { ok: true; cambios: Cambios } | { 
     if (typeof eventos !== 'boolean') return { ok: false, error: 'El valor de los conectores no es válido.' }
     cambios['ORBE_EVENTOS'] = eventos ? '1' : null
   }
+  const identidad = o['identidad']
+  if (identidad !== undefined) {
+    if (typeof identidad !== 'object' || identidad === null) return { ok: false, error: 'La identidad no es válida.' }
+    const i = identidad as Record<string, unknown>
+    if (!esIdIdentidad(i['id'])) return { ok: false, error: 'La identidad no existe.' }
+    const nombre = texto(i['nombre'], 'El nombre de la identidad', 30)
+    const trato = texto(i['trato'], 'El trato', 30)
+    if (!nombre.ok) return nombre
+    if (!trato.ok) return trato
+    if (/[<>{}`"]/.test(nombre.valor + trato.valor)) return { ok: false, error: 'El nombre y el trato no pueden llevar símbolos como < > { } " o `.' }
+    cambios['ORBE_IDENTIDAD'] = i['id'] === 'orbe' ? null : i['id']
+    cambios['ORBE_IDENTIDAD_NOMBRE'] = nombre.valor || null
+    cambios['ORBE_TRATO'] = trato.valor || null
+  }
   return { ok: true, cambios }
 }
 
@@ -184,7 +202,8 @@ export function vistaConfig(config: Config, valores: Record<string, string>): Co
     apariencia: config.apariencia,
     diseno: config.diseno,
     riveArchivo: v('ORBE_RIVE_ARCHIVO'),
-    eventos: config.eventos.activo
+    eventos: config.eventos.activo,
+    identidad: config.identidad
   }
 }
 

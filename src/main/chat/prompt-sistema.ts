@@ -1,7 +1,10 @@
-/** Instrucciones fijas de Orbe. Se mantienen estables entre turnos para no romper la caché del prompt. */
-const PROMPT_BASE = `Eres Orbe, un asistente de escritorio flotante que vive en una esquina de la pantalla del usuario, en Windows.
+import { perfilDe, presentacionIdentidad } from '../../shared/identidad'
 
-Cómo responder
+/** La primera línea de las instrucciones: quién habla. Una identidad propia (p. ej. Atlas) la sustituye. */
+const PRESENTACION_ORBE = presentacionIdentidad(perfilDe({ id: 'orbe', nombre: '', trato: '' }))
+
+/** Instrucciones fijas de Orbe. Se mantienen estables entre turnos para no romper la caché del prompt. */
+const PROMPT_REGLAS = `Cómo responder
 - El panel de chat es estrecho (unos 380 px): responde de forma directa y breve. Si la pregunta es sencilla, basta con una o dos frases.
 - Puedes usar Markdown con moderación: listas cortas, énfasis, \`código\` en línea y bloques de código solo cuando aporten. Evita los encabezados grandes y las tablas anchas.
 - Responde en el idioma del usuario; por defecto, en español.
@@ -51,11 +54,13 @@ Permisos
 - Si el usuario pulsa Detener, la tarea se corta: no la retomes por tu cuenta.`
 }
 
+const PROMPT_BASE = `${PRESENTACION_ORBE}\n\n${PROMPT_REGLAS}`
+
 export const PROMPT_SISTEMA = `${PROMPT_BASE}\n\n${LIMITES_SOLO_CHAT}`
 
 /** Las instrucciones fijas de una conversación en modo agente (el mismo comienzo, con acciones en lugar de límites). */
-export function promptSistemaAgente(pasos: number, busquedaWeb = false, fuentesEnApp = true): string {
-  return `${PROMPT_BASE}\n\n${reglasAgente(pasos, busquedaWeb, fuentesEnApp)}`
+export function promptSistemaAgente(pasos: number, busquedaWeb = false, fuentesEnApp = true, presentacion = PRESENTACION_ORBE): string {
+  return `${presentacion}\n\n${PROMPT_REGLAS}\n\n${reglasAgente(pasos, busquedaWeb, fuentesEnApp)}`
 }
 
 /** «domingo 4 de octubre de 2026». */
@@ -75,14 +80,20 @@ export interface OpcionesPrompt {
   busquedaWeb?: boolean
   /** La aplicación enseña los enlaces de las fuentes bajo la respuesta (por defecto sí); si no, el modelo los cita él. */
   fuentesEnApp?: boolean
+  /** Quién habla: la presentación de la identidad elegida (por defecto, Orbe). */
+  identidad?: string
 }
 
 /**
  * El prompt de una conversación: las instrucciones fijas, la fecha de hoy y la memoria del usuario.
  * Se calcula al empezar la conversación y no cambia hasta la siguiente: así la caché del prompt se mantiene.
  */
-export function construirPromptSistema({ ahora = new Date(), memoria, pasosAgente, busquedaWeb, fuentesEnApp }: OpcionesPrompt = {}): string {
-  const base = pasosAgente === undefined ? PROMPT_SISTEMA : promptSistemaAgente(pasosAgente, busquedaWeb, fuentesEnApp)
+export function construirPromptSistema({ ahora = new Date(), memoria, pasosAgente, busquedaWeb, fuentesEnApp, identidad }: OpcionesPrompt = {}): string {
+  const presentacion = identidad?.trim() || PRESENTACION_ORBE
+  const base =
+    pasosAgente === undefined
+      ? `${presentacion}\n\n${PROMPT_REGLAS}\n\n${LIMITES_SOLO_CHAT}`
+      : promptSistemaAgente(pasosAgente, busquedaWeb, fuentesEnApp, presentacion)
   const partes = [base, `Fecha\n- Hoy es ${describirFecha(ahora)}.`]
   if (memoria?.trim()) partes.push(memoria.trim())
   return partes.join('\n\n')

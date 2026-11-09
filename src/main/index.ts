@@ -1,3 +1,4 @@
+import { perfilDe } from '../shared/identidad'
 import { app, Notification, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
@@ -220,7 +221,7 @@ app.whenReady().then(async () => {
     modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro)
   const info =
     modoHumo && !humoReal
-      ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo', agente: true }
+      ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo', agente: true, identidad: config.identidad }
       : infoChat(config, registro)
   // El marcador de potencia de la cabecera: sube o baja cuánto «piensa» el modelo y recuerda el nivel entre sesiones.
   registrarPotencia({
@@ -241,6 +242,7 @@ app.whenReady().then(async () => {
       modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro),
     bus: actividad,
     contador: contadorUso,
+    identidad: perfilDe(config.identidad),
     notificar: (titulo, cuerpo) => {
       if (modoHumo || !Notification.isSupported()) return
       const aviso = new Notification({ title: titulo, body: cuerpo, silent: false })
