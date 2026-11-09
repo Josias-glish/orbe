@@ -102,7 +102,35 @@ window.orbe.alActividad((evento) => {
   else if (evento.tipo === 'error') sonidos.tocar('error')
 })
 
+// El entorno del equipo: si te vas, se duerme; al volver, se alegra; sin enchufe, se preocupa.
+window.orbe.alEntorno((evento) => {
+  switch (evento) {
+    case 'ausente':
+    case 'bloqueo':
+    case 'suspension':
+      orbe.reaccionar('ausente')
+      sonidos.tocar('dormir')
+      break
+    case 'vuelve':
+    case 'desbloqueo':
+    case 'reanudacion':
+      orbe.reaccionar('vuelve')
+      window.setTimeout(() => orbe.expresar('risa', 1800), 950)
+      break
+    case 'bateria':
+      orbe.expresar('preocupado', 3500)
+      sonidos.tocar('aviso')
+      break
+    case 'corriente':
+      orbe.expresar('feliz', 2000)
+      break
+  }
+})
+
 const figuraLista = montarFigura().then(() => {
+  // Un saludo al arrancar, según la hora: con sueño de madrugada, guiño por la tarde, contento por la mañana.
+  const hora = new Date().getHours()
+  window.setTimeout(() => orbe.expresar(hora >= 23 || hora < 6 ? 'aburrido' : hora >= 13 ? 'guino' : 'feliz', 2500), 600)
   menuPersonaje = new MenuPersonaje(
     orbe,
     document.getElementById('personaje-boton') as HTMLButtonElement,

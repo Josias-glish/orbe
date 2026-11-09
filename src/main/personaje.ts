@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { CANALES, type CalibracionModelo, type RecursosPersonaje } from '../shared/tipos'
 import type { Config } from './entorno'
 import type { VentanaOrbe } from './ventana'
+import { Vigia } from './vigia'
 
 /** Cada cuánto se mira dónde está el cursor (para que el personaje lo siga con los ojos). */
 const INTERVALO_CURSOR_MS = 90
@@ -83,6 +84,14 @@ export function registrarPersonaje(opciones: { ventana: VentanaOrbe; config: Con
   })
 
   if (config.apariencia === 'orbe') return
+
+  // Lo que pasa en el equipo (te fuiste, volviste, bloqueaste…) para que el personaje reaccione.
+  const vigia = new Vigia((evento) => {
+    const w = ventana.ventana
+    if (!w.isDestroyed()) w.webContents.send(CANALES.personajeEntorno, evento)
+  })
+  vigia.iniciar()
+  app.once('will-quit', () => vigia.detener())
   let ultimo = { x: Number.NaN, y: Number.NaN }
   const temporizador = setInterval(() => {
     const w = ventana.ventana

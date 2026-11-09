@@ -1,9 +1,12 @@
-import { EXPRESION_DE_ESTADO, IDS_EXPRESION, type IdExpresion } from '../../shared/expresiones'
+import { EXPRESIONES_OCIOSAS, EXPRESION_DE_ESTADO, IDS_EXPRESION, type IdExpresion } from '../../shared/expresiones'
 import type { EstadoOrbe } from '../../shared/tipos'
 import type { Reaccion } from './avatar'
 
 /** Tras este tiempo sin nada que hacer (y sin el cursor encima), el personaje se duerme. */
 export const SUENO_MS = 3 * 60_000
+/** Cada cuánto, en reposo, pone una cara distinta un momento (entre MIN y MAX). */
+export const OCIO_MIN_MS = 25_000
+export const OCIO_MAX_MS = 50_000
 
 /** Lo que el director cuenta hacia fuera (para los sonidos). */
 export type EventoDirector = 'caricia' | 'rueda' | 'dormir' | 'despertar'
@@ -29,6 +32,10 @@ export class Director {
   private dormido = false
   private ultimaActividad: number
   private recorrido = 0
+  /** Te has ido del ordenador (sin teclado ni ratón un rato, o pantalla bloqueada): duerme hasta que vuelvas. */
+  private ausente = false
+  private proximoOcio: number
+  private ocio: { id: IdExpresion; hasta: number } | null = null
 
   constructor(
     private readonly ahora: () => number = () => performance.now(),
@@ -36,6 +43,7 @@ export class Director {
     private readonly avisar: (evento: EventoDirector) => void = emitirEventoPersonaje
   ) {
     this.ultimaActividad = ahora()
+    this.proximoOcio = ahora() + OCIO_MIN_MS
   }
 
   establecerEstado(estado: EstadoOrbe): void {
@@ -92,6 +100,16 @@ export class Director {
       case 'caricia':
         this.expresar(Math.random() < 0.5 ? 'enamorado' : 'timido', 2600)
         break
+      case 'ausente':
+        this.ausente = true
+        break
+      case 'vuelve':
+        if (this.ausente || despierta) {
+          this.ausente = false
+          this.expresar('sorprendido', 900)
+          this.avisar('despertar')
+        }
+        break
       case 'despertar':
         if (despierta) {
           this.expresar('sorprendido', 900)
@@ -131,11 +149,19 @@ export class Director {
     }
     if (this.fijada) return this.fijada
     if (this.estado !== 'reposo') return EXPRESION_DE_ESTADO[this.estado]
+    if (this.ausente) return 'dormido'
     if (!this.dormido && !this.encima && t - this.ultimaActividad >= this.suenoMs) {
       this.dormido = true
       this.avisar('dormir')
     }
     if (this.dormido) return 'dormido'
+    // En reposo, de vez en cuando una cara distinta un momento: así se nota vivo aunque no hables con él.
+    // Solo en reposo: en cuanto piensa o responde, manda la cara del estado.
+    if (t >= this.proximoOcio) {
+      this.proximoOcio = t + OCIO_MIN_MS + Math.random() * (OCIO_MAX_MS - OCIO_MIN_MS)
+      this.ocio = { id: EXPRESIONES_OCIOSAS[Math.floor(Math.random() * EXPRESIONES_OCIOSAS.length)], hasta: t + 2200 }
+    }
+    if (this.ocio && t < this.ocio.hasta) return this.ocio.id
     return this.encima ? 'feliz' : 'neutral'
   }
 

@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CANALES, type EstadoActividad } from '../../shared/tipos'
 import type { Config } from '../entorno'
@@ -23,7 +23,20 @@ export async function registrarConectores(opciones: { ventana: VentanaOrbe; conf
     const w = ventana.ventana
     if (!w.isDestroyed()) w.webContents.send(CANALES.actividadEvento, evento)
   })
-  const script = app.isPackaged ? join(process.resourcesPath, 'conectores', 'orbe-evento.mjs') : join(app.getAppPath(), 'resources', 'conectores', 'orbe-evento.mjs')
+  const scriptIncluido = app.isPackaged ? join(process.resourcesPath, 'conectores', 'orbe-evento.mjs') : join(app.getAppPath(), 'resources', 'conectores', 'orbe-evento.mjs')
+  // Los hooks de Claude Code apuntan a una copia fija en la carpeta de datos (%APPDATA%\orbe\conectores): así siguen
+  // funcionando aunque muevas o borres la carpeta de Orbe (p. ej., la del .zip en Descargas) o lo actualices.
+  let script = scriptIncluido
+  if (!opciones.modoHumo) {
+    try {
+      const fijo = join(opciones.carpetaDatos, 'conectores', 'orbe-evento.mjs')
+      mkdirSync(join(opciones.carpetaDatos, 'conectores'), { recursive: true })
+      copyFileSync(scriptIncluido, fijo)
+      script = fijo
+    } catch {
+      // sin copia, los hooks usan el script de la instalación
+    }
+  }
   ipcMain.handle(CANALES.actividadHistorial, (e): EstadoActividad => {
     if (e.sender !== ventana.ventana.webContents) throw new Error('Remitente no autorizado')
     return { activo: puerto !== null, puerto, archivo: puerto !== null ? archivo : null, configClaudeCode: configHooksClaudeCode(script), eventos: bus.ultimos() }

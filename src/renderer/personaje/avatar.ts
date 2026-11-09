@@ -1,8 +1,8 @@
 import type { IdExpresion } from '../../shared/expresiones'
 import type { EstadoOrbe } from '../../shared/tipos'
 
-/** Gestos del usuario sobre el personaje (o el orbe) que pueden provocar una reacción. */
-export type Reaccion = 'encima' | 'fuera' | 'arrastre' | 'soltar' | 'abrir' | 'caricia' | 'despertar'
+/** Gestos del usuario y cosas del entorno (te fuiste, volviste) que provocan una reacción. */
+export type Reaccion = 'encima' | 'fuera' | 'arrastre' | 'soltar' | 'abrir' | 'caricia' | 'despertar' | 'ausente' | 'vuelve'
 
 /**
  * Lo que la interfaz necesita de la figura de la esquina, sea el orbe clásico, el personaje dibujado o uno de Rive.

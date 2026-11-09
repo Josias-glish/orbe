@@ -6,6 +6,7 @@ import {
   type EventoChat,
   type ConfigVista,
   type EventoActividad,
+  type EventoEntorno,
   type EventoPantalla,
   type OrdenApp,
   type PeticionConfig,
@@ -56,6 +57,7 @@ const api: ApiOrbe = {
   configElegirRive: () => ipcRenderer.invoke(CANALES.configElegirRive),
   personajeRecursos: () => ipcRenderer.invoke(CANALES.personajeRecursos),
   alCursor: (cb) => suscribir<{ x: number; y: number }>(CANALES.personajeCursor, cb),
+  alEntorno: (cb) => suscribir<EventoEntorno>(CANALES.personajeEntorno, cb),
   alActividad: (cb) => suscribir<EventoActividad>(CANALES.actividadEvento, cb),
   actividadHistorial: () => ipcRenderer.invoke(CANALES.actividadHistorial),
 

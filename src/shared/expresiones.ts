@@ -155,3 +155,26 @@ export function caraNumerica(ex: Expresion): CaraNumerica {
   for (const c of CAMPOS_NUMERICOS) r[c] = ex[c] as number
   return r
 }
+
+/**
+ * La cara que pega con un texto (la respuesta de la IA o lo que escribes): se usa un momento al terminar de responder
+ * o al enviar. Reglas sencillas y previsibles, sin llamar a ningún modelo. Devuelve null si no hay nada especial.
+ */
+export function expresionDeTexto(texto: string, quien: 'usuario' | 'respuesta'): IdExpresion | null {
+  const t = texto.toLowerCase()
+  if (quien === 'usuario') {
+    if (/\b(gracias|thank|eres (el|la) mejor|te quiero|genial)\b/.test(t)) return 'timido'
+    if (/\b(jaja|jeje|lol|xd)\b|😂|🤣/.test(t)) return 'risa'
+    if (/\b(urgente|ayuda|help|no funciona|error)\b/.test(t)) return 'preocupado'
+    return null
+  }
+  if (/\b(lo siento|no puedo|no he podido|lamentablemente|error|falló|fallo)\b/.test(t)) return 'preocupado'
+  if (/\b(jaja|jeje)\b|😂|🤣/.test(t)) return 'risa'
+  if (/(¡(listo|hecho|genial|perfecto|enhorabuena|felicidades)|✅|🎉)/.test(t)) return 'orgulloso'
+  if (/[!¡].{0,40}(genial|increíble|excelente|fantástico)/.test(t)) return 'emocionado'
+  if (/\?\s*$/.test(t.trim())) return 'curioso'
+  return 'feliz'
+}
+
+/** Caras tranquilas que el personaje pone de vez en cuando si no pasa nada (para que se sienta vivo). */
+export const EXPRESIONES_OCIOSAS: readonly IdExpresion[] = ['guino', 'curioso', 'feliz', 'orgulloso', 'pensativo', 'travieso']
