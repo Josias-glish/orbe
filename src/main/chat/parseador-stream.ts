@@ -1,3 +1,5 @@
+import type { UsoTokens } from '../../shared/tipos'
+
 /**
  * Lectura del protocolo `stream-json` del CLI de Claude (`claude -p --output-format stream-json`).
  * Cada línea de stdout es un objeto JSON; aquí se traducen a eventos pequeños y estables.
@@ -23,6 +25,8 @@ export type EventoCli =
       parada: string | null
       estadoHttp: number | null
       texto: string
+      /** Lo que gastó el turno entero (tokens y dólares que calcula el propio CLI). */
+      uso: UsoTokens | null
     }
 
 /** Acumula trozos de stdout y devuelve las líneas completas (admite líneas partidas entre trozos). */
@@ -81,7 +85,8 @@ export function interpretarLinea(linea: string): EventoCli[] {
           terminal: comoTexto(ev.terminal_reason) || null,
           parada: comoTexto(ev.stop_reason) || null,
           estadoHttp: comoNumero(ev.api_error_status),
-          texto: comoTexto(ev.result)
+          texto: comoTexto(ev.result),
+          uso: usoDeResultado(ev)
         }
       ]
     default:
@@ -166,6 +171,20 @@ function interpretarUsuario(ev: Json): EventoCli[] {
     eventos.push({ k: 'herramienta_resultado', id: b.tool_use_id, texto, error: b.is_error === true })
   }
   return eventos
+}
+
+function usoDeResultado(ev: Json): UsoTokens | null {
+  const u = ev.usage
+  const coste = comoNumero(ev.total_cost_usd)
+  if (!esObjeto(u) && coste === null) return null
+  const n = (v: unknown): number => comoNumero(v) ?? 0
+  return {
+    entrada: esObjeto(u) ? n(u.input_tokens) : 0,
+    salida: esObjeto(u) ? n(u.output_tokens) : 0,
+    cacheLectura: esObjeto(u) ? n(u.cache_read_input_tokens) : 0,
+    cacheEscritura: esObjeto(u) ? n(u.cache_creation_input_tokens) : 0,
+    ...(coste !== null ? { costeUsd: coste } : {})
+  }
 }
 
 function interpretarLimite(ev: Json): EventoCli[] {

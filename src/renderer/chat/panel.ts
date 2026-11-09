@@ -11,9 +11,12 @@ import type {
 } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
 import { expresionDeTexto } from '../../shared/expresiones'
+import { gestoDeExpresion } from '../personaje/gestos'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
+import { VistaUso } from '../uso/vista-uso'
+import { VistaTareas } from '../tareas/vista-tareas'
 import type { Avatar } from '../personaje/avatar'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
 import { LectorVoz, type Sintesis } from '../voz/lector'
@@ -73,6 +76,10 @@ export class PanelChat {
   private readonly cuerpoPanel: HTMLElement
   private readonly memoria: VistaMemoria
   private readonly ajustes: VistaAjustes
+  private readonly uso: VistaUso
+  private readonly tareas: VistaTareas
+  private readonly botonTareas: HTMLButtonElement
+  private readonly botonUso: HTMLButtonElement
   private readonly botonAjustes: HTMLButtonElement
   private readonly botonFijar: HTMLButtonElement
   private readonly lineaEstado: HTMLElement
@@ -98,6 +105,14 @@ export class PanelChat {
     this.memoria = new VistaMemoria(porId('memoria'), () => this.cerrarMemoria())
     this.ajustes = new VistaAjustes(porId('ajustes'), () => this.cerrarAjustes())
     this.botonAjustes = porId('ajustes-boton')
+    this.uso = new VistaUso(porId('uso'), () => this.cerrarUso())
+    this.botonUso = porId('uso-boton')
+    this.botonTareas = porId('tareas-boton')
+    const insignia = porId('tareas-insignia')
+    this.tareas = new VistaTareas(porId('tareas'), () => this.cerrarTareas(), (n) => {
+      insignia.hidden = n === 0
+      insignia.textContent = String(n)
+    })
     this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
@@ -168,6 +183,16 @@ export class PanelChat {
     this.botonCapturar.addEventListener('click', () => void this.pedirCaptura())
     this.botonMicro.addEventListener('click', () => void this.dictado.alternar())
     this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
+    this.botonUso.addEventListener('click', () => void this.alternarUso())
+    this.botonTareas.addEventListener('click', () => void this.alternarTareas())
+    // Barra lateral: «Chat» cierra la sección abierta, y se marca solo cuando no hay ninguna.
+    const botonChat = porId<HTMLButtonElement>('chat-boton')
+    botonChat.addEventListener('click', () => this.volverAlChat())
+    const secciones = ['memoria', 'ajustes', 'uso', 'tareas'].map((id) => porId(id))
+    const marcarChat = (): void => botonChat.setAttribute('aria-pressed', String(secciones.every((sec) => sec.hidden)))
+    const observador = new MutationObserver(marcarChat)
+    for (const sec of secciones) observador.observe(sec, { attributes: true, attributeFilter: ['hidden'] })
+    marcarChat()
     this.botonAjustes.addEventListener('click', () => void this.alternarAjustes())
     porId('cerrar-boton').addEventListener('click', () => window.orbe.alternar())
     this.botonFijar.addEventListener('click', () => void this.alternarFijado())
@@ -205,7 +230,7 @@ export class PanelChat {
   }
 
   enfocar(): void {
-    if (!this.memoria.visible && !this.ajustes.visible) this.entrada.enfocar()
+    if (!this.memoria.visible && !this.ajustes.visible && !this.uso.visible && !this.tareas.visible) this.entrada.enfocar()
   }
 
   // -------------------------------------------------------------------------------------------
@@ -218,6 +243,8 @@ export class PanelChat {
       return
     }
     this.cerrarMemoria()
+    this.cerrarUso()
+    this.cerrarTareas()
     this.cuerpoPanel.hidden = true
     this.botonAjustes.setAttribute('aria-pressed', 'true')
     await this.ajustes.abrir()
@@ -228,6 +255,57 @@ export class PanelChat {
     this.ajustes.cerrar()
     this.cuerpoPanel.hidden = false
     this.botonAjustes.setAttribute('aria-pressed', 'false')
+    this.entrada.enfocar()
+  }
+
+  private async alternarUso(): Promise<void> {
+    if (this.uso.visible) {
+      this.cerrarUso()
+      return
+    }
+    this.cerrarMemoria()
+    this.cerrarAjustes()
+    this.cerrarTareas()
+    this.cuerpoPanel.hidden = true
+    this.botonUso.setAttribute('aria-pressed', 'true')
+    await this.uso.abrir()
+  }
+
+  private cerrarUso(): void {
+    if (!this.uso.visible) return
+    this.uso.cerrar()
+    this.cuerpoPanel.hidden = false
+    this.botonUso.setAttribute('aria-pressed', 'false')
+    this.entrada.enfocar()
+  }
+
+  /** Cierra la sección que esté abierta (tareas, consumo, memoria o ajustes) y vuelve a la conversación. */
+  private volverAlChat(): void {
+    this.cerrarTareas()
+    this.cerrarUso()
+    this.cerrarMemoria()
+    this.cerrarAjustes()
+    this.entrada.enfocar()
+  }
+
+  private async alternarTareas(): Promise<void> {
+    if (this.tareas.visible) {
+      this.cerrarTareas()
+      return
+    }
+    this.cerrarMemoria()
+    this.cerrarAjustes()
+    this.cerrarUso()
+    this.cuerpoPanel.hidden = true
+    this.botonTareas.setAttribute('aria-pressed', 'true')
+    await this.tareas.abrir()
+  }
+
+  private cerrarTareas(): void {
+    if (!this.tareas.visible) return
+    this.tareas.cerrar()
+    this.cuerpoPanel.hidden = false
+    this.botonTareas.setAttribute('aria-pressed', 'false')
     this.entrada.enfocar()
   }
 
@@ -265,6 +343,8 @@ export class PanelChat {
       return
     }
     this.cerrarAjustes()
+    this.cerrarUso()
+    this.cerrarTareas()
     this.cuerpoPanel.hidden = true
     this.botonMemoria.setAttribute('aria-pressed', 'true')
     await this.memoria.abrir()
@@ -307,6 +387,14 @@ export class PanelChat {
     }
     if (this.ajustes.visible) {
       this.cerrarAjustes()
+      return true
+    }
+    if (this.uso.visible) {
+      this.cerrarUso()
+      return true
+    }
+    if (this.tareas.visible) {
+      this.cerrarTareas()
       return true
     }
     if (!this.memoria.visible) return false
@@ -709,7 +797,12 @@ export class PanelChat {
         // Al terminar, la cara acompaña lo que dijo (contento, orgulloso si lo hizo, preocupado si no pudo…).
         if (evento.motivo === 'completo') {
           const cara = expresionDeTexto(turno.acumulado, 'respuesta')
-          if (cara) this.orbe.expresar(cara, 3500)
+          if (cara) {
+            this.orbe.expresar(cara, 3500)
+            const gesto = gestoDeExpresion(cara)
+            // «Feliz» es lo normal: solo uno de cada tres asiente, para que no lo haga siempre igual.
+            if (gesto && (cara !== 'feliz' || Math.random() < 0.34)) this.orbe.gesto?.(gesto)
+          }
         }
         this.lector.terminar()
         this.turno = null

@@ -1,4 +1,4 @@
-import type { MotivoFin } from '../../shared/tipos'
+import type { MotivoFin, UsoTokens } from '../../shared/tipos'
 import { ejecutarBucle, type RespuestaPaso } from '../agente/bucle'
 import { agenteActivo, crearEjecutor, hayBusquedaWeb, type OpcionesAgente } from '../agente/sesion'
 import type { LlamadaHerramienta, ResultadoLlamada } from '../agente/tipos'
@@ -60,7 +60,31 @@ interface TrozoSse {
     finish_reason?: string | null
   }>
   error?: { message?: string }
+  usage?: UsoOpenai | null
 }
+
+interface UsoOpenai {
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  prompt_tokens_details?: { cached_tokens?: number } | null
+  completion_tokens_details?: { reasoning_tokens?: number } | null
+}
+
+/**
+ * Lo que gastó una respuesta según el servicio. Algunos (Gemini) no cuentan el razonamiento en `completion_tokens`
+ * pero sí en `total_tokens`: se toma la salida como el total menos la entrada cuando es mayor.
+ */
+export function usoOpenai(u: UsoOpenai): UsoTokens {
+  const total = u.total_tokens ?? 0
+  const cache = u.prompt_tokens_details?.cached_tokens ?? 0
+  const entradaBruta = u.prompt_tokens ?? 0
+  const salida = Math.max(u.completion_tokens ?? 0, total - entradaBruta)
+  return { entrada: Math.max(0, entradaBruta - cache), salida, cacheLectura: cache }
+}
+
+/** Cómo suena un servicio que no admite `stream_options` (pedir el gasto al final del flujo). */
+const MENSAJE_USO_NO_ADMITIDO = /stream_options|include_usage/i
 
 const URL_OPENAI = 'api.openai.com'
 
@@ -217,6 +241,8 @@ export class ProveedorOpenai implements ProveedorChat {
   private esfuerzo: Esfuerzo = 'medium'
   /** El servicio rechazó `reasoning_effort`: no se le vuelve a mandar. */
   private esfuerzoNoAdmitido = false
+  /** El servicio rechazó `stream_options`: se deja de pedir el gasto. */
+  private usoNoAdmitido = false
   /** El servicio rechazó las herramientas: desde entonces solo conversa (no hay agente). */
   private herramientasNoAdmitidas = false
   private historial: MensajeApi[] = []
@@ -320,6 +346,7 @@ export class ProveedorOpenai implements ProveedorChat {
         body: JSON.stringify({
           model: modelo,
           stream: true,
+          ...(this.usoNoAdmitido ? {} : { stream_options: { include_usage: true } }),
           messages: mensajes,
           ...(herramientas && conHerramientas ? { tools: herramientas.definiciones, ...(herramientas.ninguna ? { tool_choice: 'none' } : {}) } : {}),
           ...(conEsfuerzo ? { reasoning_effort: esfuerzoParaServicio(this.esfuerzo) } : {})
@@ -333,9 +360,12 @@ export class ProveedorOpenai implements ProveedorChat {
     let conHerramientas = herramientas !== undefined
     let respuesta = await llamar(conEsfuerzo, conHerramientas)
     // Un servicio que no entiende un parámetro suele contestar 400 (o 422): se aparta el culpable y se repite.
-    for (let intento = 0; intento < 2 && !respuesta.ok && (respuesta.status === 400 || respuesta.status === 422); intento++) {
+    for (let intento = 0; intento < 3 && !respuesta.ok && (respuesta.status === 400 || respuesta.status === 422); intento++) {
       const cuerpo = await respuesta.text().catch(() => '')
-      if (conHerramientas && MENSAJE_HERRAMIENTAS_NO_ADMITIDAS.test(cuerpo)) {
+      if (!this.usoNoAdmitido && MENSAJE_USO_NO_ADMITIDO.test(cuerpo)) {
+        // Sin el gasto al final no se puede contar el consumo, pero la conversación sigue igual.
+        this.usoNoAdmitido = true
+      } else if (conHerramientas && MENSAJE_HERRAMIENTAS_NO_ADMITIDAS.test(cuerpo)) {
         // Sin herramientas no hay agente: se sigue como chat normal, y las siguientes conversaciones también.
         this.herramientasNoAdmitidas = true
         this.prompt = null
@@ -383,6 +413,7 @@ export class ProveedorOpenai implements ProveedorChat {
           continue
         }
         if (trozo.error) throw errorDesdeHttp(500, JSON.stringify({ error: trozo.error }))
+        if (trozo.usage) m.alUso?.(usoOpenai(trozo.usage))
         const eleccion = trozo.choices?.[0]
         const delta = eleccion?.delta?.content
         if (typeof delta === 'string' && delta) {

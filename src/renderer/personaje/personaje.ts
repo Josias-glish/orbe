@@ -4,6 +4,7 @@ import type { EstadoOrbe } from '../../shared/tipos'
 import { suavizar } from '../orbe/estados'
 import type { Avatar, Reaccion } from './avatar'
 import { Director } from './director'
+import { POSE_NEUTRA, poseGesto, type IdGesto } from './gestos'
 import { dibujarAccesorio, puntosForma } from './formas'
 
 const NS = 'http://www.w3.org/2000/svg'
@@ -205,6 +206,9 @@ export class Personaje implements Avatar {
     if (anterior && (anterior.x !== x || anterior.y !== y)) this.director.reaccionar('despertar')
   }
 
+  gesto(id: IdGesto, conCara = false): void {
+    this.director.gesticular(id, conCara)
+  }
   reaccionar(reaccion: Reaccion): void {
     this.director.reaccionar(reaccion)
   }
@@ -346,9 +350,13 @@ export class Personaje implements Avatar {
     const bote = (c.bote * 0.6 + this.pulsoEnergia * 0.8) * Math.abs(Math.sin(t * 7.5))
     this.botePos = suavizar(this.botePos, -bote * 7, 1 / 60, 0.04)
     const balanceo = Math.sin(t * 0.9) * 1.5
+    // Gestos (saltar, bailar, asentir…): en 2D se traducen a desplazar, ladear y estirar la figura.
+    const g = this.director.gestoActual()
+    const pose = g ? poseGesto(g.id, g.progreso) : POSE_NEUTRA
+    const grados = (rad: number): number => (rad * 180) / Math.PI
     this.cuerpo.setAttribute(
       'transform',
-      `translate(0 ${f(this.botePos)}) rotate(${f(c.inclinacion + balanceo)}) scale(${f(1 + respira + bote * 0.03)} ${f(1 - respira - bote * 0.02)})`
+      `translate(${f(pose.posX * 60 + Math.sin(pose.rotY) * 6)} ${f(this.botePos - pose.posY * 60)}) rotate(${f(c.inclinacion + balanceo - grados(pose.rotZ) + grados(pose.rotX) * 0.25)}) scale(${f((1 + respira + bote * 0.03) * pose.escalaX * (0.75 + 0.25 * Math.abs(Math.cos(pose.rotY))))} ${f((1 - respira - bote * 0.02) * pose.escalaY)})`
     )
     const temblor = estado === 'pensando' ? 0.03 : 0.016
     const contorno = curvaCerrada(puntosForma(this.diseno.forma, t, temblor))

@@ -460,6 +460,7 @@ export class ProveedorCli implements ProveedorChat {
   private manejarEvento(evento: EventoCli): void {
     if (evento.k === 'limite') {
       this.limite = { estado: evento.estado, reinicioSeg: evento.reinicioSeg }
+      this.turno?.manejadores.alLimite?.({ estado: evento.estado, tipo: evento.tipo, reinicio: evento.reinicioSeg })
       return
     }
     const turno = this.turno
@@ -491,6 +492,7 @@ export class ProveedorCli implements ProveedorChat {
         this.alReintentar(turno, evento)
         break
       case 'resultado':
+        if (evento.uso) turno.manejadores.alUso?.(evento.uso)
         this.alTerminarTurno(turno, evento)
         break
       default:

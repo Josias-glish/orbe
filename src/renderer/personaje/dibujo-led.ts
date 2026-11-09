@@ -255,3 +255,16 @@ export function dibujarAdorno(ctx: CanvasRenderingContext2D, adorno: Adorno, t: 
   }
   ctx.restore()
 }
+
+/** Dibuja la manita del saludo junto al personaje (en la capa de adornos). `angulo` -1…1. */
+export function dibujarMano(ctx: CanvasRenderingContext2D, lado: number, angulo: number): void {
+  const u = lado / 120
+  ctx.save()
+  ctx.translate(lado * 0.82, lado * 0.42)
+  ctx.rotate(angulo * 0.5)
+  ctx.font = `${30 * u}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillText('👋', 0, 12 * u)
+  ctx.restore()
+}

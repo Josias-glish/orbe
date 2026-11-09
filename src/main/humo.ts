@@ -811,7 +811,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(500)
     await pulsar('#personaje-boton')
     comprobar('se abre el menú del personaje', await esperarSelector('#personaje-menu:not([hidden]) .expresion-boton', 2000))
-    p.botones = await js<number>(`document.querySelectorAll('#personaje-menu .expresion-boton').length`)
+    p.botones = await js<number>(`document.querySelectorAll('#personaje-menu .expresiones-rejilla .expresion-boton').length`)
     comprobar('con las 20 expresiones', p.botones === 20, p.botones)
     await pulsar('#personaje-menu .expresion-boton[data-expresion="enamorado"]')
     await esperar(500)
@@ -876,6 +876,65 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
   }
 
   /** Configuración (proveedor, claves, dictado y voz), botón de fijar y botón de cerrar. */
+  /** Tareas de fondo (en curso, programadas, completadas, permisos) y el panel de consumo. */
+  const pasosTareasYConsumo = async (): Promise<void> => {
+    const v: Record<string, unknown> = (informe.tareas = {})
+    orbe.establecerExpandido(true)
+    await esperar(400)
+    await pulsar('#tareas-boton')
+    comprobar('se abren las tareas', await esperarSelector('#tareas:not([hidden]) .tareas-pestanas', 3000))
+    comprobar('sin tareas ofrece ideas para empezar', (await contar('#tareas .tareas-plantilla')) === 3)
+    await esperar(300)
+    await capturar('13a-tareas-vacio')
+
+    // Una tarea programada a partir de una plantilla
+    await js(`document.querySelector('#tareas .tareas-plantilla').click()`)
+    await esperarSelector('#tareas .tareas-form', 2000)
+    await esperar(300)
+    await capturar('13b-tarea-nueva')
+    await js(`document.querySelector('#tareas .tareas-form button[type="submit"]').click()`)
+    await esperarSelector('#tareas .tarea', 2000)
+    v.programada = await textoDe('#tareas .tarea .tarea-paso')
+    comprobar('queda programada cada día a su hora', /Cada día a las 08:30 · próxima/.test(String(v.programada)), v.programada)
+    await esperar(300)
+    await capturar('13c-tarea-programada')
+
+    // Una tarea «ahora» que pide permiso: espera en «En curso» hasta que respondes
+    await js(`[...document.querySelectorAll('#tareas .memoria-cabecera button')].find((b) => b.textContent === '+ Nueva').click()`)
+    await esperarSelector('#tareas .tareas-form', 2000)
+    await js(`(() => {
+      const f = document.querySelector('#tareas .tareas-form');
+      const t = f.querySelector('textarea'); t.value = '/acciones envía el formulario'; t.dispatchEvent(new Event('input'));
+      const s = f.querySelector('select'); s.value = 'ahora'; s.dispatchEvent(new Event('change'));
+      f.querySelector('button[type="submit"]').click();
+    })()`)
+    comprobar('la tarea pide permiso en «En curso»', await esperarSelector('#tareas .tarea-permiso', 6000))
+    v.insignia = await js<string>(`document.getElementById('tareas-insignia').hidden ? '' : document.getElementById('tareas-insignia').textContent`)
+    comprobar('el botón de tareas avisa de que te necesita', v.insignia === '1', v.insignia)
+    await esperar(300)
+    await capturar('13d-tarea-permiso')
+    await js(`[...document.querySelectorAll('#tareas .tarea-permiso button')].find((b) => b.textContent === 'Permitir').click()`)
+    await esperar(1500)
+    await js(`[...document.querySelectorAll('#tareas .tareas-pestana')][2].click()`)
+    await esperarSelector('#tareas details.tarea', 2000)
+    await js(`document.querySelector('#tareas details.tarea').open = true`)
+    v.resultado = await textoDe('#tareas details.tarea .tarea-resultado')
+    comprobar('termina con su resultado en «Completadas»', String(v.resultado).includes('Listo: formulario enviado.'), v.resultado)
+    await esperar(300)
+    await capturar('13e-tarea-completada')
+
+    // Consumo: lo gastado por el chat y las tareas de esta prueba
+    await pulsar('#uso-boton')
+    comprobar('se abre el consumo', await esperarSelector('#uso:not([hidden]) .uso-tarjetas', 3000))
+    v.hoy = await textoDe('#uso .uso-tarjeta')
+    comprobar('cuenta lo gastado hoy', /\$0,0\d+/.test(String(v.hoy)) && /peticiones/.test(String(v.hoy)), v.hoy)
+    comprobar('con el gráfico de 14 días', (await contar('#uso .uso-barra')) === 14)
+    await esperar(300)
+    await capturar('13f-consumo')
+    await pulsar('#uso-boton')
+    await esperar(200)
+  }
+
   const pasosAjustes = async (): Promise<void> => {
     const v: Record<string, unknown> = (informe.ajustes = {})
     const poner = (selector: string, valor: string): Promise<unknown> =>
@@ -887,7 +946,13 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
     comprobar('tiene las cuatro secciones (con «Personaje y conectores»)', (await textosDe('#ajustes .ajuste-titulo')).length === 4, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
+    comprobar('la configuración se organiza en 4 grupos', (await contar('#ajustes .ajustes-grupo')) === 4)
+    await esperar(300)
     await capturar('11a-ajustes')
+    await js(`document.querySelector('#ajustes .ajustes-grupo').click()`)
+    await esperar(300)
+    comprobar('cada grupo abre solo su sección', (await contar('#ajustes .ajuste-seccion:not([hidden]) .ajuste-titulo')) === 1)
+    await capturar('11a-ajustes-grupo')
 
     // Cambiar a otra IA con el preajuste de Groq y poner una clave
     await poner('#ajustes select[aria-label="Quién responde"]', 'openai')
@@ -1423,6 +1488,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosPotencia()
         await pasosVoz()
         await pasosPersonaje(extras)
+        await pasosTareasYConsumo()
         await pasosBandeja()
         await pasosAjustes()
       }

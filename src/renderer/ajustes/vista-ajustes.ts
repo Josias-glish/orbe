@@ -79,6 +79,8 @@ export class VistaAjustes {
   private borrador: Borrador | null = null
   private mensaje: { texto: string; error: boolean } | null = null
   private guardando = false
+  /** El grupo abierto (0…3) o null para ver la lista de grupos: así no está todo en una sola lista larga. */
+  private grupo: number | null = null
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -118,6 +120,26 @@ export class VistaAjustes {
   cerrar(): void {
     this.raiz.hidden = true
     this.borrador = null
+    this.grupo = null
+  }
+
+  /** Lo que hay puesto en cada grupo, en una línea (para la lista de grupos). */
+  private resumenes(b: Borrador): string[] {
+    const quien = { cli: 'CLI de Claude', api: 'API de Anthropic', openai: 'Otra IA compatible' }[b.proveedor]
+    const host = (url: string): string => {
+      try {
+        return new URL(url).host
+      } catch {
+        return ''
+      }
+    }
+    const figura = { '3d': 'Conejo 3D', personaje: 'Personaje dibujado', rive: 'Personaje de Rive', orbe: 'Orbe clásico' }[b.apariencia as string] ?? b.apariencia
+    return [
+      `${quien}${b.modelo ? ` · ${b.modelo}` : ''}`,
+      `${figura} · avisos de Claude Code ${b.eventos ? 'activados' : 'apagados'}`,
+      b.dictado.url ? `${host(b.dictado.url)} · ${b.dictado.modelo}` : 'Sin configurar',
+      b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows'
+    ]
   }
 
   // -------------------------------------------------------------------------------------------
@@ -208,8 +230,15 @@ export class VistaAjustes {
     volver.title = 'Volver al chat'
     volver.setAttribute('aria-label', 'Volver al chat')
     volver.append(crearIcono('volver', 18))
-    volver.addEventListener('click', () => this.alVolver())
-    cabecera.append(volver, el('span', 'memoria-titulo', 'Configuración'))
+    const grupos = ['Inteligencia', 'Personaje y conectores', 'Dictado (micrófono)', 'Voz neuronal']
+    volver.addEventListener('click', () => {
+      if (this.grupo === null) this.alVolver()
+      else {
+        this.grupo = null
+        this.pintar()
+      }
+    })
+    cabecera.append(volver, el('span', 'memoria-titulo', this.grupo === null ? 'Configuración' : grupos[this.grupo]))
 
     const cuerpo = el('div', 'memoria-cuerpo ajustes-cuerpo')
 
@@ -375,12 +404,36 @@ export class VistaAjustes {
       )
     )
 
-    cuerpo.append(
+    const secciones = [
       this.seccion('Quién responde', ...responde),
       this.seccion('Personaje y conectores', ...secPersonaje),
       this.seccion('Dictado (micrófono)', ...secDictado),
       this.seccion('Voz neuronal (leer en voz alta)', ...secVoz)
-    )
+    ]
+    // Todas las secciones siguen en la página (lo que cambies en una no se pierde al ir a otra), pero solo se ve
+    // la del grupo abierto; sin grupo abierto se ve la lista de grupos con lo que tiene puesto cada uno.
+    secciones.forEach((sec, i) => (sec.hidden = this.grupo !== i))
+    if (this.grupo === null) {
+      const lista = el('div', 'ajustes-grupos')
+      const iconos = ['🧠', '🐰', '🎙', '🔊']
+      const resumen = this.resumenes(b)
+      grupos.forEach((nombre, i) => {
+        const g = el('button', 'ajustes-grupo')
+        g.type = 'button'
+        g.dataset['grupo'] = String(i)
+        const texto = el('span', 'ajustes-grupo-texto')
+        texto.append(el('strong', undefined, nombre), el('small', undefined, resumen[i]))
+        g.append(el('span', 'ajustes-grupo-icono', iconos[i]), texto, el('span', 'ajustes-grupo-flecha', '›'))
+        g.addEventListener('click', () => {
+          this.grupo = i
+          this.pintar()
+          this.raiz.querySelector('.memoria-cuerpo')?.scrollTo(0, 0)
+        })
+        lista.append(g)
+      })
+      cuerpo.append(lista)
+    }
+    cuerpo.append(...secciones)
 
     // --- Acciones ---
     const acciones = el('div', 'memoria-acciones')

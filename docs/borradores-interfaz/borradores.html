@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Orbe · Borradores de interfaz</title>
+<style>
+  :root {
+    --cian: #22d3ee; --violeta: #8b5cf6; --amarillo: #facc15; --verde: #6ee7b7; --rojo: #fb7185;
+    --fondo: #0b0d1c; --panel: #12142b; --panel2: #171a36; --linea: rgba(255,255,255,.08);
+    --sup: rgba(255,255,255,.055); --texto: #e8eaff; --suave: #98a0c8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 600px at 20% -10%, #2a1d5e 0%, transparent 60%), #070816; color: var(--texto);
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, sans-serif; font-size: 13px; }
+  .lamina { padding: 36px 40px 44px; border-bottom: 1px solid var(--linea); }
+  .lamina h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -.01em; }
+  .lamina h1 small { font-size: 14px; color: var(--suave); font-weight: 500; margin-left: 10px; }
+  .lamina > p { margin: 0 0 22px; color: var(--suave); max-width: 980px; line-height: 1.5; font-size: 14px; }
+  .fila { display: flex; gap: 26px; align-items: flex-start; }
+  .pantalla { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .pantalla > span { color: var(--suave); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .panel { width: 360px; height: 600px; border-radius: 18px; background: linear-gradient(180deg, rgba(23,26,54,.97), rgba(14,16,34,.97));
+    border: 1px solid rgba(139,150,255,.22); box-shadow: 0 30px 60px rgba(0,0,0,.45); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .cab { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--linea); }
+  .cab b { font-size: 14px; }
+  .chip { padding: 2px 8px; border-radius: 999px; font-size: 11px; background: rgba(139,92,246,.22); color: #c4b5fd; }
+  .ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--suave); font-size: 14px; }
+  .ico.on { color: var(--texto); background: linear-gradient(135deg, rgba(34,211,238,.25), rgba(139,92,246,.35)); }
+  .esp { flex: 1; }
+  .cuerpo { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .burbuja { padding: 9px 12px; border-radius: 14px; max-width: 85%; line-height: 1.45; }
+  .yo { align-self: flex-end; background: linear-gradient(135deg, rgba(34,211,238,.25), rgba(139,92,246,.4)); }
+  .ia { background: var(--sup); }
+  .comp { margin: 10px; padding: 10px 12px; border-radius: 14px; background: var(--sup); border: 1px solid var(--linea); color: var(--suave); display: flex; align-items: center; gap: 8px; }
+  .comp .enviar { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--cian), var(--violeta)); display: grid; place-items: center; color: #fff; }
+  .tarjeta { padding: 10px 12px; border-radius: 12px; background: var(--sup); border: 1px solid var(--linea); display: flex; flex-direction: column; gap: 4px; }
+  .tarjeta .t { display: flex; gap: 8px; align-items: center; } .tarjeta .t b { flex: 1; }
+  .nota { color: var(--suave); font-size: 11.5px; }
+  .ins { padding: 1px 7px; border-radius: 999px; font-size: 10.5px; }
+  .ins.curso { background: rgba(34,211,238,.18); color: var(--cian); }
+  .ins.esp { flex: none; background: rgba(250,204,21,.18); color: #fde047; }
+  .ins.ok { background: rgba(52,211,153,.16); color: var(--verde); }
+  .pest { display: flex; gap: 4px; padding: 3px; border-radius: 11px; background: var(--sup); }
+  .pest span { flex: 1; text-align: center; padding: 6px 2px; border-radius: 8px; color: var(--suave); font-size: 12px; }
+  .pest span.on { color: var(--texto); background: linear-gradient(135deg, rgba(34,211,238,.22), rgba(139,92,246,.32)); }
+  .boton { display: inline-block; padding: 5px 11px; border-radius: 9px; border: 1px solid var(--linea); background: var(--sup); font-size: 12px; }
+  .boton.p { background: linear-gradient(135deg, rgba(34,211,238,.26), rgba(139,92,246,.36)); border-color: rgba(150,160,255,.4); }
+  .permiso { padding: 8px 10px; border-radius: 10px; background: rgba(250,204,21,.1); border: 1px solid rgba(250,204,21,.4); }
+  .kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .kpi { padding: 8px; border-radius: 11px; background: var(--sup); border: 1px solid var(--linea); }
+  .kpi small { color: var(--suave); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; } .kpi b { display: block; font-size: 17px; }
+  .barras { display: flex; align-items: flex-end; gap: 4px; height: 70px; padding: 8px; border-radius: 11px; background: var(--sup); border: 1px solid var(--linea); }
+  .barras i { flex: 1; border-radius: 3px 3px 1px 1px; background: linear-gradient(180deg, var(--cian), var(--violeta)); }
+  .medidor { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; } .medidor i { display: block; height: 100%; background: linear-gradient(90deg, var(--cian), var(--violeta)); }
+  .grupo { border-radius: 12px; background: var(--sup); border: 1px solid var(--linea); overflow: hidden; }
+  .opcion { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--linea); }
+  .opcion:last-child { border-bottom: 0; } .opcion .em { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: rgba(139,92,246,.2); }
+  .opcion div { flex: 1; } .opcion small { display: block; color: var(--suave); font-size: 11px; } .flecha { color: var(--suave); }
+  .sw { width: 30px; height: 17px; border-radius: 99px; background: linear-gradient(135deg, var(--cian), var(--violeta)); position: relative; } .sw::after { content: ''; position: absolute; right: 2px; top: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; }
+  .titulo-sec { font-size: 11px; color: var(--suave); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+  .conejo { width: 54px; height: 54px; border-radius: 50%; background: url(conejo.png) center/130% no-repeat, radial-gradient(circle, #2b2160, #120e2a); border: 1px solid rgba(139,150,255,.35); flex: none; }
+  .conejo.g { width: 84px; height: 84px; }
+  /* Variante A: barra lateral */
+  .conRail { flex-direction: row; } .rail { width: 52px; border-right: 1px solid var(--linea); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; background: rgba(0,0,0,.18); }
+  .rail .ico { width: 34px; height: 34px; border-radius: 11px; font-size: 16px; position: relative; }
+  .rail .badge { position: absolute; top: -2px; right: -2px; min-width: 14px; height: 14px; border-radius: 99px; background: var(--amarillo); color: #1a1030; font-size: 9px; font-weight: 700; display: grid; place-items: center; }
+  .principal { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  /* Variante B: pestañas abajo */
+  .tabbar { display: flex; border-top: 1px solid var(--linea); background: rgba(0,0,0,.2); } .tabbar span { flex: 1; text-align: center; padding: 8px 0 9px; font-size: 10.5px; color: var(--suave); display: flex; flex-direction: column; gap: 1px; align-items: center; }
+  .tabbar span em { font-style: normal; font-size: 16px; } .tabbar span.on { color: var(--texto); } .tabbar span.on em { filter: drop-shadow(0 0 6px rgba(34,211,238,.8)); }
+  /* Variante C: inicio tipo perfil */
+  .perfil { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(34,211,238,.12), rgba(139,92,246,.2)); border: 1px solid rgba(150,160,255,.25); }
+  .perfil b { font-size: 16px; } .estado { display: inline-flex; gap: 6px; align-items: center; color: var(--verde); font-size: 12px; } .estado::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 8px var(--verde); }
+  .paleta { position: absolute; inset: 60px 18px auto; padding: 8px; border-radius: 14px; background: #1b1e3f; border: 1px solid rgba(150,160,255,.35); box-shadow: 0 24px 50px rgba(0,0,0,.6); }
+  .paleta .busca { padding: 9px 10px; border-radius: 10px; background: rgba(0,0,0,.25); color: var(--texto); margin-bottom: 6px; }
+  .paleta .res { padding: 8px 10px; border-radius: 9px; display: flex; gap: 10px; } .paleta .res.on { background: rgba(139,92,246,.25); } .paleta .res small { margin-left: auto; color: var(--suave); }
+  .velo { position: absolute; inset: 0; background: rgba(5,6,15,.55); }
+  .leyenda { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 22px; max-width: 1560px; }
+  .leyenda div { padding: 12px 14px; border-radius: 12px; background: var(--sup); border: 1px solid var(--linea); line-height: 1.45; color: var(--suave); }
+  .leyenda b { color: var(--texto); display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ============================ A ============================ -->
+<section class="lamina">
+  <h1>A · Barra lateral <small>como Discord, Slack o Linear</small></h1>
+  <p>Una columna de iconos fija a la izquierda sustituye a los 12 botones de la cabecera. Cada sección (Chat, Tareas, Consumo, Memoria, Conectores, Ajustes) ocupa el panel entero. La cabecera queda solo con el modelo, la potencia y cerrar. Es la opción más ordenada y la que mejor escala si añadimos más secciones.</p>
+  <div class="fila">
+    <div class="pantalla"><span>Chat</span>
+      <div class="panel conRail">
+        <div class="rail"><div class="ico on">💬</div><div class="ico">⏰<i class="badge">1</i></div><div class="ico">📊</div><div class="ico">📖</div><div class="ico">🔌</div><div class="esp"></div><div class="ico">⚙️</div></div>
+        <div class="principal">
+          <div class="cab"><b>Chat</b><span class="chip">Sonnet 5.5</span><span class="esp"></span><span class="ico">◔</span><span class="ico">✎</span><span class="ico">✕</span></div>
+          <div class="cuerpo">
+            <div class="burbuja yo">¿Me preparas un resumen de las noticias de IA?</div>
+            <div class="burbuja ia">Claro. Estas son las 5 más importantes de hoy:<br>1. OpenAI lanza…<br>2. Anthropic presenta…<br><span class="nota">¿Lo convierto en una tarea diaria a las 8:30?</span></div>
+            <div class="tarjeta"><div class="t"><b>Noticias de IA</b><span class="ins curso">Trabajando</span></div><span class="nota">Tarea de fondo · Buscando: noticias IA hoy</span></div>
+          </div>
+          <div class="comp">👁 📷 🎙 Escribe…<span class="enviar">↑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Tareas</span>
+      <div class="panel conRail">
+        <div class="rail"><div class="ico">💬</div><div class="ico on">⏰<i class="badge">1</i></div><div class="ico">📊</div><div class="ico">📖</div><div class="ico">🔌</div><div class="esp"></div><div class="ico">⚙️</div></div>
+        <div class="principal">
+          <div class="cab"><b>Tareas</b><span class="esp"></span><span class="boton p">+ Nueva</span></div>
+          <div class="cuerpo">
+            <div class="pest"><span class="on">En curso · 1</span><span>Programadas · 3</span><span>Hechas</span></div>
+            <div class="tarjeta"><div class="t"><b>Vigilar precio RTX</b><span class="ins esp">Te necesita</span></div>
+              <div class="permiso"><b>Abrir la tienda en el navegador</b><div class="nota">pccomponentes.com/rtx-5070</div><div style="margin-top:6px"><span class="boton p">Permitir</span> <span class="boton">No</span></div></div></div>
+            <div class="titulo-sec">Próximas</div>
+            <div class="tarjeta"><div class="t"><b>Noticias de IA</b></div><span class="nota">Cada día a las 08:30 · mañana 08:30</span></div>
+            <div class="tarjeta"><div class="t"><b>Plan de la semana</b></div><span class="nota">Lun a las 09:00</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Consumo</span>
+      <div class="panel conRail">
+        <div class="rail"><div class="ico">💬</div><div class="ico">⏰</div><div class="ico on">📊</div><div class="ico">📖</div><div class="ico">🔌</div><div class="esp"></div><div class="ico">⚙️</div></div>
+        <div class="principal">
+          <div class="cab"><b>Consumo</b><span class="esp"></span><span class="chip">Este mes</span></div>
+          <div class="cuerpo">
+            <div class="kpis"><div class="kpi"><small>Hoy</small><b>$0,42</b><span class="nota">38 mil tokens</span></div><div class="kpi"><small>7 días</small><b>$2,10</b><span class="nota">190 mil</span></div><div class="kpi"><small>Mes</small><b>$6,85</b><span class="nota">640 mil</span></div></div>
+            <div class="barras"><i style="height:30%"></i><i style="height:55%"></i><i style="height:20%"></i><i style="height:70%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:35%"></i><i style="height:60%"></i><i style="height:25%"></i><i style="height:75%"></i><i style="height:50%"></i><i style="height:40%"></i><i style="height:85%"></i><i style="height:65%"></i></div>
+            <div class="tarjeta"><div class="t"><b>Límite de 5 h del plan (CLI)</b><span class="nota">62 %</span></div><div class="medidor"><i style="width:62%"></i></div><span class="nota">Se renueva en 1 h 40 min</span></div>
+            <div class="titulo-sec">Por modelo</div>
+            <div class="opcion grupo"><div><b>claude-sonnet-5-5</b><small>CLI de Claude</small></div><b>$5,90</b></div>
+            <div class="opcion grupo"><div><b>gemini-3.5-flash</b><small>Google AI Studio · gratis</small></div><b>0 $</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Ajustes</span>
+      <div class="panel conRail">
+        <div class="rail"><div class="ico">💬</div><div class="ico">⏰</div><div class="ico">📊</div><div class="ico">📖</div><div class="ico">🔌</div><div class="esp"></div><div class="ico on">⚙️</div></div>
+        <div class="principal">
+          <div class="cab"><b>Ajustes</b></div>
+          <div class="cuerpo">
+            <div class="grupo">
+              <div class="opcion"><span class="em">🧠</span><div>Inteligencia<small>CLI de Claude · Sonnet 5.5</small></div><span class="flecha">›</span></div>
+              <div class="opcion"><span class="em">🐰</span><div>Personaje<small>Conejo 3D · sonidos activados</small></div><span class="flecha">›</span></div>
+              <div class="opcion"><span class="em">🎙</span><div>Voz y dictado<small>Whisper · voces de Windows</small></div><span class="flecha">›</span></div>
+              <div class="opcion"><span class="em">🛡</span><div>Permisos del agente<small>Pregunta antes de abrir o enviar</small></div><span class="flecha">›</span></div>
+              <div class="opcion"><span class="em">⌨️</span><div>Atajos y ventana<small>Ctrl+Mayús+Espacio · siempre encima</small></div><span class="flecha">›</span></div>
+            </div>
+            <div class="nota">Cada grupo abre su propia página: ya no está todo en una lista larga.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ B ============================ -->
+<section class="lamina">
+  <h1>B · Pestañas abajo <small>como una app de móvil o el perfil de un agente</small></h1>
+  <p>Cuatro pestañas grandes abajo: <b>Chat</b>, <b>Tareas</b>, <b>Actividad</b> (lo que hicieron Claude Code, tus tareas y otras herramientas) y <b>Yo</b>. En «Yo» se juntan memoria, consumo y ajustes. Se usa muy bien con el panel estrecho y deja la cabecera limpia.</p>
+  <div class="fila">
+    <div class="pantalla"><span>Chat</span>
+      <div class="panel">
+        <div class="cab"><b>Orbe</b><span class="chip">Gemini 3.5 Flash</span><span class="esp"></span><span class="ico">◔</span><span class="ico">✎</span><span class="ico">✕</span></div>
+        <div class="cuerpo">
+          <div class="burbuja yo">Recuérdame cada viernes revisar los gastos</div>
+          <div class="burbuja ia">Hecho ✅ He creado la tarea «Revisar gastos» para los viernes a las 18:00. La verás en Tareas.</div>
+        </div>
+        <div class="comp">👁 📷 🎙 Escribe…<span class="enviar">↑</span></div>
+        <div class="tabbar"><span class="on"><em>💬</em>Chat</span><span><em>⏰</em>Tareas</span><span><em>⚡</em>Actividad</span><span><em>🙂</em>Yo</span></div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Tareas</span>
+      <div class="panel">
+        <div class="cab"><b>Tareas</b><span class="esp"></span><span class="boton p">+ Nueva</span></div>
+        <div class="cuerpo">
+          <div class="pest"><span>En curso</span><span class="on">Programadas · 3</span><span>Hechas · 12</span></div>
+          <div class="tarjeta"><div class="t"><b>Noticias de IA</b></div><span class="nota">Cada día a las 08:30 · próxima: mañana 08:30</span><div><span class="boton">Hacer ahora</span> <span class="boton">Pausar</span> <span class="boton">Editar</span></div></div>
+          <div class="tarjeta"><div class="t"><b>Revisar gastos</b></div><span class="nota">Vie a las 18:00 · avisa solo si hay algo</span></div>
+          <div class="tarjeta"><div class="t"><b>Vigilar precio RTX</b></div><span class="nota">Cada 4 h</span></div>
+        </div>
+        <div class="tabbar"><span><em>💬</em>Chat</span><span class="on"><em>⏰</em>Tareas</span><span><em>⚡</em>Actividad</span><span><em>🙂</em>Yo</span></div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Actividad</span>
+      <div class="panel">
+        <div class="cab"><b>Actividad</b><span class="esp"></span><span class="chip">Hoy</span></div>
+        <div class="cuerpo">
+          <div class="tarjeta"><div class="t"><b>Claude Code te necesita · orbe</b><span class="ins esp">Ahora</span></div><span class="nota">Permiso para usar Bash: npm test</span></div>
+          <div class="tarjeta"><div class="t"><b>Hecho: Noticias de IA</b><span class="ins ok">08:31</span></div><span class="nota">1. OpenAI lanza… 2. Anthropic presenta…</span></div>
+          <div class="tarjeta"><div class="t"><b>Claude Code terminó · web-tienda</b><span class="ins ok">07:50</span></div></div>
+          <div class="tarjeta"><div class="t"><b>Vigilar precio RTX: nada nuevo</b><span class="ins">06:00</span></div></div>
+        </div>
+        <div class="tabbar"><span><em>💬</em>Chat</span><span><em>⏰</em>Tareas</span><span class="on"><em>⚡</em>Actividad</span><span><em>🙂</em>Yo</span></div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Yo</span>
+      <div class="panel">
+        <div class="cab"><b>Yo</b></div>
+        <div class="cuerpo">
+          <div class="perfil"><div class="conejo"></div><div><b>Josías</b><div class="nota">Gemini 3.5 Flash · Google AI Studio</div></div></div>
+          <div class="kpis"><div class="kpi"><small>Hoy</small><b>$0,00</b><span class="nota">gratis</span></div><div class="kpi"><small>Mes</small><b>$6,85</b></div><div class="kpi"><small>Tareas</small><b>12</b><span class="nota">hechas</span></div></div>
+          <div class="grupo">
+            <div class="opcion"><span class="em">📊</span><div>Consumo<small>Tokens y dinero por modelo</small></div><span class="flecha">›</span></div>
+            <div class="opcion"><span class="em">📖</span><div>Memoria<small>8 recuerdos activos</small></div><span class="flecha">›</span></div>
+            <div class="opcion"><span class="em">🔌</span><div>Conectores<small>Claude Code conectado</small></div><span class="flecha">›</span></div>
+            <div class="opcion"><span class="em">⚙️</span><div>Ajustes<small>IA, personaje, voz, permisos</small></div><span class="flecha">›</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span><em>💬</em>Chat</span><span><em>⏰</em>Tareas</span><span><em>⚡</em>Actividad</span><span class="on"><em>🙂</em>Yo</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ C ============================ -->
+<section class="lamina">
+  <h1>C · Inicio del agente + paleta de órdenes <small>como Raycast o el perfil de un «dot»</small></h1>
+  <p>Al abrir el panel ves primero un <b>inicio</b> con el conejo y su estado: lo que está haciendo, lo próximo y lo gastado hoy. Desde ahí empiezas a escribir. Todo lo demás se busca con <b>Ctrl+K</b> («consumo», «voz», «nueva tarea»…), y los ajustes son una página con submenú. Es la opción más «agente siempre encendido» y la más rápida si usas mucho el teclado.</p>
+  <div class="fila">
+    <div class="pantalla"><span>Inicio</span>
+      <div class="panel">
+        <div class="cab"><b>Orbe</b><span class="esp"></span><span class="ico">⌘K</span><span class="ico">✕</span></div>
+        <div class="cuerpo">
+          <div class="perfil"><div class="conejo g"></div><div><b>Orbe</b><div class="estado">Despierto · 1 tarea en marcha</div><div class="nota">Sonnet 5.5 · CLI de Claude</div></div></div>
+          <div class="tarjeta"><div class="t"><b>Ahora</b><span class="ins curso">Trabajando</span></div><span class="nota">Noticias de IA · Buscando: noticias IA hoy</span></div>
+          <div class="tarjeta"><div class="t"><b>Después</b></div><span class="nota">Revisar gastos · vie 18:00 &nbsp;·&nbsp; Plan semanal · lun 09:00</span></div>
+          <div class="tarjeta"><div class="t"><b>Hoy has gastado</b><b style="flex:none">$0,42</b></div><div class="medidor"><i style="width:35%"></i></div><span class="nota">35 % de tu límite de 5 h</span></div>
+        </div>
+        <div class="comp">Pregunta o pide una tarea…<span class="enviar">↑</span></div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Ctrl + K</span>
+      <div class="panel">
+        <div class="cab"><b>Orbe</b><span class="esp"></span><span class="ico on">⌘K</span><span class="ico">✕</span></div>
+        <div class="cuerpo"><div class="burbuja ia">¿En qué te ayudo?</div></div>
+        <div class="velo"></div>
+        <div class="paleta">
+          <div class="busca">con|</div>
+          <div class="res on">📊 Consumo<small>Ver</small></div>
+          <div class="res">🔌 Conectores<small>Ajustes</small></div>
+          <div class="res">🧠 Cambiar modelo<small>Ajustes › IA</small></div>
+          <div class="res">⏰ Nueva tarea: «con…»<small>Tareas</small></div>
+          <div class="res">🎙 Configurar dictado<small>Ajustes › Voz</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Ajustes con submenú</span>
+      <div class="panel">
+        <div class="cab"><b>Ajustes</b><span class="esp"></span><span class="ico">✕</span></div>
+        <div class="cuerpo" style="flex-direction:row;gap:10px">
+          <div style="width:96px;display:flex;flex-direction:column;gap:4px">
+            <span class="boton p">🧠 IA</span><span class="boton">🐰 Personaje</span><span class="boton">🎙 Voz</span><span class="boton">🛡 Permisos</span><span class="boton">🔌 Conectores</span><span class="boton">⌨️ Atajos</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+            <div class="titulo-sec">Quién responde</div>
+            <div class="grupo"><div class="opcion"><div>CLI de Claude<small>tu sesión, sin clave</small></div><span>●</span></div><div class="opcion"><div>API de Anthropic</div><span class="nota">○</span></div><div class="opcion"><div>Gemini, Groq, Ollama…</div><span class="nota">○</span></div></div>
+            <div class="titulo-sec">Modelo</div>
+            <div class="grupo"><div class="opcion"><div>claude-sonnet-5-5</div><span class="flecha">▾</span></div></div>
+            <div class="opcion grupo"><div>Modo agente<small>buscar, abrir, navegar</small></div><span class="sw"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pantalla"><span>Tarea desde el chat</span>
+      <div class="panel">
+        <div class="cab"><b>Orbe</b><span class="esp"></span><span class="ico">⌘K</span><span class="ico">✕</span></div>
+        <div class="cuerpo">
+          <div class="burbuja yo">Cada mañana dime si va a llover en Lima</div>
+          <div class="tarjeta" style="border-color:rgba(150,160,255,.4)"><div class="t"><b>⏰ Nueva tarea</b></div><span>¿Va a llover hoy en Lima?</span><span class="nota">Cada día a las 07:00 · avisa solo si llueve</span><div><span class="boton p">Crear tarea</span> <span class="boton">Cambiar hora</span></div></div>
+          <div class="burbuja ia">Te lo diré cada día a las 7:00, solo si va a llover.</div>
+        </div>
+        <div class="comp">Escribe…<span class="enviar">↑</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="leyenda">
+    <div><b>Mi recomendación: A + lo mejor de C</b>La barra lateral para moverte (siempre visible y clara), el inicio de C como primera pantalla del chat vacío, y Ctrl+K para buscar ajustes.</div>
+    <div><b>Lo que ya funciona hoy (v1.4.0)</b>Tareas (en curso, programadas, completadas, permisos), Consumo (hoy, 7 días, mes, por modelo y límite del CLI) y los gestos del conejo. Con este rediseño se reorganiza lo que ya existe.</div>
+    <div><b>Elige y lo construyo</b>Dime A, B o C (o una mezcla). Muevo la configuración a su sección, quito los iconos de la cabecera y mantengo todas las funciones actuales.</div>
+  </div>
+</section>
+</body>
+</html>
