@@ -155,6 +155,22 @@ export class VentanaOrbe {
     this.establecerExpandido(!this.expandido)
   }
 
+  /** ¿Recibe el ratón la ventana? Si no, los clics pasan a las ventanas de debajo (se siguen notando los movimientos). */
+  private interactivo = true
+
+  /**
+   * Hace la ventana «transparente al ratón» salvo donde la interfaz diga (el centro del personaje y el panel).
+   * Solo en Windows y macOS: allí Electron sigue entregando los movimientos del ratón con `forward`, y así la
+   * interfaz sabe cuándo volver a recibirlo. En Linux eso no existe y la ventana dejaría de responder: se queda igual.
+   */
+  fijarInteractivo(dentro: boolean): void {
+    if (process.platform !== 'win32' && process.platform !== 'darwin') return
+    if (dentro === this.interactivo || this.ventana.isDestroyed()) return
+    this.interactivo = dentro
+    if (dentro) this.ventana.setIgnoreMouseEvents(false)
+    else this.ventana.setIgnoreMouseEvents(true, { forward: true })
+  }
+
   establecerExpandido(valor: boolean): void {
     if (valor === this.expandido) return
     if (valor) {
@@ -240,6 +256,12 @@ export class VentanaOrbe {
 
     ipcMain.on(CANALES.alternar, (evento) => {
       if (propia(evento)) this.alternar()
+    })
+
+    // Solo el centro del personaje (y el panel, si está abierto) recibe el ratón: en el resto de la ventana
+    // transparente los clics pasan a lo que haya debajo. La interfaz avisa al entrar y salir de esas zonas.
+    ipcMain.on(CANALES.ratonInteractivo, (evento, dentro: unknown) => {
+      if (propia(evento) && typeof dentro === 'boolean') this.fijarInteractivo(dentro)
     })
 
     const MODOS: readonly string[] = ['x', 'y', 'xy']

@@ -49,8 +49,9 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 
 ## Controles
 - **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y conectores, Dictado y Voz). En la cabecera solo quedan la potencia, conversación nueva, la chincheta y cerrar.
-- **Clic** en el orbe: abrir o cerrar el panel. **Esc** también lo cierra.
-- **Arrastrar** el orbe (o la cabecera del panel): moverlo. Recuerda su última posición.
+- **Doble clic** en el personaje: abrir o cerrar el chat (también **Ctrl + Mayús + Espacio** o la bandeja). Un **clic** solo lo hace jugar (salta, saluda, baila…), así no se abre el chat por tocarlo sin querer. **Esc** cierra el panel.
+- **Solo se toca el centro del personaje**: en Windows y macOS, el resto de su cuadro (las esquinas y los lados transparentes) deja pasar los clics a lo que haya debajo, así no tapa pestañas ni botones de otras aplicaciones. Con el panel abierto, igual: solo el panel y el centro del personaje reciben el ratón.
+- **Arrastrar** el personaje desde su centro (o la cabecera del panel): moverlo. Recuerda su última posición.
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
