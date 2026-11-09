@@ -22,6 +22,9 @@ extraResources:
   # El script con el que Claude Code (por sus hooks) y otras herramientas avisan a Orbe.
   - from: resources/conectores
     to: conectores
+  # El personaje 3D (el conejo) y su calibración.
+  - from: resources/personaje
+    to: personaje
   # Fondos del chat incluidos en la instalación (si existe resources/fondos; ver «npm run fondos»).
   - from: resources/fondos
     to: fondos

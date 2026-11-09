@@ -111,6 +111,8 @@ export interface Config {
   /** Diseño del personaje dibujado (ORBE_DISENO): orbi, nimbo, pico… */
   diseno: string
   rive: { archivo: string; maquina: string }
+  /** Un modelo 3D propio (ORBE_MODELO_3D, .glb); vacío = el conejo que trae Orbe. */
+  modelo3d: string
   /** El receptor local de avisos de otras herramientas (Claude Code, n8n, scripts). Apagado por defecto. */
   eventos: { activo: boolean; puerto: number }
   avisos: string[]
@@ -207,9 +209,9 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
 
   // Apariencia: el personaje dibujado por defecto; el orbe clásico o un personaje de Rive si se pide.
   const aparienciaLeida = leer('ORBE_APARIENCIA').toLowerCase()
-  let apariencia: Apariencia = 'personaje'
-  if (aparienciaLeida === 'orbe' || aparienciaLeida === 'rive' || aparienciaLeida === 'personaje') apariencia = aparienciaLeida
-  else if (aparienciaLeida) avisos.push(`ORBE_APARIENCIA="${aparienciaLeida}" no es válida (personaje, orbe o rive); uso el personaje.`)
+  let apariencia: Apariencia = '3d'
+  if (aparienciaLeida === 'orbe' || aparienciaLeida === 'rive' || aparienciaLeida === 'personaje' || aparienciaLeida === '3d') apariencia = aparienciaLeida
+  else if (aparienciaLeida) avisos.push(`ORBE_APARIENCIA="${aparienciaLeida}" no es válida (3d, personaje, orbe o rive); uso el personaje 3D.`)
   let diseno = DISENOS[0].id
   const disenoLeido = leer('ORBE_DISENO').toLowerCase()
   if (disenoLeido) {
@@ -311,6 +313,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     apariencia,
     diseno,
     rive: { archivo: riveArchivo, maquina: leer('ORBE_RIVE_MAQUINA') },
+    modelo3d: leer('ORBE_MODELO_3D'),
     eventos: { activo: eventosActivo, puerto: puertoEventos },
     avisos
   }

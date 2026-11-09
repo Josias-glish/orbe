@@ -146,7 +146,7 @@ export function validarPeticion(p: unknown): { ok: true; cambios: Cambios } | { 
   // Apariencia y conectores: opcionales, para que una petición antigua (sin ellos) no los toque.
   const apariencia = o['apariencia']
   if (apariencia !== undefined) {
-    if (apariencia !== 'personaje' && apariencia !== 'orbe' && apariencia !== 'rive') return { ok: false, error: 'La apariencia no es válida.' }
+    if (apariencia !== '3d' && apariencia !== 'personaje' && apariencia !== 'orbe' && apariencia !== 'rive') return { ok: false, error: 'La apariencia no es válida.' }
     cambios['ORBE_APARIENCIA'] = apariencia
   }
   const diseno = o['diseno']

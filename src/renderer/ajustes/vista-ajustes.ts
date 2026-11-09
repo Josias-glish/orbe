@@ -314,7 +314,8 @@ export class VistaAjustes {
     // --- Personaje y conectores ---
     const apariencia = this.selector(
       [
-        { id: 'personaje', nombre: 'Personaje con expresiones' },
+        { id: '3d', nombre: 'Personaje 3D (el conejo)' },
+        { id: 'personaje', nombre: 'Personaje dibujado (20 diseños)' },
         { id: 'rive', nombre: 'Personaje de Rive (archivo .riv)' },
         { id: 'orbe', nombre: 'Orbe clásico (sin cara)' }
       ],

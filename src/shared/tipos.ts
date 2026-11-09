@@ -334,8 +334,20 @@ export interface EstadoFondo {
 }
 
 /** La configuración que enseña la pantalla de ajustes: los valores del .env y qué claves existen, nunca las claves. */
-/** Qué figura vive en la esquina: el personaje dibujado (por defecto), el orbe clásico o un personaje de Rive. */
-export type Apariencia = 'personaje' | 'orbe' | 'rive'
+/** Qué figura vive en la esquina: el personaje 3D (por defecto), el dibujado, el orbe clásico o uno de Rive. */
+export type Apariencia = '3d' | 'personaje' | 'orbe' | 'rive'
+
+/**
+ * Cómo encaja Orbe con un modelo 3D concreto: dónde están los cristales de las gafas (relativo a la silueta: x desde
+ * el centro, y desde arriba, en fracciones del ancho y del alto), qué parte se encuadra y si hay que girarlo.
+ */
+export interface CalibracionModelo {
+  lentes: { x: number; y: number; ancho: number; alto: number }
+  encuadre: { arriba: number; abajo: number }
+  giro: { y: number; x: number }
+  /** Altura del cuello (fracción desde abajo): por debajo es ropa, por encima pelo. */
+  cuello?: number
+}
 
 /** Lo que necesita la interfaz para montar la figura. Con Rive, el archivo y el motor llegan del proceso principal. */
 export interface RecursosPersonaje {
@@ -343,6 +355,13 @@ export interface RecursosPersonaje {
   /** Id del diseño del personaje dibujado (ver DISENOS). */
   diseno: string
   rive?: { archivo: Uint8Array; wasm: Uint8Array; maquina: string | null }
+  /** El personaje 3D: el GLB y su calibración (si el modelo trae una). */
+  modelo3d?: {
+    glb: Uint8Array
+    calibracion?: Partial<CalibracionModelo>
+    /** Texturas de detalle (gris, repetibles) que se aplican encima: pelo en la cabeza y punto en la ropa. */
+    detalles?: { pelo?: Uint8Array; tejido?: Uint8Array }
+  }
   /** Si se pidió Rive y no se pudo cargar, por qué (la interfaz usa el personaje dibujado). */
   aviso?: string
 }

@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Versión 1.2: un **personaje con 20 expresiones** y 20 diseños (o uno tuyo de Rive), avisos de Claude Code y otras herramientas, chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
+> Versión 1.3: un **conejo en 3D** con 20 expresiones en sus gafas y sonidos (o el personaje dibujado con 20 diseños, o uno tuyo de Rive), avisos de Claude Code y otras herramientas, chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
 ## Instalar (usuarios)
 En la sección **Releases** del repositorio (o en «Artifacts» de cada ejecución del flujo CI) hay tres opciones; elige la que prefieras:
@@ -69,6 +69,14 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - Con `npm run dev`, **Ctrl + Alt + D** muestra una barra para forzar los estados del orbe.
 
 ## El personaje
+Por defecto, en la esquina vive **el conejo en 3D**: busto con pelo negro, auriculares blancos, gafas negras y sudadera de punto con el orbe en el pecho. Lo dibuja [three.js](https://threejs.org) dentro de la misma ventana de Orbe, sin programas aparte: unos 41.000 triángulos y texturas PBR, a 30 fps en reposo y 60 cuando hace algo; se para si no se ve.
+
+- **Las gafas son su pantalla**: las 20 expresiones se dibujan como ojos de luz en los cristales (ojos que sonríen, corazones, estrellas, espirales, cejas de enfado…). Gira la cabeza hacia el cursor, respira, bota al responder, se ladea según la expresión, y su contraluz cambia de color con el estado (pensando, respondiendo, actuando).
+- **Pelo y tejido de cerca**: encima de la textura del modelo se aplican texturas de detalle repetibles (`resources/personaje/pelo.jpg` y `tejido.jpg`): pelo corto y denso, mate, en la cabeza y las orejas, y el punto del tejido en la sudadera.
+- **Sonidos** cortos y suaves (sintetizados al momento, sin archivos): al abrir y cerrar, al acariciarlo, con la rueda, al arrastrarlo, al enviar y al terminar de responder, cuando se duerme y se despierta, y con los avisos de Claude Code. Se apagan en el menú de la carita.
+- **Tu propio modelo**: `ORBE_MODELO_3D` con la ruta de un `.glb`. Si a su lado hay un `.json` con el mismo nombre, Orbe lo usa para saber dónde están las gafas (`lentes`), qué encuadrar (`encuadre`) y dónde acaba la ropa (`cuello`). `npm run modelo -- entrada.glb` lo optimiza (texturas a 2K y geometría comprimida) y `node scripts/galeria/fotos-3d.mjs` saca fotos con todas las expresiones.
+- Si el equipo no tiene WebGL o el modelo falla, Orbe usa el personaje dibujado de abajo.
+
 En la esquina ya no hay solo un orbe: hay un **personaje con 20 expresiones** (neutral, feliz, risa, tímido, guiño, enamorado, emocionado, sorprendido, curioso, pensativo, concentrado, confundido, triste, llorando, enfadado, preocupado, dormido, aburrido, travieso y orgulloso). Siempre está en primer plano, como antes.
 
 - **Reacciona solo**: pone cara de pensar mientras la IA piensa, de contento al responder, de concentrado cuando el agente trabaja y de curioso al leer la pantalla. Parpadea, respira y **sigue el cursor con la mirada**. Si pasan 3 minutos sin que pase nada, se duerme, y se despierta cuando le acercas el ratón.
@@ -250,7 +258,7 @@ src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
 src/main/conectores avisos de otras herramientas: bus de actividad, receptor local, hooks de Claude Code
-src/renderer/personaje personaje: expresiones, director, dibujo SVG, adaptador de Rive, menú de expresiones y actividad
+src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
 helper             lector de pantalla de Windows (PowerShell + C#, UI Automation) y OCR de Windows (ocr.ps1)
 src/preload        puente seguro hacia la interfaz

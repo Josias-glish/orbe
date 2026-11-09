@@ -2,6 +2,7 @@ import { EXPRESIONES, IDS_EXPRESION, esIdExpresion, type IdExpresion } from '../
 import type { EstadoActividad, EventoActividad, TipoActividad } from '../../shared/tipos'
 import { registrarMenu } from '../chat/menus'
 import type { Avatar } from './avatar'
+import type { Sonidos } from './sonidos'
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(etiqueta)
@@ -42,7 +43,8 @@ export class MenuPersonaje {
     private readonly boton: HTMLButtonElement,
     private readonly menu: HTMLElement,
     private readonly insignia: HTMLElement,
-    private readonly conCara: boolean
+    private readonly conCara: boolean,
+    private readonly sonidos?: Sonidos
   ) {
     this.menus = registrarMenu('personaje', () => this.cerrar())
     if (!conCara) this.pestana = 'actividad'
@@ -160,7 +162,23 @@ export class MenuPersonaje {
       'memoria-nota',
       'Pulsa una para fijarla; en automático cambia según la conversación y los avisos. Sobre el personaje: la rueda del ratón recorre las caras y si lo acaricias con el cursor, reacciona.'
     )
-    return [rejilla, auto, nota]
+    const partes: HTMLElement[] = [rejilla, auto]
+    if (this.sonidos) {
+      const opcion = el('label', 'memoria-opcion')
+      const casilla = el('input')
+      casilla.type = 'checkbox'
+      casilla.checked = this.sonidos.encendidos
+      casilla.dataset['opcion'] = 'sonidos'
+      casilla.addEventListener('change', () => {
+        this.sonidos?.fijar(casilla.checked)
+        if (casilla.checked) this.sonidos?.tocar('risa')
+      })
+      opcion.addEventListener('click', (e) => e.stopPropagation())
+      opcion.append(casilla, el('span', undefined, 'Sonidos del personaje'))
+      partes.push(opcion)
+    }
+    partes.push(nota)
+    return partes
   }
 
   private pintarActividad(): HTMLElement[] {

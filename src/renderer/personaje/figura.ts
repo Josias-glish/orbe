@@ -20,8 +20,10 @@ export class FiguraEsquina implements Avatar {
   }
 
   establecerEstado(estado: EstadoOrbe): void {
+    const anterior = this.estado
     this.estado = estado
     this.actual?.establecerEstado(estado)
+    if (anterior !== estado) document.dispatchEvent(new CustomEvent('orbe-estado', { detail: { anterior, estado } }))
   }
   obtenerEstado(): EstadoOrbe {
     return this.actual?.obtenerEstado() ?? this.estado

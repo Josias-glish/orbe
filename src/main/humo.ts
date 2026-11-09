@@ -795,9 +795,10 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     const diag = (): Promise<{ figura: string; expresion: string; estado: string }> => js('window.__orbeDiagnostico()')
     await js('window.__orbeFiguraLista()')
     p.diag = await diag()
-    comprobar('la figura por defecto es el personaje', (p.diag as { figura: string }).figura === 'personaje', p.diag)
-    comprobar('se dibuja con SVG (sin WebGL)', (await existe('#orbe-caja svg.personaje')) && (await js<boolean>(`document.getElementById('orbe-canvas').hidden`)))
-    comprobar('con el diseño por defecto', (await js<string>(`document.querySelector('#orbe-caja svg.personaje').dataset.diseno`)) === 'orbi')
+    comprobar('la figura por defecto es el conejo 3D', (p.diag as { figura: string }).figura === '3d', p.diag)
+    comprobar('se dibuja con three.js en su propio lienzo', (await existe('#orbe-caja canvas.personaje-3d')) && (await js<boolean>(`document.getElementById('orbe-canvas').hidden`)))
+    comprobar('el modelo tiene geometría y texturas', ((p.diag as { triangulos: number }).triangulos ?? 0) > 1000 && ((p.diag as { texturas: number }).texturas ?? 0) >= 3, p.diag)
+    await capturar('12-conejo-3d')
 
     // El estado de la conversación cambia la cara
     await js(`window.__orbeEstado('pensando')`)

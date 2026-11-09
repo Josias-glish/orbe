@@ -7,6 +7,7 @@ import type { Apariencia } from '../shared/tipos'
 import { FiguraEsquina } from './personaje/figura'
 import { MenuPersonaje } from './personaje/menu-personaje'
 import { Personaje } from './personaje/personaje'
+import { Sonidos, type Sonido } from './personaje/sonidos'
 import { disenoPorId } from '../shared/disenos'
 
 const UMBRAL_ARRASTRE = 4
@@ -48,6 +49,19 @@ async function montarFigura(): Promise<void> {
       apariencia = 'personaje' // sin WebGL2, el personaje (que es SVG) funciona igual
     }
   }
+  if (recursos.apariencia === '3d' && recursos.modelo3d) {
+    try {
+      canvas.hidden = true
+      caja.classList.add('con-personaje', 'con-3d')
+      const { Personaje3D } = await import('./personaje/personaje-3d')
+      orbe.poner(await Personaje3D.crear(caja, recursos.modelo3d))
+      return
+    } catch (e) {
+      console.warn('[orbe] Personaje 3D no disponible:', e)
+      caja.classList.remove('con-3d')
+      apariencia = 'personaje'
+    }
+  }
   if (recursos.apariencia === 'rive' && recursos.rive) {
     try {
       canvas.hidden = true
@@ -64,13 +78,38 @@ async function montarFigura(): Promise<void> {
   ponerPersonaje()
 }
 
+// Sonidos del personaje (WebAudio, sin archivos). Se apagan desde el menú del personaje.
+let almacenSonidos: Storage | null = null
+try {
+  almacenSonidos = window.localStorage
+} catch {
+  // sin almacenamiento, encendidos hasta cerrar Orbe
+}
+const sonidos = new Sonidos(almacenSonidos)
+const SONIDO_DEL_PERSONAJE: Record<string, Sonido> = { caricia: 'caricia', rueda: 'rueda', dormir: 'dormir', despertar: 'despertar' }
+document.addEventListener('orbe-personaje', (e) => {
+  const s = SONIDO_DEL_PERSONAJE[(e as CustomEvent<string>).detail]
+  if (s && apariencia !== 'orbe') sonidos.tocar(s)
+})
+document.addEventListener('orbe-estado', (e) => {
+  const { anterior, estado } = (e as CustomEvent<{ anterior: string; estado: string }>).detail
+  if (estado === 'pensando' && anterior === 'reposo') sonidos.tocar('enviar')
+  else if (estado === 'reposo' && anterior === 'respondiendo') sonidos.tocar('respuesta')
+})
+window.orbe.alActividad((evento) => {
+  if (evento.tipo === 'esperando') sonidos.tocar('aviso')
+  else if (evento.tipo === 'terminado') sonidos.tocar('terminado')
+  else if (evento.tipo === 'error') sonidos.tocar('error')
+})
+
 const figuraLista = montarFigura().then(() => {
   menuPersonaje = new MenuPersonaje(
     orbe,
     document.getElementById('personaje-boton') as HTMLButtonElement,
     document.getElementById('personaje-menu') as HTMLElement,
     document.getElementById('actividad-insignia') as HTMLElement,
-    apariencia !== 'orbe'
+    apariencia !== 'orbe',
+    sonidos
   )
 })
 let menuPersonaje: MenuPersonaje | null = null
@@ -154,13 +193,21 @@ function hacerRedimensionable(agarre: HTMLElement): void {
 }
 
 hacerArrastrable(caja, () => window.orbe.alternar(), {
-  alEmpezar: () => orbe.reaccionar('arrastre'),
-  alSoltar: () => orbe.reaccionar('soltar')
+  alEmpezar: () => {
+    orbe.reaccionar('arrastre')
+    sonidos.tocar('sorpresa')
+  },
+  alSoltar: () => {
+    orbe.reaccionar('soltar')
+    sonidos.tocar('risa')
+  }
 })
 hacerArrastrable(cabecera)
 document.querySelectorAll<HTMLElement>('.agarre').forEach(hacerRedimensionable)
 
 let primeraApertura = true
+/** Para que «cerrar» no suene al arrancar (el panel empieza plegado). */
+let yaAbierto = false
 
 function aplicarEstadoVentana(estado: EstadoVentana): void {
   raiz.classList.toggle('expandido', estado.expandido)
@@ -171,9 +218,12 @@ function aplicarEstadoVentana(estado: EstadoVentana): void {
   raiz.classList.toggle('ancla-arriba', estado.ancla.vertical === 'arriba')
   panelEl.setAttribute('aria-hidden', String(!estado.expandido))
 
+  if (!estado.expandido && yaAbierto) sonidos.tocar('cerrar')
+  yaAbierto = estado.expandido
   if (estado.expandido) {
     // Abrir el panel es la señal de que se va a usar: se prepara el chat y se deja el cursor listo.
     orbe.reaccionar('abrir')
+    sonidos.tocar('abrir')
     if (primeraApertura) {
       primeraApertura = false
       window.orbe.chatPrecalentar()
