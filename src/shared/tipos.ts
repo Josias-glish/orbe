@@ -8,6 +8,7 @@ export type NivelEsfuerzo = (typeof NIVELES_ESFUERZO)[number]
 
 export const CANALES = {
   alternar: 'ventana:alternar',
+  ratonInteractivo: 'ventana:raton-interactivo',
   arrastreInicio: 'ventana:arrastre-inicio',
   arrastreMover: 'ventana:arrastre-mover',
   arrastreFin: 'ventana:arrastre-fin',
@@ -545,6 +546,8 @@ export type ResultadoConfig = { ok: true } | { ok: false; error: string }
 export type OrdenApp = 'nueva-conversacion'
 
 export interface ApiOrbe {
+  /** El puntero está sobre una zona que debe recibir el ratón (el centro del personaje o el panel abierto). */
+  ratonInteractivo(dentro: boolean): void
   alternar(): void
   arrastreInicio(x: number, y: number): void
   arrastreMover(x: number, y: number): void

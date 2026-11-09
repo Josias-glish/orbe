@@ -1,3 +1,4 @@
+import { enCentroPersonaje, zonaInteractiva } from './zona-raton'
 import './estilos.css'
 import type { EstadoOrbe, EstadoVentana } from '../shared/tipos'
 import { FondoChat } from './chat/fondo-ui'
@@ -223,7 +224,25 @@ function hacerRedimensionable(agarre: HTMLElement): void {
   agarre.addEventListener('pointercancel', terminar)
 }
 
-hacerArrastrable(caja, () => window.orbe.alternar(), {
+// Un clic sobre el personaje NO abre el chat (se tocaba sin querer): solo reacciona con un gesto. El chat se abre
+// con doble clic, con Ctrl+Mayús+Espacio o desde la bandeja.
+let clicPendiente = 0
+const CLICS_JUGAR = ['salto', 'saludo', 'giro', 'baile', 'asentir'] as const
+function alClicPersonaje(): void {
+  if (clicPendiente) {
+    window.clearTimeout(clicPendiente)
+    clicPendiente = 0
+    window.orbe.alternar()
+    return
+  }
+  clicPendiente = window.setTimeout(() => {
+    clicPendiente = 0
+    orbe.gesto?.(CLICS_JUGAR[Math.floor(Math.random() * CLICS_JUGAR.length)], true)
+    sonidos.tocar('risa')
+  }, 280)
+}
+
+hacerArrastrable(caja, alClicPersonaje, {
   alEmpezar: () => {
     orbe.reaccionar('arrastre')
     sonidos.tocar('sorpresa')
@@ -235,6 +254,36 @@ hacerArrastrable(caja, () => window.orbe.alternar(), {
 })
 hacerArrastrable(cabecera)
 document.querySelectorAll<HTMLElement>('.agarre').forEach(hacerRedimensionable)
+
+// Solo el centro del personaje (y el panel abierto) recibe el ratón: el resto de la ventana transparente deja pasar
+// los clics a las ventanas y pestañas de debajo. Windows sigue mandando los movimientos aunque la ventana los ignore,
+// y así se sabe cuándo volver a recibirlo.
+let interactivo: boolean | null = null
+let botonesPulsados = false
+function revisarZona(e: MouseEvent): void {
+  botonesPulsados = e.buttons !== 0
+  const objetivo = e.target instanceof Element ? e.target : null
+  const expandido = raiz.classList.contains('expandido')
+  const dentro = zonaInteractiva({
+    arrastrando: botonesPulsados || caja.classList.contains('arrastrando') || cabecera.classList.contains('arrastrando'),
+    sobrePanel: expandido && (objetivo?.closest('#panel') ?? null) !== null,
+    sobreBoton: (objetivo?.closest('#detener-orbe, #actividad-insignia') ?? null) !== null,
+    enCentro: enCentroPersonaje(e.clientX, e.clientY, caja.getBoundingClientRect())
+  })
+  if (dentro === interactivo) return
+  interactivo = dentro
+  caja.classList.toggle('raton-fuera', !dentro)
+  window.orbe.ratonInteractivo(dentro)
+}
+document.addEventListener('mousemove', revisarZona, { passive: true })
+document.addEventListener('mouseleave', () => {
+  if (botonesPulsados || interactivo === false) return
+  interactivo = false
+  window.orbe.ratonInteractivo(false)
+})
+// Al arrancar el puntero suele estar lejos: la ventana empieza sin tapar nada.
+window.orbe.ratonInteractivo(false)
+interactivo = false
 
 let primeraApertura = true
 /** Para que «cerrar» no suene al arrancar (el panel empieza plegado). */
