@@ -24,6 +24,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run dist
+      # Paquete de recursos y herramientas: el modelo 3D y sus texturas, el script de los conectores (hooks de Claude
+      # Code), el servidor de voz local, la galería, los scripts y la documentación.
+      - name: Paquete de herramientas
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json | ConvertFrom-Json).version
+          $carpeta = "dist/Orbe-herramientas-$v"
+          New-Item -ItemType Directory -Force -Path $carpeta | Out-Null
+          foreach ($c in @('resources/personaje', 'resources/conectores', 'helper', 'voz-local', 'scripts')) {
+            Copy-Item -Recurse -Path $c -Destination (Join-Path $carpeta $c) -Force
+          }
+          Copy-Item README.md, .env.example -Destination $carpeta
+          Compress-Archive -Path "$carpeta/*" -DestinationPath "dist/Orbe-herramientas-$v.zip" -Force
       - name: Crear la release con el instalador
         shell: bash
         env:
@@ -36,6 +49,7 @@ jobs:
             "dist/Orbe-Setup-"*.exe.blockmap \
             "dist/Orbe-Portable-"*.exe \
             "dist/Orbe-"*"-win.zip" \
+            "dist/Orbe-herramientas-"*.zip \
             --target "$GITHUB_SHA" \
             --title "Orbe $etiqueta" \
             --generate-notes

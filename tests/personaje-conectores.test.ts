@@ -170,9 +170,10 @@ describe('receptor local de avisos', () => {
 })
 
 describe('configuración del personaje y los conectores', () => {
-  it('por defecto: personaje Orbi y receptor apagado', () => {
+  it('por defecto: el personaje 3D (y Orbi como dibujado) y receptor apagado', () => {
     const c = resolverConfig({}, {})
-    expect(c.apariencia).toBe('personaje')
+    expect(c.apariencia).toBe('3d')
+    expect(c.modelo3d).toBe('')
     expect(c.diseno).toBe('orbi')
     expect(c.eventos).toEqual({ activo: false, puerto: 47821 })
   })
@@ -183,7 +184,7 @@ describe('configuración del personaje y los conectores', () => {
     expect(c.diseno).toBe('noctis')
     expect(c.eventos).toEqual({ activo: true, puerto: 50000 })
     const mala = resolverConfig({ ORBE_APARIENCIA: 'rive', ORBE_DISENO: 'xx', ORBE_EVENTOS_PUERTO: '80' }, {})
-    expect(mala.apariencia).toBe('personaje')
+    expect(mala.apariencia).toBe('personaje') // pidió Rive sin archivo
     expect(mala.diseno).toBe('orbi')
     expect(mala.avisos.length).toBe(3)
   })
@@ -208,5 +209,52 @@ describe('configuración del personaje y los conectores', () => {
     const r = validarPeticion({ ...base, ...extra })
     expect(r.ok).toBe(false)
     expect((r as { error: string }).error).toMatch(error)
+  })
+})
+
+describe('sonidos del personaje', async () => {
+  const { PARTITURAS, Sonidos, duracion } = await import('../src/renderer/personaje/sonidos')
+  const almacen = () => {
+    const m = new Map<string, string>()
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } as unknown as Storage
+  }
+
+  it('cada sonido es corto (menos de medio segundo) y suave', () => {
+    for (const [nombre, notas] of Object.entries(PARTITURAS)) {
+      expect(notas.length, nombre).toBeGreaterThan(0)
+      expect(duracion(nombre as keyof typeof PARTITURAS), nombre).toBeLessThanOrEqual(0.5)
+      for (const n of notas) expect(n.vol ?? 1).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('se encienden por defecto, se pueden apagar y se recuerda', () => {
+    const a = almacen()
+    const s = new Sonidos(a)
+    expect(s.encendidos).toBe(true)
+    s.fijar(false)
+    expect(new Sonidos(a).encendidos).toBe(false)
+  })
+
+  it('sin salida de audio (o apagados) no falla', () => {
+    const s = new Sonidos(null)
+    expect(() => s.tocar('abrir')).not.toThrow()
+    s.fijar(false)
+    expect(() => s.tocar('terminado')).not.toThrow()
+  })
+})
+
+describe('el director avisa para los sonidos', () => {
+  it('caricia, rueda, dormir y despertar', () => {
+    let t = 0
+    const eventos: string[] = []
+    const d = new Director(() => t, 1000, (e) => eventos.push(e))
+    d.moverEncima(1000)
+    d.siguiente(1)
+    t += 5000
+    d.reaccionar('fuera')
+    t += 5000
+    d.actual()
+    d.reaccionar('encima')
+    expect(eventos).toEqual(['caricia', 'rueda', 'dormir', 'despertar'])
   })
 })

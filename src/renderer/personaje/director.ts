@@ -5,6 +5,15 @@ import type { Reaccion } from './avatar'
 /** Tras este tiempo sin nada que hacer (y sin el cursor encima), el personaje se duerme. */
 export const SUENO_MS = 3 * 60_000
 
+/** Lo que el director cuenta hacia fuera (para los sonidos). */
+export type EventoDirector = 'caricia' | 'rueda' | 'dormir' | 'despertar'
+
+/** Avisa al resto de la interfaz (los sonidos) sin que el personaje sepa quién escucha. */
+export function emitirEventoPersonaje(evento: EventoDirector): void {
+  const doc = (globalThis as { document?: { dispatchEvent(e: Event): boolean } }).document
+  if (doc) doc.dispatchEvent(new CustomEvent('orbe-personaje', { detail: evento }))
+}
+
 /**
  * Decide qué cara toca en cada momento, sin dibujar nada (lo comparten el personaje dibujado y el de Rive):
  *   1. una expresión puntual (una reacción, una elegida en el menú, un aviso de un conector) mientras dura;
@@ -23,7 +32,8 @@ export class Director {
 
   constructor(
     private readonly ahora: () => number = () => performance.now(),
-    private readonly suenoMs = SUENO_MS
+    private readonly suenoMs = SUENO_MS,
+    private readonly avisar: (evento: EventoDirector) => void = emitirEventoPersonaje
   ) {
     this.ultimaActividad = ahora()
   }
@@ -61,7 +71,10 @@ export class Director {
     switch (reaccion) {
       case 'encima':
         this.encima = true
-        if (despierta) this.expresar('sorprendido', 900)
+        if (despierta) {
+          this.expresar('sorprendido', 900)
+          this.avisar('despertar')
+        }
         break
       case 'fuera':
         this.encima = false
@@ -80,7 +93,10 @@ export class Director {
         this.expresar(Math.random() < 0.5 ? 'enamorado' : 'timido', 2600)
         break
       case 'despertar':
-        if (despierta) this.expresar('sorprendido', 900)
+        if (despierta) {
+          this.expresar('sorprendido', 900)
+          this.avisar('despertar')
+        }
         break
     }
   }
@@ -93,6 +109,7 @@ export class Director {
     this.recorrido = 0
     if (this.puntual && this.ahora() < this.puntual.hasta) return false
     this.reaccionar('caricia')
+    this.avisar('caricia')
     return true
   }
 
@@ -102,6 +119,7 @@ export class Director {
     const i = IDS_EXPRESION.indexOf(ahora)
     const id = IDS_EXPRESION[(i + sentido + IDS_EXPRESION.length) % IDS_EXPRESION.length]
     this.expresar(id, 2500)
+    this.avisar('rueda')
     return id
   }
 
@@ -113,7 +131,10 @@ export class Director {
     }
     if (this.fijada) return this.fijada
     if (this.estado !== 'reposo') return EXPRESION_DE_ESTADO[this.estado]
-    if (!this.encima && t - this.ultimaActividad >= this.suenoMs) this.dormido = true
+    if (!this.dormido && !this.encima && t - this.ultimaActividad >= this.suenoMs) {
+      this.dormido = true
+      this.avisar('dormir')
+    }
     if (this.dormido) return 'dormido'
     return this.encima ? 'feliz' : 'neutral'
   }
