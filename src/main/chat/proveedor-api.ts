@@ -30,6 +30,8 @@ export interface OpcionesProveedorApi {
   fallbacks?: boolean
   /** Bloque de memoria del usuario; se consulta al empezar cada conversación. */
   memoria?: () => string | undefined
+  /** Quién habla: la presentación de la identidad para el prompt (por defecto, Orbe). */
+  identidad?: string
   /** Reloj, para la fecha del prompt (las pruebas lo fijan). */
   ahora?: () => Date
   /** Herramientas para actuar (modo agente). Sin ellas, el chat funciona como siempre. */
@@ -140,6 +142,7 @@ export class ProveedorApi implements ProveedorChat {
       this.prompt = construirPromptSistema({
         ahora: this.opciones.ahora?.(),
         memoria: this.opciones.memoria?.(),
+        identidad: this.opciones.identidad,
         pasosAgente: agente?.maxPasos,
         busquedaWeb: agente ? hayBusquedaWeb(agente) : undefined
       })

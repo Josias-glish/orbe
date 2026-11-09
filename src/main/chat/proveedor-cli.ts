@@ -32,6 +32,8 @@ export interface OpcionesProveedorCli {
   esperaInterrupcionMs?: number
   /** Bloque de memoria del usuario; se consulta al lanzar cada proceso (es decir, al empezar cada conversación). */
   memoria?: () => string | undefined
+  /** Quién habla: la presentación de la identidad para el prompt (por defecto, Orbe). */
+  identidad?: string
   /** Reloj, para la fecha del prompt (las pruebas lo fijan). */
   ahora?: () => Date
   /** Herramientas para actuar (modo agente): el CLI las usa a través de un servidor MCP local de Orbe. */
@@ -414,6 +416,7 @@ export class ProveedorCli implements ProveedorChat {
     const prompt = construirPromptSistema({
       ahora: this.opciones.ahora?.(),
       memoria: this.opciones.memoria?.(),
+      identidad: this.opciones.identidad,
       pasosAgente: paraAgente ? agente?.maxPasos : undefined,
       busquedaWeb: paraAgente && agente ? hayBusquedaWeb(agente) : undefined,
       // Con la búsqueda del CLI las fuentes no salen en la interfaz: las cita el propio modelo.

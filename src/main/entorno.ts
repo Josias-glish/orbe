@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { DISENOS } from '../shared/disenos'
+import { esIdIdentidad, type ConfigIdentidad } from '../shared/identidad'
 import { NIVELES_ESFUERZO, type Apariencia } from '../shared/tipos'
 import type { Esfuerzo } from './chat/proveedor'
 
@@ -115,6 +116,8 @@ export interface Config {
   modelo3d: string
   /** El receptor local de avisos de otras herramientas (Claude Code, n8n, scripts). Apagado por defecto. */
   eventos: { activo: boolean; puerto: number }
+  /** Quién habla: Orbe (por defecto) o una identidad propia (ORBE_IDENTIDAD=atlas), con nombre y trato opcionales. */
+  identidad: ConfigIdentidad
   avisos: string[]
 }
 
@@ -232,6 +235,11 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else avisos.push(`ORBE_EVENTOS_PUERTO="${puertoLeido}" no es válido (1024–65535); uso ${puertoEventos}.`)
   }
 
+  const identidadLeida = leer('ORBE_IDENTIDAD').toLowerCase()
+  let identidadId: ConfigIdentidad['id'] = 'orbe'
+  if (esIdIdentidad(identidadLeida)) identidadId = identidadLeida
+  else if (identidadLeida) avisos.push(`ORBE_IDENTIDAD="${identidadLeida}" no existe (orbe o atlas); uso orbe.`)
+
   const permitirLocalLeido = leer('ORBE_PERMITIR_LOCAL')
   let permitirLocal = false
   if (permitirLocalLeido) {
@@ -315,6 +323,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     rive: { archivo: riveArchivo, maquina: leer('ORBE_RIVE_MAQUINA') },
     modelo3d: leer('ORBE_MODELO_3D'),
     eventos: { activo: eventosActivo, puerto: puertoEventos },
+    identidad: { id: identidadId, nombre: leer('ORBE_IDENTIDAD_NOMBRE'), trato: leer('ORBE_TRATO') },
     avisos
   }
 }

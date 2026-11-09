@@ -10,6 +10,9 @@ import type {
   ResultadoEnvio
 } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
+import { buscarProtocolo, frases, parteDeSituacion, perfilDe, pideParte, pideProtocolo, type PerfilIdentidad } from '../../shared/identidad'
+import { datosDelParte } from '../identidad/parte'
+import { textoPlano } from '../tareas/formato'
 import { expresionDeTexto } from '../../shared/expresiones'
 import { gestoDeExpresion } from '../personaje/gestos'
 import { EntradaTeclado } from '../entrada/entrada'
@@ -90,6 +93,8 @@ export class PanelChat {
   private lectura: LecturaPantalla | null = null
   private leyendo = false
   private inicioLectura = 0
+  /** Quién habla (Orbe o una identidad propia como Atlas): lo dice el proceso principal al arrancar. */
+  private perfil: PerfilIdentidad = perfilDe({ id: 'orbe', nombre: '', trato: '' })
 
   constructor(
     private readonly orbe: Avatar,
@@ -224,6 +229,7 @@ export class PanelChat {
       const via = { cli: 'el CLI de Claude', api: 'la API de Anthropic', openai: 'una API compatible con OpenAI' }[info.proveedor]
       chip.title = `${info.modelo} · mediante ${via}`
       chip.hidden = false
+      this.aplicarIdentidad(perfilDe(info.identidad))
     } catch {
       // Sin información no se muestra el chip; el chat funciona igual.
     }
@@ -636,7 +642,84 @@ export class PanelChat {
     this.sugerenciaDescartada = false
     this.entrada.limpiar()
     const burbuja = this.lista.agregarUsuario(texto)
+    // «parte» y «protocolo …» los resuelve la propia identidad, sin gastar una llamada al modelo.
+    if (!this.lectura) {
+      if (pideParte(texto, this.perfil.nombre)) {
+        void this.darParte()
+        return
+      }
+      const protocolo = pideProtocolo(texto, this.perfil.nombre)
+      if (protocolo) {
+        void this.lanzarProtocolo(protocolo)
+        return
+      }
+    }
     void this.iniciarTurno(texto, burbuja)
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Identidad: quién habla, el parte de situación y los protocolos
+  // -------------------------------------------------------------------------------------------
+
+  private aplicarIdentidad(perfil: PerfilIdentidad): void {
+    this.perfil = perfil
+    document.documentElement.dataset['identidad'] = perfil.id
+    const titulo = document.querySelector('.panel-titulo')
+    if (titulo) titulo.textContent = perfil.nombre
+    const vacio = document.querySelector('.vacio-titulo')
+    if (vacio && perfil.id !== 'orbe') vacio.textContent = `${perfil.nombre}, a su servicio.`
+  }
+
+  /** Al abrir el panel: una identidad propia da el parte de situación una vez al día, sin que se lo pidan. */
+  alAbrirPanel(): void {
+    if (this.perfil.id === 'orbe' || this.turno) return
+    const hoy = new Date().toDateString()
+    if (leerLocal('orbe.parte.dia') === hoy) return
+    escribirLocal('orbe.parte.dia', hoy)
+    void this.darParte()
+  }
+
+  /** Habla como la identidad: una respuesta local (sin modelo) que se pinta, se lee en voz alta y se acompaña con un gesto. */
+  private hablarLocal(markdown: string, gesto: 'saludo' | 'reverencia' | 'asentir' | 'negar' | null): void {
+    this.lista.agregarRespuestaGuardada(markdown)
+    this.lista.desplazarAlFinal()
+    if (gesto) this.orbe.gesto?.(gesto, true)
+    this.lector.empezar()
+    this.lector.anexar(textoPlano(markdown))
+    this.lector.terminar()
+  }
+
+  async darParte(): Promise<void> {
+    const desde = Number(leerLocal('orbe.parte.ultimo') ?? '0') || Date.now() - 24 * 3_600_000
+    const [estado, uso] = await Promise.all([
+      window.orbe.tareasEstado().catch(() => null),
+      window.orbe.usoResumen().catch(() => null)
+    ])
+    escribirLocal('orbe.parte.ultimo', String(Date.now()))
+    const texto = parteDeSituacion(this.perfil, datosDelParte(estado, uso, new Date(), desde))
+    this.hablarLocal(texto, this.perfil.formal ? 'reverencia' : 'saludo')
+  }
+
+  private async lanzarProtocolo(pedido: string): Promise<void> {
+    const f = frases(this.perfil)
+    const estado = await window.orbe.tareasEstado().catch(() => null)
+    const tareas = estado?.tareas ?? []
+    const tarea = buscarProtocolo(pedido, tareas)
+    if (!tarea) {
+      this.hablarLocal(f.protocoloDesconocido(pedido, tareas.map((t) => t.titulo).slice(0, 8)), 'negar')
+      return
+    }
+    if (tarea.ultima && (tarea.ultima.estado === 'en-curso' || tarea.ultima.estado === 'esperando')) {
+      this.hablarLocal(f.protocoloOcupado(tarea.titulo), null)
+      return
+    }
+    try {
+      await window.orbe.tareasEjecutar(tarea.id)
+      const aviso = this.perfil.formal ? 'Le aviso al terminar; el progreso está en Tareas.' : 'Te aviso al terminar; lo ves en Tareas.'
+      this.hablarLocal(`${f.protocoloInicio(tarea.titulo)} ${aviso}`, 'asentir')
+    } catch {
+      this.hablarLocal(f.protocoloError(tarea.titulo), 'negar')
+    }
   }
 
   /** `burbuja` es el mensaje del usuario al que se le cuelgan los chips; null al reintentar (ya los tiene). */
@@ -895,5 +978,21 @@ export class PanelChat {
     const actuando = this.turno?.conAcciones === true
     this.botonDetenerAccion.hidden = !actuando
     this.botonDetenerOrbe.hidden = !actuando
+  }
+}
+
+function leerLocal(clave: string): string | null {
+  try {
+    return window.localStorage.getItem(clave)
+  } catch {
+    return null
+  }
+}
+
+function escribirLocal(clave: string, valor: string): void {
+  try {
+    window.localStorage.setItem(clave, valor)
+  } catch {
+    // Sin almacenamiento local, el parte se puede repetir: no pasa nada.
   }
 }

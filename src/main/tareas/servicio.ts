@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { frases, perfilDe, type PerfilIdentidad } from '../../shared/identidad'
 import type { EjecucionTarea, EstadoTareas, TareaNueva, TareaVista } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { ProveedorChat } from '../chat/proveedor'
@@ -35,6 +36,8 @@ export interface DependenciasTareas {
   /** Algo cambió: la interfaz debe volver a pedir el estado. */
   alCambio?: () => void
   ahora?: () => number
+  /** Quién avisa: los textos de las notificaciones salen con la voz de la identidad (por defecto, Orbe). */
+  identidad?: PerfilIdentidad
 }
 
 interface EnCurso {
@@ -73,9 +76,14 @@ export class ServicioTareas {
   private intervalo: ReturnType<typeof setInterval> | null = null
   private pendienteGuardar: ReturnType<typeof setTimeout> | null = null
   private readonly ahora: () => number
+  private readonly frases: ReturnType<typeof frases>
+  private readonly nombre: string
 
   constructor(private readonly d: DependenciasTareas) {
     this.ahora = d.ahora ?? Date.now
+    const perfil = d.identidad ?? perfilDe({ id: 'orbe', nombre: '', trato: '' })
+    this.frases = frases(perfil)
+    this.nombre = perfil.nombre
     this.tareas = this.cargar()
   }
 
@@ -301,7 +309,7 @@ export class ServicioTareas {
     actual.ejecucion.estado = 'esperando'
     actual.ejecucion.permiso = { confirmacionId, titulo: p.titulo, detalle: p.detalle, peligrosa: p.peligrosa === true }
     this.publicar('esperando', `«${tarea.titulo}» te necesita`, p.titulo, 'sorprendido')
-    this.d.notificar?.(`Orbe: «${tarea.titulo}» te necesita`, `${p.titulo}. Abre Orbe → Tareas para permitirlo o no.`)
+    this.d.notificar?.(this.frases.tareaPermiso(tarea.titulo), `${p.titulo}. Abre ${this.nombre} → Tareas para permitirlo o no.`)
     this.cambio()
     return new Promise<boolean>((resolver) => {
       const reloj = setTimeout(() => {
@@ -331,10 +339,10 @@ export class ServicioTareas {
     const resumen = e.resultado.replace(/\s+/g, ' ').slice(0, 180)
     if (estado === 'completada') {
       this.publicar('terminado', `Hecho: ${tarea.titulo}`, resumen, 'orgulloso')
-      this.d.notificar?.(`Orbe terminó «${tarea.titulo}»`, resumen)
+      this.d.notificar?.(this.frases.tareaTerminada(tarea.titulo), resumen)
     } else if (estado === 'error') {
       this.publicar('error', `No pude con «${tarea.titulo}»`, resumen, 'preocupado')
-      this.d.notificar?.(`Orbe no pudo con «${tarea.titulo}»`, resumen)
+      this.d.notificar?.(this.frases.tareaFallida(tarea.titulo), resumen)
     } else if (estado === 'nada-nuevo') {
       this.publicar('info', `${tarea.titulo}: nada nuevo`)
     }

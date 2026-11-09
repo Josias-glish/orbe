@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { perfilDe, presentacionIdentidad } from '../../shared/identidad'
 import type { InfoChat } from '../../shared/tipos'
 import type { RegistroHerramientas } from '../agente/registro'
 import { agenteActivo, type OpcionesAgente } from '../agente/sesion'
@@ -38,11 +39,12 @@ export function crearProveedor(
   registro?: RegistroHerramientas
 ): ProveedorChat {
   const agente = opcionesAgente(config, registro)
+  const identidad = presentacionIdentidad(perfilDe(config.identidad))
   if (config.proveedor === 'api') {
-    return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria, agente })
+    return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria, identidad, agente })
   }
   if (config.proveedor === 'openai') {
-    return new ProveedorOpenai({ url: config.openaiUrl, clave: config.openaiKey, modelo: config.modelo, memoria, agente })
+    return new ProveedorOpenai({ url: config.openaiUrl, clave: config.openaiKey, modelo: config.modelo, memoria, identidad, agente })
   }
   return new ProveedorCli({
     modelo: config.modelo,
@@ -51,6 +53,7 @@ export function crearProveedor(
     // Carpeta vacía: así el CLI no encuentra ningún CLAUDE.md ni proyecto que cargar.
     directorioTrabajo: join(datosApp, 'cli-vacio'),
     memoria,
+    identidad,
     agente
   })
 }
@@ -61,6 +64,7 @@ export function infoChat(config: Config, registro?: RegistroHerramientas): InfoC
     proveedor: config.proveedor,
     modelo: config.modelo,
     modeloLegible: nombreLegibleModelo(config.modelo),
-    agente: opcionesAgente(config, registro) !== undefined
+    agente: opcionesAgente(config, registro) !== undefined,
+    identidad: config.identidad
   }
 }

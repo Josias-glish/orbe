@@ -1,3 +1,4 @@
+import type { ConfigIdentidad } from './identidad'
 /** Tipos y canales compartidos entre el proceso principal, el preload y la interfaz. */
 
 export type EstadoOrbe = 'reposo' | 'leyendo' | 'pensando' | 'respondiendo' | 'escuchando' | 'actuando'
@@ -175,6 +176,8 @@ export interface InfoChat {
   modeloLegible: string
   /** El modo agente (buscar, abrir, navegar) está activo en esta sesión. */
   agente: boolean
+  /** Quién habla (Orbe o una identidad propia como Atlas), con su nombre y cómo trata al usuario. */
+  identidad: ConfigIdentidad
 }
 
 /** El marcador de potencia de la cabecera: el nivel actual y cuándo se nota un cambio con el proveedor en uso. */
@@ -520,6 +523,7 @@ export interface ConfigVista {
   diseno: string
   riveArchivo: string
   eventos: boolean
+  identidad: ConfigIdentidad
 }
 
 /** Una clave nueva (texto), mantener la que hay (undefined o vacía) o quitarla (null). */
@@ -538,6 +542,7 @@ export interface PeticionConfig {
   diseno?: string
   riveArchivo?: string
   eventos?: boolean
+  identidad?: ConfigIdentidad
 }
 
 export type ResultadoConfig = { ok: true } | { ok: false; error: string }

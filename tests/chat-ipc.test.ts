@@ -28,7 +28,7 @@ vi.mock('electron', () => ({
 
 const { registrarChat } = await import('../src/main/chat/ipc')
 
-const INFO: InfoChat = { proveedor: 'cli', modelo: 'claude-sonnet-5-5', modeloLegible: 'Sonnet 5.5', agente: false }
+const INFO: InfoChat = { proveedor: 'cli', modelo: 'claude-sonnet-5-5', modeloLegible: 'Sonnet 5.5', agente: false, identidad: { id: 'orbe', nombre: '', trato: '' } }
 
 /** Un proveedor que se queda esperando hasta que la prueba lo termine o lo haga fallar. */
 class ProveedorControlado implements ProveedorChat {
