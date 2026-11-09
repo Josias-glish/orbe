@@ -121,12 +121,12 @@ export function aErrorOrbe(e: unknown): ErrorOrbe {
 
 export function crearError(
   codigo: CodigoError,
-  extra: { mensaje?: string; detalle?: string; reintentable?: boolean } = {}
+  extra: { titulo?: string; mensaje?: string; detalle?: string; reintentable?: boolean } = {}
 ): ErrorOrbe {
   const base = PLANTILLAS[codigo]
   return {
     codigo,
-    titulo: base.titulo,
+    titulo: extra.titulo ?? base.titulo,
     mensaje: extra.mensaje ?? base.mensaje,
     reintentable: extra.reintentable ?? base.reintentable,
     ...(extra.detalle ? { detalle: extra.detalle } : {})
