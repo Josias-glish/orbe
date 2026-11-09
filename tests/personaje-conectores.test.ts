@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// configuracion.ts importa electron; aquí no hace falta (y así la prueba no depende de descargar su binario).
+vi.mock('electron', () => ({ BrowserWindow: class {}, dialog: {}, ipcMain: { handle: () => undefined, on: () => undefined }, app: {} }))
 import { DISENOS, disenoPorId } from '../src/shared/disenos'
 import { EXPRESIONES, EXPRESION_DE_ESTADO, IDS_EXPRESION, esIdExpresion, indiceExpresion } from '../src/shared/expresiones'
 import { Director } from '../src/renderer/personaje/director'
