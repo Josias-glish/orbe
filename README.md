@@ -98,7 +98,8 @@ El conejo hace **10 gestos con todo el cuerpo**: saludar (con una manita), salta
 El botón del reloj abre **Tareas**: instrucciones que Orbe hace **solo**, sin que estés mirando, con la IA que tengas configurada, tu memoria y las herramientas del agente. Es la misma idea que los agentes «siempre encendidos» como ChatGPT Dots, pero en tu equipo y con tu IA.
 
 - **Cuándo**: ahora, una vez más tarde, cada día a una hora, algunos días de la semana o cada cierto tiempo (de 15 min a 24 h).
-- **Tres listas**: **En curso** (lo que hace ahora y lo que está pidiendo), **Programadas** (con la próxima hora, Hacer ahora, Pausar, Editar y Borrar) y **Completadas** (el resultado de cada vez, con Repetir).
+- **Tres listas**: **En curso** (lo que hace ahora y lo que está pidiendo), **Programadas** (con la próxima hora, un resumen de la última vez, Hacer ahora, Pausar, Editar y Borrar) y **Completadas** (cada vez, con su estado, hora, duración y un resumen de 3 líneas).
+- **Resultado completo**: al pulsar un resumen se abre el resultado entero con formato (listas, negritas y enlaces que se abren en el navegador), con Repetir ahora, Copiar, Editar la tarea y las otras veces que se hizo.
 - **Permisos**: lo delicado (abrir apps, enviar, comprar) **espera tu permiso** en «En curso». El botón del reloj muestra un globito amarillo y aparece una notificación de Windows. Si no respondes en 30 minutos, cuenta como «no».
 - **«Avisarme solo si hay algo»**: si no hay nada nuevo, la ejecución queda como «nada nuevo» y no te molesta (ideal para vigilar un precio o una web).
 - Cada ejecución es una conversación limpia (no mezcla tu chat). Se hace una tarea cada vez; las demás esperan en cola. Una tarea que tarde más de 15 minutos se detiene.
