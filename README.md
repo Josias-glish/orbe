@@ -69,7 +69,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - Con `npm run dev`, **Ctrl + Alt + D** muestra una barra para forzar los estados del orbe.
 
 ## El personaje
-Por defecto, en la esquina vive **el conejo en 3D**: busto con pelo negro, auriculares blancos, gafas negras y sudadera de punto con el orbe en el pecho. Lo dibuja [three.js](https://threejs.org) dentro de la misma ventana de Orbe, sin programas aparte: unos 41.000 triángulos y texturas PBR, a 30 fps en reposo y 60 cuando hace algo; se para si no se ve.
+Por defecto, en la esquina vive **el conejo en 3D**: busto con pelo negro, auriculares blancos, gafas negras y sudadera de punto con el orbe en el pecho. Lo dibuja [three.js](https://threejs.org) dentro de la misma ventana de Orbe, sin programas aparte: unos 260.000 triángulos con texturas PBR de 2K (el modelo pesa 3,6 MB; en la GPU ocupa unos 100 MB), a 30 fps en reposo y 60 cuando hace algo; se para si no se ve.
 
 - **Las gafas son su pantalla**: las 20 expresiones se dibujan como ojos de luz en los cristales (ojos que sonríen, corazones, estrellas, espirales, cejas de enfado…). Gira la cabeza hacia el cursor, respira, bota al responder, se ladea según la expresión, y su contraluz cambia de color con el estado (pensando, respondiendo, actuando).
 - **Pelo y tejido de cerca**: encima de la textura del modelo se aplican texturas de detalle repetibles (`resources/personaje/pelo.jpg` y `tejido.jpg`): pelo corto y denso, mate, en la cabeza y las orejas, y el punto del tejido en la sudadera.

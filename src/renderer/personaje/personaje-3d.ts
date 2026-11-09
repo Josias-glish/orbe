@@ -250,8 +250,9 @@ export class Personaje3D implements Avatar {
   expresar(id: IdExpresion | null, duracionMs = 2500): void {
     this.director.expresar(id, duracionMs)
   }
+  /** La que toca ahora (no la del último fotograma dibujado: con un equipo lento puede ir por detrás). */
   expresionActual(): IdExpresion | null {
-    return this.expresion
+    return this.director.actual()
   }
   mirarA(x: number, y: number): void {
     const anterior = this.cursor
@@ -281,7 +282,8 @@ export class Personaje3D implements Avatar {
     return {
       figura: '3d',
       estado: this.director.obtenerEstado(),
-      expresion: this.expresion,
+      expresion: this.director.actual(),
+      dibujada: this.expresion,
       dormido: this.director.estaDormido(),
       fps: Math.round(this.fps),
       triangulos: Math.round(this.triangulos),
