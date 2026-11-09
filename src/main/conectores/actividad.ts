@@ -45,8 +45,19 @@ export function normalizarEvento(entrada: unknown, origenPorDefecto = 'externo')
 export class BusActividad {
   private readonly historial: EventoActividad[] = []
   private readonly oyentes = new Set<(evento: EventoActividad) => void>()
+  private tachar: (texto: string) => string = (t) => t
 
-  publicar(evento: EventoActividad): void {
+  /** Lo que se publica pasa antes por aquí (el cofre tacha cualquier secreto guardado que aparezca en el texto). */
+  filtrarCon(tachar: (texto: string) => string): void {
+    this.tachar = tachar
+  }
+
+  publicar(entrada: EventoActividad): void {
+    const evento: EventoActividad = {
+      ...entrada,
+      titulo: this.tachar(entrada.titulo),
+      ...(entrada.detalle !== undefined ? { detalle: this.tachar(entrada.detalle) } : {})
+    }
     this.historial.push(evento)
     if (this.historial.length > HISTORIAL_MAX) this.historial.splice(0, this.historial.length - HISTORIAL_MAX)
     for (const oyente of this.oyentes) {

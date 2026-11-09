@@ -2,6 +2,7 @@ import type { ManejadoresTurno } from '../chat/proveedor'
 import { crearNonce } from './envoltorio'
 import { EjecutorHerramientas } from './ejecutor'
 import { Politica } from './politica'
+import type { Modo } from './reglas'
 import type { RegistroHerramientas } from './registro'
 
 /** Lo que un proveedor necesita para funcionar como agente. */
@@ -21,6 +22,8 @@ export interface OpcionesAgente {
    * `cli`. Orbe no puede limitar cuántas hace; solo encenderla o apagarla.
    */
   busquedaCli?: boolean
+  /** Lee `reglas.json` al empezar cada tarea (así un cambio en el archivo vale sin reiniciar). */
+  reglas?: () => Record<string, Modo>
 }
 
 export const PASOS_POR_DEFECTO = 15
@@ -42,7 +45,7 @@ export const NOMBRE_BUSCAR_WEB = 'buscar_web'
 export function crearEjecutor(agente: OpcionesAgente, senal: AbortSignal, m: ManejadoresTurno): EjecutorHerramientas {
   return new EjecutorHerramientas({
     registro: agente.registro,
-    politica: new Politica(),
+    politica: new Politica({ reglas: agente.reglas?.() }),
     senal,
     alAccion: (accion) => m.alAccion?.(accion),
     alFuentes: (fuentes) => m.alFuentes?.(fuentes),
