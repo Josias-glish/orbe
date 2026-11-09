@@ -7,6 +7,7 @@ import { ALTO_EXTRA_ORBE, TAM_PANEL_MIN, panelDeVentana } from './geometria'
 import type { ServicioMemoria } from './memoria/servicio'
 import type { CapturaDemo } from './pantalla/captura-demo'
 import type { OcrDemo } from './pantalla/ocr-demo'
+import type { BusActividad } from './conectores/actividad'
 import type { FuenteDemo } from './pantalla/fuente-demo'
 import type { VentanaOrbe } from './ventana'
 
@@ -22,6 +23,8 @@ export interface ExtrasHumo {
   /** La captura de mentira de la prueba (para hacerla fallar a propósito y contar cuántas veces se ocultó la ventana). */
   captura: CapturaDemo
   ocr?: OcrDemo
+  /** El bus de avisos de los conectores, para simular un aviso de Claude Code. */
+  actividad?: BusActividad
 }
 
 /**
@@ -785,6 +788,79 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
 
   /** Voz (leer las respuestas) y dictado por micrófono (con el micrófono falso de Chromium y una transcripción de mentira). */
   /** La bandeja no se crea en la prueba, pero su orden «nueva conversación» llega a la interfaz por este canal. */
+  /** El personaje: figura, 20 expresiones, menú, rueda del ratón, avisos de conectores (Claude Code) y su globito. */
+  const pasosPersonaje = async ({ actividad }: ExtrasHumo): Promise<void> => {
+    const p: Record<string, unknown> = {}
+    informe.personaje = p
+    const diag = (): Promise<{ figura: string; expresion: string; estado: string }> => js('window.__orbeDiagnostico()')
+    await js('window.__orbeFiguraLista()')
+    p.diag = await diag()
+    comprobar('la figura por defecto es el personaje', (p.diag as { figura: string }).figura === 'personaje', p.diag)
+    comprobar('se dibuja con SVG (sin WebGL)', (await existe('#orbe-caja svg.personaje')) && (await js<boolean>(`document.getElementById('orbe-canvas').hidden`)))
+    comprobar('con el diseño por defecto', (await js<string>(`document.querySelector('#orbe-caja svg.personaje').dataset.diseno`)) === 'orbi')
+
+    // El estado de la conversación cambia la cara
+    await js(`window.__orbeEstado('pensando')`)
+    await esperar(400)
+    comprobar('pensando pone cara de pensativo', (await diag()).expresion === 'pensativo', await diag())
+    await js(`window.__orbeEstado('reposo')`)
+
+    // Menú de expresiones: 20 botones; fijar una y volver a automático
+    orbe.establecerExpandido(true)
+    await esperar(500)
+    await pulsar('#personaje-boton')
+    comprobar('se abre el menú del personaje', await esperarSelector('#personaje-menu:not([hidden]) .expresion-boton', 2000))
+    p.botones = await js<number>(`document.querySelectorAll('#personaje-menu .expresion-boton').length`)
+    comprobar('con las 20 expresiones', p.botones === 20, p.botones)
+    await pulsar('#personaje-menu .expresion-boton[data-expresion="enamorado"]')
+    await esperar(500)
+    comprobar('fijar una expresión la pone', (await diag()).expresion === 'enamorado', await diag())
+    comprobar('y queda marcada', await existe('#personaje-menu .expresion-boton[data-expresion="enamorado"][aria-pressed="true"]'))
+    await capturar('12a-expresiones')
+    await pulsar('#personaje-menu [data-expresion="auto"]')
+    await esperar(400)
+    comprobar('«Automático» la suelta', (await diag()).expresion !== 'enamorado', await diag())
+
+    // La rueda del ratón sobre el personaje recorre las caras
+    const antes = (await diag()).expresion
+    await js(`document.getElementById('orbe-caja').dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }))`)
+    await esperar(300)
+    comprobar('la rueda cambia la expresión', (await diag()).expresion !== antes, [antes, (await diag()).expresion])
+
+    // Avisos de un conector (como Claude Code): cara, globito y lista de actividad
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(200)
+    if (actividad) {
+      const { deClaudeCode } = await import('./conectores/claude-code')
+      actividad.publicar(deClaudeCode({ hook_event_name: 'Notification', cwd: 'C:\\proyectos\\orbe', message: 'Claude necesita permiso para usar Bash' })!)
+      await esperar(500)
+      comprobar('un aviso de Claude Code cambia la cara', (await diag()).expresion === 'sorprendido', await diag())
+      comprobar('y enciende el globito', !(await js<boolean>(`document.getElementById('actividad-insignia').hidden`)))
+      actividad.publicar(deClaudeCode({ hook_event_name: 'Stop', cwd: 'C:\\proyectos\\orbe' })!)
+      await esperar(300)
+      p.insignia = await textoDe('#actividad-insignia')
+      comprobar('el globito cuenta los avisos', p.insignia === '2', p.insignia)
+      orbe.establecerExpandido(false)
+      await esperar(500)
+      await capturar('12b-aviso-plegado')
+      orbe.establecerExpandido(true)
+      await esperar(500)
+      await pulsar('#personaje-boton')
+      await esperarSelector('#personaje-menu:not([hidden])', 2000)
+      await pulsar('#personaje-menu [data-pestana="actividad"]')
+      await esperar(400)
+      p.actividad = await textosDe('#personaje-menu .actividad-titulo')
+      comprobar('la actividad lista los avisos', mismos(p.actividad, ['Claude Code terminó · orbe', 'Claude Code te necesita · orbe']), p.actividad)
+      comprobar('verlos apaga el globito', await js<boolean>(`document.getElementById('actividad-insignia').hidden`))
+      comprobar('explica que el receptor está apagado', await existe('#personaje-menu .actividad-apagada'))
+      await capturar('12c-actividad')
+      await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+      await esperar(200)
+      comprobar('Esc cierra el menú y no el panel', (await js<boolean>(`document.getElementById('personaje-menu').hidden`)) && orbe.estaExpandido)
+    }
+    comprobar('el personaje sigue siempre encima', orbe.ventana.isAlwaysOnTop())
+  }
+
   const pasosBandeja = async (): Promise<void> => {
     const v: Record<string, unknown> = (informe.bandeja = {})
     await pulsar('#nueva')
@@ -808,7 +884,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('#ajustes-boton')
     await esperarSelector('#ajustes:not([hidden]) .ajuste-seccion', 3000)
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
-    comprobar('tiene las tres secciones', (await textosDe('#ajustes .ajuste-titulo')).length === 3, await textosDe('#ajustes .ajuste-titulo'))
+    comprobar('tiene las cuatro secciones (con «Personaje y conectores»)', (await textosDe('#ajustes .ajuste-titulo')).length === 4, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
     await capturar('11a-ajustes')
 
@@ -1345,6 +1421,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosAgente()
         await pasosPotencia()
         await pasosVoz()
+        await pasosPersonaje(extras)
         await pasosBandeja()
         await pasosAjustes()
       }

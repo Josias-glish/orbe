@@ -1878,3 +1878,140 @@ kbd {
   overflow-y: hidden;
   padding: 2px 0;
 }
+
+/* ---- Personaje (sustituye al orbe por defecto) ---- */
+.orbe-caja .personaje,
+.orbe-caja .personaje-rive {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.orbe-canvas[hidden] {
+  display: none;
+}
+.personaje-sombra {
+  transition: opacity 200ms;
+}
+
+/* El globito con los avisos sin ver de los conectores (Claude Code y otras herramientas). */
+.actividad-insignia {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 3;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(10, 10, 30, 0.85);
+  pointer-events: none;
+  animation: insignia-aparece 260ms ease-out;
+}
+.actividad-insignia[hidden] {
+  display: none;
+}
+.actividad-insignia[data-tipo='terminado'] {
+  background: #10b981;
+}
+.actividad-insignia[data-tipo='esperando'] {
+  background: #f59e0b;
+}
+@keyframes insignia-aparece {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* ---- Menú del personaje: expresiones y actividad ---- */
+.personaje-menu {
+  width: 272px;
+  max-height: min(440px, calc(100% - 70px));
+  overflow-y: auto;
+}
+.expresiones-rejilla {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.expresion-boton {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.expresion-boton:hover,
+.expresion-boton:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+.expresion-boton[aria-pressed='true'] {
+  border-color: rgba(125, 211, 252, 0.8);
+  background: rgba(125, 211, 252, 0.16);
+}
+.actividad-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.actividad-item {
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid #64748b;
+}
+.actividad-esperando {
+  border-left-color: #f59e0b;
+}
+.actividad-terminado {
+  border-left-color: #10b981;
+}
+.actividad-error {
+  border-left-color: #f43f5e;
+}
+.actividad-trabajando {
+  border-left-color: #38bdf8;
+}
+.actividad-cabeza {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10.5px;
+  color: var(--texto-suave);
+}
+.actividad-tipo {
+  font-weight: 600;
+  color: var(--texto);
+}
+.actividad-hora {
+  margin-left: auto;
+}
+.actividad-titulo {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+.actividad-detalle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--texto-suave);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

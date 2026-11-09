@@ -2,7 +2,7 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Versión 1.2: chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
+> Versión 1.2: un **personaje con 20 expresiones** y 20 diseños (o uno tuyo de Rive), avisos de Claude Code y otras herramientas, chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
 ## Instalar (usuarios)
 En la sección **Releases** del repositorio (o en «Artifacts» de cada ejecución del flujo CI) hay tres opciones; elige la que prefieras:
@@ -67,6 +67,27 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - El **libro** de la cabecera abre la **memoria**: qué sabe Orbe de ti, con control total.
 - Escribe **«Recuerda que…»** (también «Apunta que…», «Anota que…», «Ten en cuenta que…») en un mensaje con solo ese dato y Orbe lo guarda, con un botón para deshacerlo.
 - Con `npm run dev`, **Ctrl + Alt + D** muestra una barra para forzar los estados del orbe.
+
+## El personaje
+En la esquina ya no hay solo un orbe: hay un **personaje con 20 expresiones** (neutral, feliz, risa, tímido, guiño, enamorado, emocionado, sorprendido, curioso, pensativo, concentrado, confundido, triste, llorando, enfadado, preocupado, dormido, aburrido, travieso y orgulloso). Siempre está en primer plano, como antes.
+
+- **Reacciona solo**: pone cara de pensar mientras la IA piensa, de contento al responder, de concentrado cuando el agente trabaja y de curioso al leer la pantalla. Parpadea, respira y **sigue el cursor con la mirada**. Si pasan 3 minutos sin que pase nada, se duerme, y se despierta cuando le acercas el ratón.
+- **Puedes jugar con él**: si lo acaricias con el cursor, reacciona; la **rueda del ratón** encima recorre sus caras; al arrastrarlo se sorprende y al soltarlo se ríe. El botón de la carita de la cabecera abre las **20 expresiones**: pulsa una para fijarla o «Automático» para que cambie solo.
+- **20 diseños** (forma, colores y accesorio), elegibles en la configuración o con `ORBE_DISENO` (`orbi`, `nimbo`, `pico`, `reina`, `chispa`, `copo`, `boo`, `menta`, `mishi`, `brote`, `gala`, `algodon`, `tico`, `noctis`, `lila`, `travi`, `bit`, `ritmo`, `neon`, `nieve`). `npm run galeria` saca una foto de todos (y de las 20 expresiones) en `galeria/`.
+- **Personaje de Rive**: con `ORBE_APARIENCIA=rive` y `ORBE_RIVE_ARCHIVO` (un `.riv` hecho en [rive.app](https://rive.app)), Orbe mueve estas entradas de su máquina de estados (`ORBE_RIVE_MAQUINA`, o la primera): `expresion` (0–19, en el orden de arriba), `estado` (0 reposo, 1 leyendo, 2 pensando, 3 respondiendo, 4 escuchando, 5 actuando), `mirarX` y `mirarY` (-100…100), los disparadores `pulso` y `tocar`, y `hablando` (reservada para cuando tenga voz; hoy siempre es falsa). El motor de Rive va dentro de Orbe. Si el archivo falla, se usa el personaje dibujado.
+- `ORBE_APARIENCIA=orbe` vuelve al orbe clásico.
+- El personaje **no habla** todavía: la entrada `hablando` queda lista para cuando se conecte una voz (por ejemplo, ElevenLabs).
+
+## Conectores: avisos de Claude Code y otras herramientas
+Orbe puede enterarse de lo que hacen otras herramientas y mostrarlo en el personaje. Hoy responde solo con texto, pero esta es la base para conectarlo con más cosas.
+
+1. En la configuración, marca **«Avisos de Claude Code y otras herramientas»** (o pon `ORBE_EVENTOS=1`). Orbe abre un receptor **solo en este equipo** (`127.0.0.1:47821`, o `ORBE_EVENTOS_PUERTO`), protegido con un token secreto que guarda en `%APPDATA%\orbe\conectores.json` y cambia en cada arranque. El receptor solo recibe avisos de texto: no ejecuta nada ni da acceso a Orbe, y rechaza peticiones de páginas web.
+2. **Claude Code**: en el menú de la carita → **Actividad**, pulsa **«Copiar los hooks para Claude Code»** y pégalos en `~/.claude/settings.json`. Desde entonces el personaje se pone **concentrado** mientras Claude Code trabaja, **sorprendido** (con un globito) cuando te necesita y **orgulloso** cuando termina. Los avisos aparecen en «Actividad». El script (`resources/conectores/orbe-evento.mjs`) nunca escribe nada ni hace esperar a Claude Code: si Orbe está cerrado, no pasa nada.
+3. **Cualquier otra herramienta** (n8n, scripts, copias de seguridad…):
+   ```bash
+   node orbe-evento.mjs --titulo "Copia de seguridad lista" --tipo terminado --origen backup
+   ```
+   O una petición HTTP: `POST http://127.0.0.1:47821/v1/eventos` con `Authorization: Bearer <token>` y `{"titulo": "…", "tipo": "inicio|trabajando|esperando|terminado|error|info", "origen": "…", "detalle": "…", "expresion": "risa"}`.
 
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
@@ -228,6 +249,8 @@ src/main/chat      proveedores (CLI, API de Anthropic y compatibles con OpenAI),
 src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
+src/main/conectores avisos de otras herramientas: bus de actividad, receptor local, hooks de Claude Code
+src/renderer/personaje personaje: expresiones, director, dibujo SVG, adaptador de Rive, menú de expresiones y actividad
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
 helper             lector de pantalla de Windows (PowerShell + C#, UI Automation) y OCR de Windows (ocr.ps1)
 src/preload        puente seguro hacia la interfaz

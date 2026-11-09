@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { NIVELES_ESFUERZO } from '../shared/tipos'
+import { DISENOS } from '../shared/disenos'
+import { NIVELES_ESFUERZO, type Apariencia } from '../shared/tipos'
 import type { Esfuerzo } from './chat/proveedor'
 
 /** Lee un archivo .env: líneas CLAVE=valor, comentarios con #, valores opcionalmente entre comillas. */
@@ -105,6 +106,13 @@ export interface Config {
    * `proveedor` es null si no hay ninguno bien configurado. La clave nunca debe salir del proceso principal.
    */
   busqueda: { proveedor: ProveedorBusquedaConfig | null; clave: string; url: string }
+  /** La figura de la esquina (ORBE_APARIENCIA) y, para Rive, el archivo .riv y su máquina de estados. */
+  apariencia: Apariencia
+  /** Diseño del personaje dibujado (ORBE_DISENO): orbi, nimbo, pico… */
+  diseno: string
+  rive: { archivo: string; maquina: string }
+  /** El receptor local de avisos de otras herramientas (Claude Code, n8n, scripts). Apagado por defecto. */
+  eventos: { activo: boolean; puerto: number }
   avisos: string[]
 }
 
@@ -197,6 +205,31 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else agenteActivo = b
   }
 
+  // Apariencia: el personaje dibujado por defecto; el orbe clásico o un personaje de Rive si se pide.
+  const aparienciaLeida = leer('ORBE_APARIENCIA').toLowerCase()
+  let apariencia: Apariencia = 'personaje'
+  if (aparienciaLeida === 'orbe' || aparienciaLeida === 'rive' || aparienciaLeida === 'personaje') apariencia = aparienciaLeida
+  else if (aparienciaLeida) avisos.push(`ORBE_APARIENCIA="${aparienciaLeida}" no es válida (personaje, orbe o rive); uso el personaje.`)
+  let diseno = DISENOS[0].id
+  const disenoLeido = leer('ORBE_DISENO').toLowerCase()
+  if (disenoLeido) {
+    if (DISENOS.some((d) => d.id === disenoLeido)) diseno = disenoLeido
+    else avisos.push(`ORBE_DISENO="${disenoLeido}" no existe (${DISENOS.map((d) => d.id).join(', ')}); uso ${diseno}.`)
+  }
+  const riveArchivo = leer('ORBE_RIVE_ARCHIVO')
+  if (apariencia === 'rive' && !riveArchivo) {
+    avisos.push('ORBE_APARIENCIA=rive necesita ORBE_RIVE_ARCHIVO con la ruta del .riv; uso el personaje.')
+    apariencia = 'personaje'
+  }
+  const eventosActivo = leerBooleano(leer('ORBE_EVENTOS')) ?? false
+  let puertoEventos = 47821
+  const puertoLeido = leer('ORBE_EVENTOS_PUERTO')
+  if (puertoLeido) {
+    const n = Number(puertoLeido)
+    if (Number.isInteger(n) && n >= 1024 && n <= 65535) puertoEventos = n
+    else avisos.push(`ORBE_EVENTOS_PUERTO="${puertoLeido}" no es válido (1024–65535); uso ${puertoEventos}.`)
+  }
+
   const permitirLocalLeido = leer('ORBE_PERMITIR_LOCAL')
   let permitirLocal = false
   if (permitirLocalLeido) {
@@ -275,6 +308,10 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     memoriaOrigenes,
     agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal },
     busqueda: { proveedor: busquedaProveedor, clave: busquedaClave, url: busquedaUrl },
+    apariencia,
+    diseno,
+    rive: { archivo: riveArchivo, maquina: leer('ORBE_RIVE_MAQUINA') },
+    eventos: { activo: eventosActivo, puerto: puertoEventos },
     avisos
   }
 }

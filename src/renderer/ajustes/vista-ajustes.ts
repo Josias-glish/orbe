@@ -1,4 +1,5 @@
-import type { ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
+import { DISENOS } from '../../shared/disenos'
+import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
 import { crearIcono } from '../chat/contexto-ui'
 
 type Proveedor = 'cli' | 'api' | 'openai'
@@ -62,6 +63,10 @@ interface Borrador {
   anthropicKey: ClaveNueva
   dictado: { url: string; modelo: string; idioma: string; clave: ClaveNueva }
   voz: { url: string; modelo: string; voz: string; clave: ClaveNueva }
+  apariencia: Apariencia
+  diseno: string
+  riveArchivo: string
+  eventos: boolean
 }
 
 /**
@@ -98,7 +103,11 @@ export class VistaAjustes {
         openaiKey: undefined,
         anthropicKey: undefined,
         dictado: { url: v.dictado.url, modelo: v.dictado.modelo, idioma: v.dictado.idioma, clave: undefined },
-        voz: { url: v.voz.url, modelo: v.voz.modelo, voz: v.voz.voz, clave: undefined }
+        voz: { url: v.voz.url, modelo: v.voz.modelo, voz: v.voz.voz, clave: undefined },
+        apariencia: v.apariencia,
+        diseno: v.diseno,
+        riveArchivo: v.riveArchivo,
+        eventos: v.eventos
       }
       this.pintar()
     } catch {
@@ -302,8 +311,72 @@ export class VistaAjustes {
       )
     }
 
+    // --- Personaje y conectores ---
+    const apariencia = this.selector(
+      [
+        { id: 'personaje', nombre: 'Personaje con expresiones' },
+        { id: 'rive', nombre: 'Personaje de Rive (archivo .riv)' },
+        { id: 'orbe', nombre: 'Orbe clásico (sin cara)' }
+      ],
+      b.apariencia,
+      (nuevo) => {
+        b.apariencia = nuevo as Apariencia
+        this.pintar()
+      },
+      'Figura de la esquina'
+    )
+    const secPersonaje: (HTMLElement | null)[] = [this.campo('Figura', apariencia)]
+    if (b.apariencia === 'personaje') {
+      const diseno = this.selector(
+        DISENOS.map((d, i) => ({ id: d.id, nombre: `${i + 1}. ${d.nombre}` })),
+        b.diseno,
+        (nuevo) => (b.diseno = nuevo),
+        'Diseño del personaje'
+      )
+      secPersonaje.push(this.campo('Diseño', diseno, 'Las 20 expresiones funcionan con todos.'))
+    }
+    if (b.apariencia === 'rive') {
+      const fila = el('div', 'ajuste-clave')
+      const ruta = this.texto(b.riveArchivo, (x) => (b.riveArchivo = x), 'C:\\ruta\\personaje.riv', 'Archivo .riv')
+      const elegir = el('button', 'boton-memoria', 'Elegir…')
+      elegir.type = 'button'
+      elegir.addEventListener('click', () => {
+        void window.orbe.configElegirRive().then((r) => {
+          if (r) {
+            b.riveArchivo = r
+            this.pintar()
+          }
+        })
+      })
+      fila.append(ruta, elegir)
+      secPersonaje.push(
+        this.campo('Archivo .riv', fila),
+        el(
+          'p',
+          'memoria-nota',
+          'Hecho en rive.app. Orbe mueve estas entradas de su máquina de estados: expresion (0–19), estado (0–5), mirarX y mirarY (-100…100), pulso y tocar (disparadores) y hablando (reservada para la voz). Si el archivo falla, se usa el personaje de siempre.'
+        )
+      )
+    }
+    const eventos = el('label', 'memoria-opcion')
+    const marcaEventos = el('input')
+    marcaEventos.type = 'checkbox'
+    marcaEventos.checked = b.eventos
+    marcaEventos.setAttribute('aria-label', 'Avisos de Claude Code y otras herramientas')
+    marcaEventos.addEventListener('change', () => (b.eventos = marcaEventos.checked))
+    eventos.append(marcaEventos, el('span', undefined, 'Avisos de Claude Code y otras herramientas'))
+    secPersonaje.push(
+      eventos,
+      el(
+        'p',
+        'memoria-nota',
+        'Abre un receptor solo en este equipo (127.0.0.1, con un token secreto) para que Claude Code, n8n o tus scripts avisen a Orbe: el personaje pone cara y los ves en «Actividad». No da acceso a Orbe ni ejecuta nada.'
+      )
+    )
+
     cuerpo.append(
       this.seccion('Quién responde', ...responde),
+      this.seccion('Personaje y conectores', ...secPersonaje),
       this.seccion('Dictado (micrófono)', ...secDictado),
       this.seccion('Voz neuronal (leer en voz alta)', ...secVoz)
     )
@@ -345,7 +418,11 @@ export class VistaAjustes {
       openaiKey: b.openaiKey,
       anthropicKey: b.anthropicKey,
       dictado: { ...b.dictado },
-      voz: { ...b.voz }
+      voz: { ...b.voz },
+      apariencia: b.apariencia,
+      diseno: b.diseno,
+      riveArchivo: b.riveArchivo,
+      eventos: b.eventos
     }
     this.guardando = true
     this.mensaje = null

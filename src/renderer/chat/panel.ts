@@ -13,7 +13,7 @@ import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
-import type { Orbe } from '../orbe/orbe'
+import type { Avatar } from '../personaje/avatar'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
 import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
@@ -82,7 +82,7 @@ export class PanelChat {
   private inicioLectura = 0
 
   constructor(
-    private readonly orbe: Orbe,
+    private readonly orbe: Avatar,
     raiz: Document = document
   ) {
     const porId = <T extends HTMLElement>(id: string): T => raiz.getElementById(id) as T
@@ -751,7 +751,7 @@ export class PanelChat {
   // Presentación
   // -------------------------------------------------------------------------------------------
 
-  private cambiarEstadoOrbe(estado: Parameters<Orbe['establecerEstado']>[0]): void {
+  private cambiarEstadoOrbe(estado: Parameters<Avatar['establecerEstado']>[0]): void {
     window.clearTimeout(this.temporizadorReposo)
     this.orbe.establecerEstado(estado)
   }

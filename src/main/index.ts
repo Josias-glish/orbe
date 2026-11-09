@@ -1,6 +1,8 @@
 import { app, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
+import { registrarConectores } from './conectores'
+import { registrarPersonaje } from './personaje'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -80,7 +82,7 @@ function carpetaHelper(): string {
   return app.isPackaged ? join(process.resourcesPath, 'helper') : join(app.getAppPath(), 'helper')
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const lectura = leerArchivosEnv(rutasEnv())
   const config = resolverConfig(lectura.valores)
   for (const aviso of config.avisos) console.warn('[orbe]', aviso)
@@ -128,6 +130,12 @@ app.whenReady().then(() => {
   // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.
   // La prueba de humo empieza siempre de cero y con notas de mentira: nunca lee ni enseña la memoria real.
   const datos = app.getPath('userData')
+
+  // La figura de la esquina (personaje, orbe o Rive) y los avisos de otras herramientas (Claude Code, scripts…).
+  // La prueba de humo usa siempre el personaje dibujado y nunca abre el receptor de avisos.
+  const configFigura = modoHumo ? resolverConfig({}, {}) : config
+  registrarPersonaje({ ventana: orbe, config: configFigura })
+  const actividad = await registrarConectores({ ventana: orbe, config: configFigura, carpetaDatos: datos, modoHumo })
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
     archivoConversacion: join(datos, 'conversacion.json'),
@@ -259,7 +267,7 @@ app.whenReady().then(() => {
   }
 
   if (fuenteDemo && capturaDemo) {
-    void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo, ocr: ocrDemo ?? undefined })
+    void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo, ocr: ocrDemo ?? undefined, actividad })
   }
 })
 

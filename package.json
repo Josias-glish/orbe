@@ -16,10 +16,12 @@
     "probar-uia": "node scripts/probar-uia.mjs",
     "iconos": "node scripts/generar-iconos.mjs",
     "dist:dir": "electron-vite build && electron-builder --win --dir",
-    "fondos": "electron scripts/preparar-fondos.cjs"
+    "fondos": "electron scripts/preparar-fondos.cjs",
+    "galeria": "node scripts/galeria/fotos.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "@rive-app/canvas": "^2.31.5",
     "dompurify": "^3.4.16",
     "katex": "^0.16.22",
     "marked": "^18.0.14"

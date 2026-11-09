@@ -33,6 +33,11 @@ export const CANALES = {
   pantallaCapturar: 'pantalla:capturar',
   pantallaTextoImagen: 'pantalla:texto-imagen',
   pantallaFormula: 'pantalla:formula',
+  personajeRecursos: 'personaje:recursos',
+  personajeCursor: 'personaje:cursor',
+  actividadEvento: 'actividad:evento',
+  actividadHistorial: 'actividad:historial',
+  configElegirRive: 'config:elegir-rive',
   appOrden: 'app:orden',
   appSalir: 'app:salir',
   ventanaFijar: 'ventana:fijar',
@@ -329,6 +334,50 @@ export interface EstadoFondo {
 }
 
 /** La configuración que enseña la pantalla de ajustes: los valores del .env y qué claves existen, nunca las claves. */
+/** Qué figura vive en la esquina: el personaje dibujado (por defecto), el orbe clásico o un personaje de Rive. */
+export type Apariencia = 'personaje' | 'orbe' | 'rive'
+
+/** Lo que necesita la interfaz para montar la figura. Con Rive, el archivo y el motor llegan del proceso principal. */
+export interface RecursosPersonaje {
+  apariencia: Apariencia
+  /** Id del diseño del personaje dibujado (ver DISENOS). */
+  diseno: string
+  rive?: { archivo: Uint8Array; wasm: Uint8Array; maquina: string | null }
+  /** Si se pidió Rive y no se pudo cargar, por qué (la interfaz usa el personaje dibujado). */
+  aviso?: string
+}
+
+// ---------------------------------------------------------------------------------------------
+// Actividad (conectores): lo que hacen otras herramientas, para verlo en el personaje
+// ---------------------------------------------------------------------------------------------
+
+/** Empieza algo, está trabajando, te necesita, terminó, falló o simplemente avisa. */
+export type TipoActividad = 'inicio' | 'trabajando' | 'esperando' | 'terminado' | 'error' | 'info'
+
+export interface EventoActividad {
+  id: string
+  /** Quién lo manda: «claude-code», «n8n», «copia-de-seguridad»… */
+  origen: string
+  tipo: TipoActividad
+  titulo: string
+  detalle?: string
+  /** Expresión que pide el conector (si no, se elige por el tipo). */
+  expresion?: string
+  /** Milisegundos desde 1970. */
+  cuando: number
+}
+
+export interface EstadoActividad {
+  /** El receptor local de eventos está encendido (ORBE_EVENTOS=1). */
+  activo: boolean
+  puerto: number | null
+  /** Dónde está el archivo con el puerto y el token que leen los conectores. */
+  archivo: string | null
+  /** Bloque «hooks» listo para pegar en ~/.claude/settings.json (con la ruta del script de Orbe). */
+  configClaudeCode: string
+  eventos: EventoActividad[]
+}
+
 export interface ConfigVista {
   proveedor: 'cli' | 'api' | 'openai'
   modelo: string
@@ -337,6 +386,10 @@ export interface ConfigVista {
   tieneClaveAnthropic: boolean
   dictado: { url: string; modelo: string; idioma: string; tieneClave: boolean }
   voz: { url: string; modelo: string; voz: string; tieneClave: boolean }
+  apariencia: Apariencia
+  diseno: string
+  riveArchivo: string
+  eventos: boolean
 }
 
 /** Una clave nueva (texto), mantener la que hay (undefined o vacía) o quitarla (null). */
@@ -350,6 +403,11 @@ export interface PeticionConfig {
   anthropicKey: ClaveNueva
   dictado: { url: string; modelo: string; idioma: string; clave: ClaveNueva }
   voz: { url: string; modelo: string; voz: string; clave: ClaveNueva }
+  /** Opcionales: si no vienen, no se tocan. */
+  apariencia?: Apariencia
+  diseno?: string
+  riveArchivo?: string
+  eventos?: boolean
 }
 
 export type ResultadoConfig = { ok: true } | { ok: false; error: string }
@@ -404,6 +462,16 @@ export interface ApiOrbe {
   salirDeOrbe(): Promise<void>
   configLeer(): Promise<ConfigVista>
   configGuardar(peticion: PeticionConfig): Promise<ResultadoConfig>
+  /** Abre el diálogo para elegir un archivo .riv; devuelve su ruta o null si se cancela. */
+  configElegirRive(): Promise<string | null>
+
+  /** La figura de la esquina (y, si es de Rive, su archivo). */
+  personajeRecursos(): Promise<RecursosPersonaje>
+  /** Dónde está el cursor (coordenadas de pantalla), para que el personaje lo siga con la mirada. */
+  alCursor(cb: (punto: { x: number; y: number }) => void): () => void
+  /** Avisos de los conectores (Claude Code y otras herramientas). */
+  alActividad(cb: (evento: EventoActividad) => void): () => void
+  actividadHistorial(): Promise<EstadoActividad>
 
   vozInfo(): Promise<InfoVoz>
   /** Pasa a texto una grabación del micrófono (solo tras pulsar grabar y terminar). */

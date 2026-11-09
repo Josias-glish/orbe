@@ -19,6 +19,9 @@ extraResources:
       - '*.ps1'
   - from: resources/tray.png
     to: tray.png
+  # El script con el que Claude Code (por sus hooks) y otras herramientas avisan a Orbe.
+  - from: resources/conectores
+    to: conectores
   # Fondos del chat incluidos en la instalación (si existe resources/fondos; ver «npm run fondos»).
   - from: resources/fondos
     to: fondos
