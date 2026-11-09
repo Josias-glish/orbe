@@ -2,10 +2,16 @@
 
 Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
-> Versión 1.1: chat con Claude (o con otras IA), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
+> Versión 1.2: chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
 ## Instalar (usuarios)
-Descarga `Orbe-Setup-<versión>.exe` de la sección **Releases** del repositorio y ejecútalo.
+En la sección **Releases** del repositorio (o en «Artifacts» de cada ejecución del flujo CI) hay tres opciones; elige la que prefieras:
+
+| Archivo | Qué es |
+|---|---|
+| `Orbe-Setup-<versión>.exe` | **Instalador**: eliges la carpeta, crea accesos directos, se desinstala desde Windows y permite «Iniciar con Windows». |
+| `Orbe-Portable-<versión>.exe` | **Portable**: un solo `.exe` que se abre sin instalar nada (sirve desde un USB). La primera vez tarda unos segundos en abrir. |
+| `Orbe-<versión>-win.zip` | **Carpeta comprimida**: descomprímela donde quieras y abre `Orbe.exe`. |
 
 - Windows mostrará **«Windows protegió su PC»** (SmartScreen): el instalador **no está firmado** (un certificado de firma cuesta dinero cada año). Pulsa **Más información → Ejecutar de todos modos**. Si prefieres comprobarlo, el código completo está en este repositorio y el instalador se genera con el flujo de GitHub Actions de `.github/workflows/release.yml`.
 - Se instala solo para tu usuario (sin permisos de administrador) y crea accesos directos.
@@ -47,6 +53,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
+- El botón **[T]** lee el **texto de una imagen sin pantallazo**: de la ventana que estabas usando, del portapapeles o de un archivo (ver «Texto de una imagen»).
 - La **cámara** adjunta una **captura de pantalla** (último recurso; antes te pide confirmación).
 - **Cambiar el tamaño del panel**: arrastra el borde izquierdo o el superior (los libres, opuestos al orbe), o la esquina marcada. El orbe no se mueve de su esquina, hay un mínimo y un máximo (se ajusta a tu pantalla) y Orbe recuerda el tamaño que elijas.
 - El botón de la **imagen** de la cabecera (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
@@ -69,14 +76,21 @@ Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 | `cli` | Por defecto | Lanza `claude -p` en modo headless, sin herramientas, sin tus ajustes ni hooks, y mantiene **un único proceso por conversación** (el propio CLI recuerda el contexto). Usa tu sesión de Claude. Ocupa unos 190 MB mientras hay conversación. |
 | `api` | Si hay `ANTHROPIC_API_KEY` en `.env` | SDK oficial `@anthropic-ai/sdk`, en streaming. Orbe guarda el historial y lo reenvía en cada turno. La clave solo existe en el proceso principal. |
 
-| `openai` | `ORBE_PROVEEDOR=openai` | Cualquier servicio compatible con la API de OpenAI (`/chat/completions` en streaming): OpenAI, OpenRouter, Groq, Ollama, LM Studio… Hacen falta `ORBE_MODELO` y, según el servicio, `ORBE_OPENAI_URL` y `ORBE_OPENAI_KEY`. Las imágenes se envían solo en el mensaje en el que las adjuntas (si el modelo no admite imágenes, el servicio lo dirá). |
+| `openai` | `ORBE_PROVEEDOR=openai` | Cualquier servicio compatible con la API de OpenAI (`/chat/completions` en streaming): **Google AI Studio (Gemini)**, OpenAI, OpenRouter, Groq, Ollama, LM Studio… Hacen falta `ORBE_MODELO` y, según el servicio, `ORBE_OPENAI_URL` y `ORBE_OPENAI_KEY`. Las imágenes se envían solo en el mensaje en el que las adjuntas (si el modelo no admite imágenes, el servicio lo dirá). |
 
 El CLI se lanza sin `ANTHROPIC_API_KEY` en su entorno, para que no te cobre por API sin que lo hayas decidido.
 
 Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_FONDOS` (carpeta con imágenes para el fondo del chat), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
 
 ## Configuración
-El botón de los controles deslizantes de la cabecera guarda los cambios en el archivo `.env` (el del proyecto, o `%APPDATA%\orbe\.env` en la versión instalada), conserva tus comentarios y reinicia Orbe para aplicarlos. Tiene preajustes para Groq, NVIDIA, OpenRouter, OpenAI, Ollama y LM Studio. Las claves se escriben ocultas, solo las ve el proceso principal y la pantalla nunca las vuelve a mostrar (solo si hay una guardada); se pueden mantener, cambiar o quitar.
+El botón de los controles deslizantes de la cabecera guarda los cambios en el archivo `.env` (el del proyecto, o `%APPDATA%\orbe\.env` en la versión instalada), conserva tus comentarios y reinicia Orbe para aplicarlos. Tiene preajustes para **Google AI Studio (Gemini)**, Groq, NVIDIA, OpenRouter, OpenAI, Ollama y LM Studio. Las claves se escriben ocultas, solo las ve el proceso principal y la pantalla nunca las vuelve a mostrar (solo si hay una guardada); se pueden mantener, cambiar o quitar.
+
+### Google AI Studio (Gemini)
+Gemini se usa con su API compatible con OpenAI, con plan gratuito:
+1. Entra en [aistudio.google.com](https://aistudio.google.com), pulsa **Get API key** y crea una clave.
+2. En Orbe abre la configuración (los controles deslizantes), elige **Otra IA compatible con OpenAI → Google AI Studio (Gemini)**, pega la clave y guarda.
+
+O a mano en el `.env`: `ORBE_PROVEEDOR=openai`, `ORBE_OPENAI_URL=https://generativelanguage.googleapis.com/v1beta/openai`, `ORBE_OPENAI_KEY=<tu clave>` y `ORBE_MODELO=gemini-flash-latest` (o el modelo que quieras, como `gemini-pro-latest`). Gemini ve imágenes y admite el modo agente. El dictado y la voz neuronal no van por Gemini: configúralos con otro servicio si los quieres.
 
 ## Voz
 **Leer en voz alta.** Orbe lee las respuestas frase a frase según llegan, se salta los bloques de código (dice que hay uno) y se calla en cuanto empieza otra respuesta, pulsas Esc o la apagas. Por defecto usa las **voces de Windows** (gratis, sin conexión). El botón **Estilo Jarvis** elige la voz masculina en español, la baja de tono y la pone pausada; si has configurado una voz neuronal, la usa. No se puede copiar la voz del actor original: es una voz grave, serena y elegante, no un clon.
@@ -117,6 +131,17 @@ Lo leído aparece sobre el campo de texto como **chips** (Ventana, Selección, C
 
 Si hay muy poco texto (una ventana de solo botones y menús), Orbe lo avisa y te propone una captura.
 
+### Texto de una imagen (sin pantallazo)
+Para leer el texto que hay **dentro de una imagen** (un cartel, una factura escaneada, un gráfico con rótulos, una foto de una pizarra) sin mandar ninguna imagen, pulsa el botón **[T]** junto al ojo y elige de dónde:
+
+- **De la ventana**: la ventana que estabas usando. Windows entrega la imagen de esa ventana directamente, aunque Orbe u otras ventanas estén encima: **no se fotografía el monitor ni se oculta Orbe**, que sigue en primer plano.
+- **Del portapapeles**: copia antes la imagen (clic derecho → «Copiar imagen» en el navegador, o un recorte con Win+Mayús+S). Orbe solo mira el portapapeles al pulsar el botón.
+- **De un archivo**: PNG, JPG, BMP, GIF o TIFF.
+
+El texto lo reconoce el **OCR que trae Windows** (`Windows.Media.Ocr`, en `helper/ocr.ps1`), en tu equipo, sin conexión y gratis. Aparece como un chip **«Texto de imagen»** con el texto exacto que se enviará; se suma a lo que haya leído el ojo y se quita con la ×. **Solo viaja el texto, y solo si envías el mensaje**: así sirve también con modelos que no ven imágenes (Groq, Ollama…) y gasta mucho menos que una captura. La imagen no llega a la interfaz; si hace falta una copia temporal para el OCR, se borra al terminar. Como todo lo de la pantalla, al modelo se le dice que ese texto es de terceros.
+
+Necesita el paquete de idioma con «Reconocimiento óptico de caracteres» (viene con Windows en español; si falta: Configuración → Hora e idioma → Idioma y región). La letra a mano o muy decorada se reconoce peor, y el contenido protegido (vídeo con DRM) sale en negro: para ver la imagen de verdad sigue estando la captura.
+
 ### Captura de pantalla (último recurso)
 Cuando el texto no basta (una imagen, un gráfico, un diseño, una app que no expone su contenido), puedes adjuntar una captura con la **cámara** junto al campo de texto. Orbe te la propone cuando la ventana tenía muy poco texto o cuando lo que escribes suena a pregunta visual («cómo se ve…», «esta imagen…», «el gráfico…»), pero **nunca la hace por su cuenta**:
 
@@ -151,7 +176,7 @@ Además de conversar, Orbe puede **actuar**: buscar en internet, abrir una pági
 ```bash
 npm ci
 npm run iconos     # solo si cambias el diseño del icono (resources/ ya los trae)
-npm run dist       # genera dist/Orbe-Setup-<versión>.exe
+npm run dist       # genera en dist/ el instalador, el portable y el .zip
 npm run dist:dir   # solo la carpeta dist/win-unpacked/ (más rápido, para probar Orbe.exe)
 ```
 La primera vez, electron-builder descarga unos paquetes (NSIS, 7-Zip). Comprueba la aplicación empaquetada con `dist\win-unpacked\Orbe.exe --smoke` (la prueba de humo, que no toca tu pantalla ni tus ajustes).
@@ -165,8 +190,8 @@ Nada de esto se hace solo: lo ejecutas tú, con tu cuenta.
    ```bash
    gh repo create orbe --public --source . --remote origin --push
    ```
-   Sube también la rama con la que trabajes; el flujo `ci.yml` ejecuta el tipado y las pruebas en cada subida a `main` y en cada pull request.
-4. Publica una versión. Sube una etiqueta y el flujo `release.yml` compila el instalador en un Windows de GitHub, pasa las pruebas y crea la release con el `.exe` adjunto:
+   Sube también la rama con la que trabajes; el flujo `ci.yml` ejecuta el tipado y las pruebas en cada subida a `main` y en cada pull request, y **compila los tres instaladores** y los deja para descargar en la sección «Artifacts» de esa ejecución.
+4. Publica una versión. Sube una etiqueta y el flujo `release.yml` compila el instalador en un Windows de GitHub, pasa las pruebas y crea la release con el instalador, el portable y el `.zip` adjuntos (también se puede lanzar a mano desde la pestaña *Actions → Publicar instalador → Run workflow*):
    ```bash
    git tag v1.0.0
    git push origin v1.0.0
@@ -176,9 +201,9 @@ Nada de esto se hace solo: lo ejecutas tú, con tu cuenta.
 No hay secretos en el repositorio: `.env` está en `.gitignore` y el flujo solo usa el `GITHUB_TOKEN` que GitHub da a cada ejecución. Orbe no incluye actualizaciones automáticas: para actualizar, instala el nuevo `.exe` encima.
 
 ## Pruebas
-`npm test` ejecuta unas 770 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
+`npm test` ejecuta unas 1200 pruebas, sin gastar nada: la lógica pura (parser del protocolo del CLI, errores, configuración, limpieza y recorte del texto de pantalla, formato de las notas de memoria, filtro de datos delicados y órdenes «recuerda que…»), el almacén y el importador de memoria sobre carpetas temporales, el proveedor del CLI contra un CLI de mentira (`tests/falso-claude.mjs`), el proveedor de la API contra un servidor SSE local, el cliente del lector de pantalla contra un lector de mentira (`tests/falso-helper.mjs`) y los puentes IPC (que el contexto solo se adjunte si lo pides, que se restaure si el envío falla y que nadie ajeno a la ventana de Orbe pueda usarlos).
 
-`npm run humo` arranca la aplicación con un chat, un lector de pantalla, una captura y una memoria de mentira (notas e imágenes de ejemplo, nunca tu memoria ni tu pantalla reales), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor) y la captura (sugerencias, confirmación, vista previa, envío y errores), guarda capturas en `humo/` y termina con código 1 si algo falla.
+`npm run humo` arranca la aplicación con un chat, un lector de pantalla, una captura y una memoria de mentira (notas e imágenes de ejemplo, nunca tu memoria ni tu pantalla reales), recorre el orbe, el chat, la lectura de pantalla (leer, ver, quitar chips, enviar, avisos, errores y el atajo) la memoria (gestor, notas, datos delicados, «recuerda que…», deshacer, conversación repuesta e interruptor) la captura (sugerencias, confirmación, vista previa, envío y errores) y el texto de imagen (menú, chip, envío, quitar y errores, comprobando que Orbe no se oculta), guarda capturas en `humo/` y termina con código 1 si algo falla.
 
 Para probar con el CLI de Claude y el lector real (el CLI gasta unos céntimos de tu plan; el lector solo hace un «ping» y no lee ninguna ventana):
 ```powershell
@@ -193,9 +218,9 @@ src/main           proceso principal (ventana, atajos, bandeja, ajustes)
 src/main/chat      proveedores (CLI, API de Anthropic y compatibles con OpenAI), errores, servicio, IPC
 src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
-src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, contexto pendiente, IPC
+src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
-helper             lector de pantalla de Windows (PowerShell + C#, UI Automation)
+helper             lector de pantalla de Windows (PowerShell + C#, UI Automation) y OCR de Windows (ocr.ps1)
 src/preload        puente seguro hacia la interfaz
 src/renderer       interfaz: orbe (WebGL2 + GLSL con ruido simplex), panel de chat y chips de contexto
 src/shared         tipos compartidos

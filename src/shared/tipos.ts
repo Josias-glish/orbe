@@ -31,6 +31,7 @@ export const CANALES = {
   pantallaDescartar: 'pantalla:descartar',
   pantallaEvento: 'pantalla:evento',
   pantallaCapturar: 'pantalla:capturar',
+  pantallaTextoImagen: 'pantalla:texto-imagen',
   appOrden: 'app:orden',
   appSalir: 'app:salir',
   ventanaFijar: 'ventana:fijar',
@@ -78,6 +79,9 @@ export type CodigoError =
   | 'lector_no_disponible'
   | 'sin_ventana'
   | 'captura_no_disponible'
+  | 'ocr_no_disponible'
+  | 'ocr_sin_imagen'
+  | 'ocr_sin_texto'
   | 'desconocido'
 
 /** Error ya traducido a algo que se le puede mostrar al usuario. */
@@ -175,9 +179,16 @@ export interface ContextoPantalla {
   contenido?: string
   contenidoRecortado?: boolean
   imagen?: { tipoMime: 'image/jpeg' | 'image/png'; base64: string; ancho: number; alto: number }
+  /** Texto reconocido en una imagen (OCR de Windows, en el propio equipo): solo viaja el texto, nunca la imagen. */
+  textoImagen?: string
+  textoImagenRecortado?: boolean
+  textoImagenOrigen?: OrigenTextoImagen
 }
 
-export type ClaveParte = 'ventana' | 'seleccion' | 'contenido' | 'imagen'
+/** De dónde sale la imagen cuyo texto se reconoce: la ventana que estabas usando, el portapapeles o un archivo. */
+export type OrigenTextoImagen = 'ventana' | 'portapapeles' | 'archivo'
+
+export type ClaveParte = 'ventana' | 'seleccion' | 'contenido' | 'imagen' | 'texto_imagen'
 
 /** Lo que se muestra de cada trozo de contexto (chips): etiqueta, resumen y una vista previa del texto. */
 export interface ParteContexto {
@@ -368,6 +379,11 @@ export interface ApiOrbe {
   pantallaDescartar(): void
   /** Captura de respaldo: oculta Orbe, fotografía la pantalla y deja la imagen lista para el próximo mensaje. Solo tras la confirmación del usuario. */
   pantallaCapturar(): Promise<RespuestaLectura>
+  /**
+   * Reconoce el texto de una imagen en el propio equipo (sin pantallazo del monitor, sin ocultar Orbe) y lo deja
+   * listo para el próximo mensaje. Solo viaja el texto. Solo cuando el usuario lo pide.
+   */
+  pantallaTextoImagen(origen: OrigenTextoImagen): Promise<RespuestaLectura>
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
   alOrdenApp(cb: (orden: OrdenApp) => void): () => void
   /** Fija el panel por encima de las demás ventanas (o lo suelta). Sin argumento, solo dice cómo está. */

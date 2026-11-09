@@ -17,3 +17,26 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # Compila los instaladores de Windows en cada pull request y en main, y los deja para descargar en la
+  # pestaña del flujo (sección «Artifacts»), sin necesidad de publicar una versión.
+  instaladores:
+    runs-on: windows-latest
+    needs: pruebas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbe-instaladores-windows
+          path: |
+            dist/Orbe-Setup-*.exe
+            dist/Orbe-Portable-*.exe
+            dist/Orbe-*-win.zip
+          if-no-files-found: error
+          retention-days: 30

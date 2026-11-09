@@ -4,15 +4,19 @@ import {
   type ClaveParte,
   type EventoPantalla,
   type LecturaPantalla,
+  type OrigenTextoImagen,
   type RespuestaLectura
 } from '../../shared/tipos'
 import { aErrorOrbe, crearError } from '../chat/errores'
 import type { VentanaOrbe } from '../ventana'
 import type { ServicioCaptura } from './captura'
 import { ServicioPantalla, type FuenteUia } from './contexto'
+import type { ServicioTextoImagen } from './ocr'
 import { ContextoPendiente } from './pendiente'
 
-const CLAVES: readonly string[] = ['ventana', 'seleccion', 'contenido', 'imagen']
+const CLAVES: readonly string[] = ['ventana', 'seleccion', 'contenido', 'imagen', 'texto_imagen']
+const ORIGENES: readonly string[] = ['ventana', 'portapapeles', 'archivo']
+const esOrigen = (v: unknown): v is OrigenTextoImagen => typeof v === 'string' && ORIGENES.includes(v)
 const esClave = (v: unknown): v is ClaveParte => typeof v === 'string' && CLAVES.includes(v)
 
 export interface PantallaRegistrada {
@@ -33,6 +37,8 @@ export function registrarPantalla(opciones: {
   contextoMax: number
   /** Captura de respaldo; sin ella el botón de la cámara devuelve un error. */
   captura?: ServicioCaptura
+  /** Texto de una imagen (OCR en el equipo); sin él, el botón devuelve un error. */
+  textoImagen?: ServicioTextoImagen
 }): PantallaRegistrada {
   const { ventana } = opciones
   const emitir = (evento: EventoPantalla): void => {
@@ -61,6 +67,25 @@ export function registrarPantalla(opciones: {
     try {
       const hecha = await opciones.captura.capturar()
       return { ok: true, ...pendiente.agregarImagen(hecha) }
+    } catch (error) {
+      return { ok: false, error: aErrorOrbe(error) }
+    }
+  })
+
+  // Sin pantallazo del monitor ni confirmación de captura: la imagen no sale del equipo, solo su texto, y solo si el
+  // usuario envía el mensaje. Igual que el ojo, el usuario lo pide con un botón; nunca ocurre por su cuenta.
+  ipcMain.handle(CANALES.pantallaTextoImagen, async (e, origen: unknown): Promise<RespuestaLectura> => {
+    if (!propia(e)) throw new Error('Remitente no autorizado')
+    if (!esOrigen(origen)) return { ok: false, error: crearError('ocr_sin_imagen') }
+    if (!opciones.textoImagen) return { ok: false, error: crearError('ocr_no_disponible') }
+    try {
+      const hecho = await opciones.textoImagen.leer(origen)
+      // Canceló (cerró el diálogo de archivo): se queda como estaba.
+      if (!hecho) {
+        const actual = pendiente.lectura()
+        return { ok: true, ...(actual ?? { partes: [], avisos: [], sugerirCaptura: false }) }
+      }
+      return { ok: true, ...pendiente.agregarTextoImagen(hecho) }
     } catch (error) {
       return { ok: false, error: aErrorOrbe(error) }
     }

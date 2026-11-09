@@ -23,16 +23,25 @@ extraResources:
   - from: resources/fondos
     to: fondos
 
+# Varias formas de tenerlo en Windows (todas x64):
+#   - Orbe-Setup-<versión>.exe     instalador clásico: eliges carpeta, accesos directos y desinstalador.
+#   - Orbe-Portable-<versión>.exe  un solo .exe que se ejecuta sin instalar nada (ideal para un USB).
+#   - Orbe-<versión>-win.zip        la carpeta de la aplicación comprimida: descomprimes y abres Orbe.exe.
 win:
   target:
     - target: nsis
       arch: x64
+    - target: portable
+      arch: x64
+    - target: zip
+      arch: x64
   icon: resources/icon.ico
-  artifactName: Orbe-Setup-${version}.${ext}
+  artifactName: Orbe-${version}-win.${ext}
   # Sin certificado de firma: Windows SmartScreen avisará de «editor desconocido» al instalar.
   signAndEditExecutable: true
 
 nsis:
+  artifactName: Orbe-Setup-${version}.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
@@ -42,3 +51,8 @@ nsis:
   deleteAppDataOnUninstall: false
   # Un único nombre de instalador por versión, sin guiones raros.
   uninstallDisplayName: Orbe
+
+portable:
+  artifactName: Orbe-Portable-${version}.${ext}
+  # Mensaje mientras se descomprime la primera vez (tarda unos segundos).
+  unpackDirName: Orbe

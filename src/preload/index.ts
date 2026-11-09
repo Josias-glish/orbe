@@ -44,6 +44,7 @@ const api: ApiOrbe = {
   pantallaQuitar: (clave) => ipcRenderer.invoke(CANALES.pantallaQuitar, clave),
   pantallaDescartar: () => ipcRenderer.send(CANALES.pantallaDescartar),
   pantallaCapturar: () => ipcRenderer.invoke(CANALES.pantallaCapturar),
+  pantallaTextoImagen: (origen) => ipcRenderer.invoke(CANALES.pantallaTextoImagen, origen),
   alEventoPantalla: (cb) => suscribir<EventoPantalla>(CANALES.pantallaEvento, cb),
   alOrdenApp: (cb) => suscribir<OrdenApp>(CANALES.appOrden, cb),
   fijarPanel: (fijar) => ipcRenderer.invoke(CANALES.ventanaFijar, fijar),

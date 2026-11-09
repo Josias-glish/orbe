@@ -66,6 +66,12 @@ export class VentanaOrbe {
     this.ventana.setAlwaysOnTop(true, 'screen-saver')
     this.ventana.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
+    // Windows a veces le quita el «siempre encima» a una ventana (al pasar por una app a pantalla completa, al
+    // reiniciarse el Explorador o cuando otra ventana se pone también encima): al perder el foco se vuelve a pedir.
+    this.ventana.on('blur', () => this.reafirmarEncima())
+    this.ventana.on('show', () => this.reafirmarEncima())
+    screen.on('display-metrics-changed', () => this.reafirmarEncima())
+
     this.ventana.once('ready-to-show', () => this.ventana.showInactive())
     this.ventana.on('show', () => this.avisarVisibilidad(true))
     this.ventana.on('hide', () => this.avisarVisibilidad(false))
@@ -108,6 +114,15 @@ export class VentanaOrbe {
     if (this.ventana.isDestroyed()) return
     if (!this.expandido || this.fijada) this.ventana.setAlwaysOnTop(true, 'screen-saver')
     else this.ventana.setAlwaysOnTop(false)
+  }
+
+  /** Vuelve a poner Orbe por encima si le toca estarlo (orbe plegado, o panel fijado), sin robar el foco. */
+  private reafirmarEncima(): void {
+    if (this.ventana.isDestroyed() || !this.ventana.isVisible()) return
+    if (!this.expandido || this.fijada) {
+      this.ventana.setAlwaysOnTop(true, 'screen-saver')
+      this.ventana.moveTop()
+    }
   }
 
   fijar(valor: boolean): void {

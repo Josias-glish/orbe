@@ -1,4 +1,5 @@
 import type {
+  OrigenTextoImagen,
   AccionVista,
   ClaveParte,
   ErrorOrbe,
@@ -18,6 +19,7 @@ import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
 import { MenuVoz } from '../voz/menu-voz'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
+import { MenuTextoImagen } from './ocr-ui'
 import { ConfirmacionAccion } from './confirmacion-accion'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
@@ -53,6 +55,9 @@ export class PanelChat {
   private readonly botonDetenerOrbe: HTMLButtonElement
   private readonly sugerencia: SugerenciaCaptura
   private capturando = false
+  private readonly botonTextoImagen: HTMLButtonElement
+  private readonly menuTextoImagen: MenuTextoImagen
+  private reconociendo = false
   private readonly botonMicro: HTMLButtonElement
   private readonly lector: LectorVoz
   private readonly menuVoz: MenuVoz
@@ -93,6 +98,8 @@ export class PanelChat {
     this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
+    this.botonTextoImagen = porId('texto-imagen')
+    this.menuTextoImagen = new MenuTextoImagen(this.botonTextoImagen, porId('texto-imagen-menu'), (origen) => void this.leerTextoImagen(origen))
     this.botonMicro = porId('microfono')
     let almacen: Storage | null = null
     try {
@@ -270,6 +277,7 @@ export class PanelChat {
 
   /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
   alPulsarEscape(): boolean {
+    if (this.menuTextoImagen.cerrarSiAbierto()) return true
     if (this.menuVoz.cerrarSiAbierto()) return true
     if (this.menuPotencia.cerrarSiAbierto()) return true
     if (this.dictado.grabando) {
@@ -420,6 +428,38 @@ export class PanelChat {
       this.botonCapturar.classList.remove('leyendo')
       if (!this.turno && !this.leyendo) this.cambiarEstadoOrbe('reposo')
       this.evaluarSugerencia()
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Texto de una imagen (OCR de Windows en el equipo, sin pantallazo del monitor)
+  // -------------------------------------------------------------------------------------------
+
+  /** Reconoce el texto de una imagen (ventana, portapapeles o archivo) y lo deja pendiente con su vista previa. */
+  async leerTextoImagen(origen: OrigenTextoImagen): Promise<void> {
+    if (this.reconociendo || this.capturando || this.leyendo) return
+    this.reconociendo = true
+    this.botonTextoImagen.disabled = true
+    this.botonTextoImagen.classList.add('leyendo')
+    if (!this.turno) this.cambiarEstadoOrbe('leyendo')
+    try {
+      const respuesta = await window.orbe.pantallaTextoImagen(origen)
+      if (respuesta.ok) {
+        const lectura = { partes: respuesta.partes, avisos: respuesta.avisos, sugerirCaptura: respuesta.sugerirCaptura }
+        if (respuesta.partes.some((p) => p.clave === 'texto_imagen')) this.barra.abrir('texto_imagen')
+        if (respuesta.partes.length > 0) this.fijarLectura(lectura)
+      } else {
+        this.lista.agregarError(respuesta.error, respuesta.error.reintentable ? () => void this.leerTextoImagen(origen) : undefined)
+      }
+    } catch (e) {
+      this.lista.agregarError(this.errorLocal(e))
+    } finally {
+      this.reconociendo = false
+      this.botonTextoImagen.disabled = false
+      this.botonTextoImagen.classList.remove('leyendo')
+      if (!this.turno && !this.leyendo && !this.capturando) this.cambiarEstadoOrbe('reposo')
+      this.evaluarSugerencia()
+      this.entrada.enfocar()
     }
   }
 

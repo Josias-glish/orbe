@@ -6,6 +6,7 @@ import { leerAjustes } from './ajustes'
 import { ALTO_EXTRA_ORBE, TAM_PANEL_MIN, panelDeVentana } from './geometria'
 import type { ServicioMemoria } from './memoria/servicio'
 import type { CapturaDemo } from './pantalla/captura-demo'
+import type { OcrDemo } from './pantalla/ocr-demo'
 import type { FuenteDemo } from './pantalla/fuente-demo'
 import type { VentanaOrbe } from './ventana'
 
@@ -20,6 +21,7 @@ export interface ExtrasHumo {
   memoria: ServicioMemoria
   /** La captura de mentira de la prueba (para hacerla fallar a propósito y contar cuántas veces se ocultó la ventana). */
   captura: CapturaDemo
+  ocr?: OcrDemo
 }
 
 /**
@@ -519,6 +521,104 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(250)
     comprobar('cerrada, no vuelve mientras sigues escribiendo', await oculto('#sugerencia'))
     await escribir('')
+  }
+
+  /** Texto de una imagen (OCR en el equipo, sin pantallazo): menú, chip, envío, quitar, errores. */
+  const pasosTextoImagen = async ({ fuente, captura, ocr }: ExtrasHumo): Promise<void> => {
+    if (!ocr) return
+    const o: Record<string, unknown> = {}
+    informe.textoImagen = o
+    const oculto = (selector: string): Promise<boolean> => js(`document.querySelector(${JSON.stringify(selector)}).hidden`)
+    const chipsPendientes = (): Promise<string[]> => textosDe('#pendiente .chip .chip-etiqueta')
+    const ultimaRespuesta = (): Promise<string> => js(`[...document.querySelectorAll('.msg.asistente .contenido')].at(-1)?.textContent ?? ''`)
+    const nueva = async (): Promise<void> => {
+      await pulsar('#nueva')
+      await esperar(400)
+    }
+    const ocultadasAntes = captura.ocultadas
+
+    // 8i. El botón abre un menú con las tres fuentes; Esc lo cierra sin hacer nada
+    await nueva()
+    comprobar('hay botón de texto de imagen', await existe('#texto-imagen'))
+    await pulsar('#texto-imagen')
+    comprobar('se abre el menú', await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-opcion', 2000))
+    await esperar(250)
+    o.opciones = await textosDe('#texto-imagen-menu .ocr-opcion-titulo')
+    comprobar('con ventana, portapapeles y archivo', mismos(o.opciones, ['De la ventana', 'Del portapapeles', 'De un archivo…']), o.opciones)
+    await capturar('8i-menu-texto-imagen')
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await esperar(200)
+    comprobar('Esc cierra el menú', await oculto('#texto-imagen-menu'))
+    comprobar('el panel sigue abierto', orbe.estaExpandido)
+    comprobar('no ha leído nada todavía', ocr.pedidos.length === 0, ocr.pedidos)
+
+    // 8j. Del portapapeles: chip «Texto de imagen» con la vista desplegada, sin ocultar Orbe
+    await pulsar('#texto-imagen')
+    await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-opcion', 2000)
+    await pulsar('#texto-imagen-menu .ocr-opcion[data-origen="portapapeles"]')
+    comprobar('aparece el chip del texto de imagen', await esperarSelector('#pendiente:not([hidden]) .chip-texto_imagen', 5000))
+    await esperar(300)
+    o.chips = await chipsPendientes()
+    comprobar('es solo el texto de imagen', mismos(o.chips, ['Texto de imagen']), o.chips)
+    o.vista = await textoDe('#pendiente .chip-vista')
+    comprobar('la vista enseña el texto reconocido', String(o.vista).includes('ORBE30'), o.vista)
+    comprobar('no es un pantallazo: Orbe no se ocultó', captura.ocultadas === ocultadasAntes, [captura.ocultadas, ocultadasAntes])
+    comprobar('la copia temporal se liberó', ocr.liberadas === 1, ocr.liberadas)
+    comprobar('sigue siempre encima', orbe.ventana.isAlwaysOnTop())
+    await capturar('8j-texto-imagen')
+
+    // 8k. Se envía: el modelo recibe el texto (no una imagen) y el chip cuelga del mensaje
+    await escribirYEnviar('¿Qué código de descuento pone?')
+    await esperar(500)
+    o.adjuntos = await textosDe('.msg.usuario .adjuntos .chip .chip-etiqueta')
+    comprobar('el chip cuelga del mensaje', mismos(o.adjuntos, ['Texto de imagen']), o.adjuntos)
+    await esperarFin(15_000)
+    await esperar(400)
+    o.acuse = (await ultimaRespuesta()).slice(0, 80)
+    comprobar('el modelo recibió el texto de imagen', String(o.acuse).includes('texto de imagen') && !String(o.acuse).includes('captura'), o.acuse)
+
+    // 8l. Se suma a la lectura del ojo y se puede quitar dejando lo demás
+    await nueva()
+    fuente.escenario = 'contenido'
+    await pulsar('#leer')
+    await esperarSelector('#pendiente:not([hidden]) .chip', 4000)
+    await pulsar('#texto-imagen')
+    await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-opcion', 2000)
+    await pulsar('#texto-imagen-menu .ocr-opcion[data-origen="ventana"]')
+    await esperarSelector('#pendiente .chip-texto_imagen', 5000)
+    await esperar(300)
+    o.chipsJuntos = await chipsPendientes()
+    comprobar('ventana, contenido y texto de imagen', mismos(o.chipsJuntos, ['Ventana', 'Contenido', 'Texto de imagen']), o.chipsJuntos)
+    await pulsar('#pendiente .chip-texto_imagen + .chip-quitar')
+    await esperar(400)
+    o.chipsSin = await chipsPendientes()
+    comprobar('quitarlo deja lo demás', mismos(o.chipsSin, ['Ventana', 'Contenido']), o.chipsSin)
+    await pulsar('.pendiente-descartar')
+
+    // 8m. Sin texto en la imagen: lo dice claro, sin «Reintentar»; si falla el OCR, con «Reintentar»
+    await nueva()
+    ocr.sinTexto = true
+    await pulsar('#texto-imagen')
+    await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-opcion', 2000)
+    await pulsar('#texto-imagen-menu .ocr-opcion[data-origen="archivo"]')
+    comprobar('sale la tarjeta de «sin texto»', await esperarSelector('.tarjeta-error', 5000))
+    o.sinTexto = await textoDe('.tarjeta-error .error-titulo')
+    comprobar('dice que no hay texto', o.sinTexto === 'No he encontrado texto', o.sinTexto)
+    ocr.sinTexto = false
+    await nueva()
+    ocr.falla = true
+    await pulsar('#texto-imagen')
+    await esperarSelector('#texto-imagen-menu:not([hidden]) .ocr-opcion', 2000)
+    await pulsar('#texto-imagen-menu .ocr-opcion[data-origen="portapapeles"]')
+    await esperarSelector('.tarjeta-error', 5000)
+    o.error = await textoDe('.tarjeta-error .error-titulo')
+    comprobar('es el error del OCR', o.error === 'No he podido reconocer el texto', o.error)
+    comprobar('con «Reintentar»', await existe('.tarjeta-error .boton-secundario'))
+    await capturar('8k-error-ocr')
+    ocr.falla = false
+    await pulsar('.tarjeta-error .boton-secundario')
+    comprobar('«Reintentar» vuelve a leer', await esperarSelector('#pendiente .chip-texto_imagen', 5000))
+    await pulsar('.pendiente-descartar')
   }
 
   /** Tamaño del panel (se puede cambiar arrastrando un borde) y fondo del chat. */
@@ -1208,6 +1308,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         await pasosPantalla(extras)
         await pasosMemoria(extras)
         await pasosCaptura(extras)
+        await pasosTextoImagen(extras)
         await pasosPanel()
         await pasosAgente()
         await pasosPotencia()

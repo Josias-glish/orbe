@@ -30,6 +30,7 @@ function acuseContexto(turno: TurnoEntrada): string {
     if (contexto.ventana) pantalla.push('ventana')
     if (contexto.seleccion) pantalla.push('selección')
     if (contexto.contenido) pantalla.push('contenido')
+    if (contexto.textoImagen) pantalla.push('texto de imagen')
     if (contexto.imagen) pantalla.push('captura')
     if (pantalla.length > 0) partes.push(`contexto de pantalla: ${pantalla.join(', ')}`)
   }

@@ -690,12 +690,13 @@ kbd {
 .compositor {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 12px 12px;
   border-top: 1px solid var(--linea);
 }
 .entrada {
   flex: 1;
+  min-width: 0;
   min-height: 38px;
   max-height: 120px;
   padding: 8px 12px;
@@ -752,8 +753,9 @@ kbd {
   flex: none;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 35px;
+  height: 35px;
+  margin-bottom: 1.5px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--linea);
@@ -1791,4 +1793,51 @@ kbd {
 }
 #fijar-boton[aria-pressed='false'] svg {
   transform: rotate(35deg);
+}
+
+/* ---- Texto de imagen (OCR en el equipo) ---- */
+.ocr-menu {
+  top: auto;
+  bottom: 64px;
+  right: auto;
+  left: 12px;
+  width: 260px;
+}
+.ocr-menu .memoria-nota {
+  white-space: normal;
+  overflow: visible;
+}
+.ocr-menu-titulo {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto);
+}
+.ocr-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ocr-opcion:hover,
+.ocr-opcion:focus-visible {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.09);
+  outline: none;
+}
+.ocr-opcion-titulo {
+  font-size: 12.5px;
+}
+.ocr-opcion-ayuda {
+  font-size: 11px;
+  color: var(--texto-suave);
 }

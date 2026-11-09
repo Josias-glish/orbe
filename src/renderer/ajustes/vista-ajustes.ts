@@ -18,6 +18,7 @@ const URL_OPENAI = 'https://api.openai.com/v1'
 
 const PREAJUSTES_CHAT: Preajuste[] = [
   { id: 'groq', nombre: 'Groq (con plan gratuito)', url: 'https://api.groq.com/openai/v1', modelo: 'llama-3.3-70b-versatile', nota: 'Los modelos de solo texto no ven imágenes: la captura de pantalla no les sirve.' },
+  { id: 'gemini', nombre: 'Google AI Studio (Gemini, con plan gratuito)', url: 'https://generativelanguage.googleapis.com/v1beta/openai', modelo: 'gemini-flash-latest', nota: 'Crea la clave gratis en aistudio.google.com (Get API key). Ve imágenes y admite el modo agente. Puedes escribir otro modelo, p. ej. «gemini-pro-latest».' },
   { id: 'nvidia', nombre: 'NVIDIA', url: 'https://integrate.api.nvidia.com/v1', modelo: 'moonshotai/kimi-k3' },
   { id: 'openrouter', nombre: 'OpenRouter', url: 'https://openrouter.ai/api/v1', modelo: '', nota: 'Escribe el nombre exacto del modelo (los gratuitos acaban en «:free»).' },
   { id: 'openai', nombre: 'OpenAI', url: URL_OPENAI, modelo: 'gpt-4o-mini' },
@@ -208,7 +209,7 @@ export class VistaAjustes {
       [
         { id: 'cli', nombre: 'Claude con el CLI de Claude (tu sesión, sin clave)' },
         { id: 'api', nombre: 'Claude con la API de Anthropic (con clave)' },
-        { id: 'openai', nombre: 'Otra IA compatible con OpenAI (Groq, NVIDIA, Ollama…)' }
+        { id: 'openai', nombre: 'Otra IA compatible con OpenAI (Google AI Studio, Groq, NVIDIA, Ollama…)' }
       ],
       b.proveedor,
       (id) => {

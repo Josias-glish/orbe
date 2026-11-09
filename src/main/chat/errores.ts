@@ -85,6 +85,22 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
       'No encuentro ninguna ventana que leer. Pon en primer plano la aplicación que quieres que mire y vuelve a pulsar el botón.',
     reintentable: true
   },
+  ocr_no_disponible: {
+    titulo: 'No he podido reconocer el texto',
+    mensaje:
+      'El reconocimiento de texto de Windows no está disponible o ha fallado. Comprueba que tienes instalado el paquete de idioma con «Reconocimiento óptico de caracteres» (Configuración → Hora e idioma → Idioma y región).',
+    reintentable: true
+  },
+  ocr_sin_imagen: {
+    titulo: 'No hay ninguna imagen',
+    mensaje: 'No he encontrado una imagen que leer. Copia una imagen (clic derecho → «Copiar imagen», o Win+Mayús+S) o elige un archivo.',
+    reintentable: false
+  },
+  ocr_sin_texto: {
+    titulo: 'No he encontrado texto',
+    mensaje: 'He mirado la imagen pero no tiene texto que pueda reconocer. Si necesitas que Claude la vea, usa la captura (la cámara).',
+    reintentable: false
+  },
   captura_no_disponible: {
     titulo: 'No he podido hacer la captura',
     mensaje: 'Windows no me ha dejado capturar la pantalla. Inténtalo de nuevo; si sigue igual, mira los detalles técnicos.',

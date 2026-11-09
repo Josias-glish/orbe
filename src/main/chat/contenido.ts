@@ -16,7 +16,7 @@ export type BloqueEntrada =
   | { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png'; data: string } }
 
 const ETIQUETAS_PROPIAS =
-  /<(\/?)(contexto_pantalla|ventana|seleccion|contenido_ventana|captura|memoria|nota_de_la_app|conversacion_anterior|contenido_externo|aviso_app)\b/gi
+  /<(\/?)(contexto_pantalla|ventana|seleccion|contenido_ventana|captura|texto_imagen|memoria|nota_de_la_app|conversacion_anterior|contenido_externo|aviso_app)\b/gi
 
 /** Evita que el contenido de la pantalla cierre o abra nuestras etiquetas (un texto hostil podría intentarlo). */
 export function neutralizarEtiquetas(texto: string): string {
@@ -45,6 +45,11 @@ export function describirContexto(contexto: ContextoPantalla | undefined): strin
   if (contexto.contenido) {
     const recortado = contexto.contenidoRecortado ? ' recortado="true"' : ''
     partes.push(`<contenido_ventana${recortado}>\n${neutralizarEtiquetas(contexto.contenido)}\n</contenido_ventana>`)
+  }
+  if (contexto.textoImagen) {
+    const origen = contexto.textoImagenOrigen ? ` origen="${escaparAtributo(contexto.textoImagenOrigen)}"` : ''
+    const recortado = contexto.textoImagenRecortado ? ' recortado="true"' : ''
+    partes.push(`<texto_imagen${origen}${recortado}>\n${neutralizarEtiquetas(contexto.textoImagen)}\n</texto_imagen>`)
   }
   if (contexto.imagen) {
     partes.push('<captura>Se adjunta una captura de la pantalla del usuario.</captura>')

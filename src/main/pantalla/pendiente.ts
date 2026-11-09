@@ -1,5 +1,6 @@
 import type { ClaveParte, ContextoPantalla, LecturaPantalla } from '../../shared/tipos'
 import type { CapturaHecha } from './captura'
+import type { TextoImagenHecho } from './ocr'
 import type { ResultadoLectura } from './contexto'
 
 /** Un contexto sacado de la reserva para enviarlo; se puede devolver si el envío falla. */
@@ -17,6 +18,8 @@ export class ContextoPendiente {
   private temporizador: NodeJS.Timeout | null = null
   /** Avisos que vienen de la captura (p. ej. «ha salido negra»): se van con ella si se quita. */
   private avisosImagen: string[] = []
+  /** Igual, para el texto reconocido en una imagen. */
+  private avisosTexto: string[] = []
 
   constructor(
     private readonly alCaducar: () => void,
@@ -34,6 +37,7 @@ export class ContextoPendiente {
   establecer(resultado: ResultadoLectura): LecturaPantalla {
     this.actual = { contexto: { ...resultado.contexto }, lectura: copiar(resultado.lectura) }
     this.avisosImagen = []
+    this.avisosTexto = []
     this.armar()
     return copiar(this.actual.lectura)
   }
@@ -55,6 +59,25 @@ export class ContextoPendiente {
     return copiar(actual.lectura)
   }
 
+  /**
+   * Añade (o sustituye) el texto reconocido en una imagen a lo que ya haya leído, o crea un contexto solo con él.
+   * Sus avisos se van con él si se quita.
+   */
+  agregarTextoImagen(hecho: TextoImagenHecho): LecturaPantalla {
+    const actual = this.actual ?? { contexto: {}, lectura: { partes: [], avisos: [], sugerirCaptura: false } }
+    actual.lectura.avisos = actual.lectura.avisos.filter((a) => !this.avisosTexto.includes(a))
+    actual.contexto.textoImagen = hecho.texto
+    actual.contexto.textoImagenOrigen = hecho.origen
+    if (hecho.recortado) actual.contexto.textoImagenRecortado = true
+    else delete actual.contexto.textoImagenRecortado
+    actual.lectura.partes = [...actual.lectura.partes.filter((p) => p.clave !== 'texto_imagen'), { ...hecho.parte }]
+    this.avisosTexto = hecho.avisos.filter((a) => !actual.lectura.avisos.includes(a))
+    actual.lectura.avisos.push(...this.avisosTexto)
+    this.actual = actual
+    this.armar()
+    return copiar(actual.lectura)
+  }
+
   /** Quita un trozo (el usuario no quiere enviarlo). Si no queda nada, descarta todo. */
   quitar(clave: ClaveParte): LecturaPantalla | null {
     if (!this.actual) return null
@@ -70,12 +93,21 @@ export class ContextoPendiente {
         delete c.contenido
         delete c.contenidoRecortado
       },
-      imagen: (c) => delete c.imagen
+      imagen: (c) => delete c.imagen,
+      texto_imagen: (c) => {
+        delete c.textoImagen
+        delete c.textoImagenRecortado
+        delete c.textoImagenOrigen
+      }
     }
     campos[clave](contexto)
     if (clave === 'imagen') {
       lectura.avisos = lectura.avisos.filter((a) => !this.avisosImagen.includes(a))
       this.avisosImagen = []
+    }
+    if (clave === 'texto_imagen') {
+      lectura.avisos = lectura.avisos.filter((a) => !this.avisosTexto.includes(a))
+      this.avisosTexto = []
     }
     if (lectura.partes.length === 0) {
       this.descartar()
@@ -87,6 +119,7 @@ export class ContextoPendiente {
   descartar(): void {
     this.actual = null
     this.avisosImagen = []
+    this.avisosTexto = []
     this.desarmar()
   }
 
