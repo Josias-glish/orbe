@@ -1,6 +1,8 @@
 import { describirPrograma } from '../../shared/tareas'
 import type { EjecucionTarea, EstadoTareas, ProgramaTarea, TareaNueva, TareaVista } from '../../shared/tipos'
 import { crearIcono } from '../chat/contexto-ui'
+import { renderizarMarkdown } from '../chat/markdown'
+import { cuandoCorto, duracion, textoPlano } from './formato'
 
 type Pestana = 'curso' | 'programadas' | 'completadas'
 
@@ -16,20 +18,6 @@ function boton(clase: string, texto: string, alPulsar: () => void): HTMLButtonEl
   b.type = 'button'
   b.addEventListener('click', alPulsar)
   return b
-}
-
-/** «hoy 08:30», «mañana 09:00», «lun 12/11 18:00». */
-export function cuandoCorto(ms: number, ahora = Date.now()): string {
-  const d = new Date(ms)
-  const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  const dia = (x: Date): string => x.toDateString()
-  const hoy = new Date(ahora)
-  const manana = new Date(ahora + 86_400_000)
-  const ayer = new Date(ahora - 86_400_000)
-  if (dia(d) === dia(hoy)) return `hoy ${hora}`
-  if (dia(d) === dia(manana)) return `mañana ${hora}`
-  if (dia(d) === dia(ayer)) return `ayer ${hora}`
-  return `${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'numeric' })} ${hora}`
 }
 
 const ETIQUETA_ESTADO: Record<EjecucionTarea['estado'], string> = {
@@ -71,6 +59,8 @@ export class VistaTareas {
   private pestana: Pestana = 'programadas'
   private editando: TareaNueva | null = null
   private error: string | null = null
+  /** La ejecución abierta a pantalla completa (su resultado entero, con formato), o null para ver las listas. */
+  private detalle: { tareaId: string; ejecucionId: string } | null = null
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -96,6 +86,13 @@ export class VistaTareas {
   cerrar(): void {
     this.raiz.hidden = true
     this.editando = null
+    this.detalle = null
+  }
+
+  private abrirDetalle(t: TareaVista, e: EjecucionTarea): void {
+    this.detalle = { tareaId: t.id, ejecucionId: e.id }
+    this.pintar()
+    this.raiz.querySelector('.memoria-cuerpo')?.scrollTo(0, 0)
   }
 
   private async cargar(): Promise<void> {
@@ -142,9 +139,17 @@ export class VistaTareas {
     volver.title = 'Volver al chat'
     volver.setAttribute('aria-label', 'Volver al chat')
     volver.append(crearIcono('volver', 18))
-    volver.addEventListener('click', () => (this.editando ? ((this.editando = null), this.pintar()) : this.alVolver()))
-    cabecera.append(volver, el('span', 'memoria-titulo', this.editando ? (this.editando.id ? 'Editar tarea' : 'Nueva tarea') : 'Tareas'))
-    if (!this.editando) cabecera.append(boton('boton-memoria', '+ Nueva', () => this.nueva()))
+    volver.addEventListener('click', () => {
+      if (this.editando) this.editando = null
+      else if (this.detalle) this.detalle = null
+      else return this.alVolver()
+      this.pintar()
+    })
+    const abierta = this.ejecucionAbierta()
+    if (!abierta) this.detalle = null
+    const titulo = this.editando ? (this.editando.id ? 'Editar tarea' : 'Nueva tarea') : abierta ? 'Resultado' : 'Tareas'
+    cabecera.append(volver, el('span', 'memoria-titulo', titulo))
+    if (!this.editando && !abierta) cabecera.append(boton('boton-memoria', '+ Nueva', () => this.nueva()))
 
     const cuerpo = el('div', 'memoria-cuerpo tareas-cuerpo')
     if (this.error) cuerpo.append(el('p', 'memoria-error', this.error))
@@ -152,6 +157,8 @@ export class VistaTareas {
 
     if (this.editando) {
       cuerpo.append(this.formulario(this.editando))
+    } else if (abierta) {
+      cuerpo.append(...this.vistaDetalle(abierta.tarea, abierta.e))
     } else {
       const curso = this.enCurso()
       const prog = this.programadas()
@@ -228,12 +235,17 @@ export class VistaTareas {
   private tarjetaProgramada(t: TareaVista): HTMLElement {
     const c = el('article', `tarea${t.activa ? '' : ' tarea-pausada'}`)
     c.append(this.titulo(t, t.activa ? null : 'pausada'))
-    const linea = `${describirPrograma(t.programa)}${t.activa && t.proxima ? ` · próxima: ${cuandoCorto(t.proxima)}` : ''}${t.soloSiHayAlgo ? ' · avisa solo si hay algo' : ''}`
-    c.append(el('p', 'tarea-paso', linea))
-    if (t.ultima?.fin) c.append(el('p', 'memoria-nota', `Última: ${ETIQUETA_ESTADO[t.ultima.estado].toLowerCase()}, ${cuandoCorto(t.ultima.fin)}`))
+    const meta = el('div', 'tarea-meta')
+    meta.append(el('span', undefined, describirPrograma(t.programa)))
+    if (t.activa && t.proxima) meta.append(el('span', 'tarea-proxima', `Próxima: ${cuandoCorto(t.proxima)}`))
+    if (t.soloSiHayAlgo) meta.append(el('span', undefined, 'Avisa solo si hay algo'))
+    c.append(meta)
+    // La última vez, en dos líneas; al pulsarla se abre entera.
+    const ultima = t.historial.find((h) => h.fin !== null)
+    if (ultima) c.append(this.vistaPrevia(t, ultima, `Última · ${ETIQUETA_ESTADO[ultima.estado].toLowerCase()} · ${cuandoCorto(ultima.fin ?? ultima.inicio)}`))
     const acciones = el('div', 'tarea-acciones')
     acciones.append(
-      boton('boton-memoria', 'Hacer ahora', () => void this.hacer(() => window.orbe.tareasEjecutar(t.id))),
+      boton('boton-memoria primario', 'Hacer ahora', () => void this.hacer(() => window.orbe.tareasEjecutar(t.id))),
       boton('boton-memoria', t.activa ? 'Pausar' : 'Reanudar', () => void this.hacer(() => window.orbe.tareasGuardar({ ...this.aNueva(t), activa: !t.activa }))),
       boton('boton-memoria', 'Editar', () => {
         this.editando = this.aNueva(t)
@@ -245,15 +257,98 @@ export class VistaTareas {
     return c
   }
 
+  /** Un trozo del resultado (texto corrido, 3 líneas como mucho) que abre el resultado entero al pulsarlo. */
+  private vistaPrevia(t: TareaVista, e: EjecucionTarea, cabecera?: string): HTMLElement {
+    const b = el('button', 'tarea-previa')
+    b.type = 'button'
+    b.title = 'Ver el resultado completo'
+    if (cabecera) b.append(el('span', 'tarea-previa-cabecera', cabecera))
+    b.append(el('span', 'tarea-previa-texto', textoPlano(e.resultado) || 'Sin texto.'), el('span', 'tarea-previa-mas', 'Ver completo ›'))
+    b.addEventListener('click', () => this.abrirDetalle(t, e))
+    return b
+  }
+
   private tarjetaCompletada(t: TareaVista, e: EjecucionTarea): HTMLElement {
-    const c = el('details', `tarea tarea-${e.estado}`)
-    const resumen = el('summary')
-    resumen.append(this.titulo(t, e.estado), el('span', 'memoria-nota', cuandoCorto(e.fin ?? e.inicio)))
-    const texto = el('div', 'tarea-resultado', e.resultado)
-    const acciones = el('div', 'tarea-acciones')
-    acciones.append(boton('boton-memoria', 'Repetir', () => void this.hacer(() => window.orbe.tareasEjecutar(t.id))))
-    c.append(resumen, texto, acciones)
+    const c = el('article', `tarea tarea-${e.estado}`)
+    const fila = el('div', 'tarea-titulo')
+    fila.append(el('strong', undefined, t.titulo))
+    const meta = el('div', 'tarea-meta')
+    meta.append(
+      el('span', `tarea-insignia insignia-${e.estado}`, ETIQUETA_ESTADO[e.estado]),
+      el('span', undefined, cuandoCorto(e.fin ?? e.inicio)),
+      ...(e.fin ? [el('span', undefined, duracion(e.fin - e.inicio))] : [])
+    )
+    c.append(fila, meta, this.vistaPrevia(t, e))
     return c
+  }
+
+  private ejecucionAbierta(): { tarea: TareaVista; e: EjecucionTarea } | null {
+    if (!this.detalle || !this.estado) return null
+    const tarea = this.estado.tareas.find((t) => t.id === this.detalle!.tareaId)
+    const e = tarea?.historial.find((h) => h.id === this.detalle!.ejecucionId)
+    return tarea && e ? { tarea, e } : null
+  }
+
+  /** El resultado entero de una ejecución, con formato (listas, negritas, enlaces que se abren en el navegador). */
+  private vistaDetalle(t: TareaVista, e: EjecucionTarea): HTMLElement[] {
+    const cabeza = el('div', 'tarea-detalle-cabeza')
+    cabeza.append(el('h3', 'tarea-detalle-titulo', t.titulo))
+    const meta = el('div', 'tarea-meta')
+    meta.append(
+      el('span', `tarea-insignia insignia-${e.estado}`, ETIQUETA_ESTADO[e.estado]),
+      el('span', undefined, new Date(e.fin ?? e.inicio).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })),
+      ...(e.fin ? [el('span', undefined, `tardó ${duracion(e.fin - e.inicio)}`)] : []),
+      el('span', undefined, describirPrograma(t.programa))
+    )
+    cabeza.append(meta)
+
+    const texto = el('div', 'contenido tarea-detalle-texto')
+    // Seguro: renderizarMarkdown devuelve HTML saneado con DOMPurify (sin scripts, estilos ni imágenes), como en el chat.
+    texto.innerHTML = renderizarMarkdown(e.resultado || 'Sin texto.')
+    texto.addEventListener('click', (ev) => {
+      const enlace = (ev.target as HTMLElement).closest('a[href]')
+      if (!enlace) return
+      ev.preventDefault()
+      window.orbe.abrirEnlace(enlace.getAttribute('href') ?? '')
+    })
+
+    const acciones = el('div', 'tarea-acciones')
+    const copiar = boton('boton-memoria', 'Copiar', () => {
+      void navigator.clipboard
+        .writeText(e.resultado)
+        .then(() => (copiar.textContent = 'Copiado ✓'))
+        .catch(() => (copiar.textContent = 'No se pudo copiar'))
+    })
+    acciones.append(
+      boton('boton-memoria primario', 'Repetir ahora', () => {
+        this.detalle = null
+        this.pestana = 'curso'
+        void this.hacer(() => window.orbe.tareasEjecutar(t.id))
+      }),
+      copiar,
+      boton('boton-memoria', 'Editar la tarea', () => {
+        this.detalle = null
+        this.editando = this.aNueva(t)
+        this.pintar()
+      })
+    )
+
+    const partes: HTMLElement[] = [cabeza, texto, acciones]
+    // Las demás veces que se hizo, para saltar de una a otra.
+    const otras = t.historial.filter((h) => h.fin !== null && h.id !== e.id).slice(0, 8)
+    if (otras.length > 0) {
+      partes.push(el('p', 'uso-subtitulo', 'Otras veces'))
+      const lista = el('div', 'tarea-otras')
+      for (const h of otras) {
+        const b = el('button', 'tarea-otra')
+        b.type = 'button'
+        b.append(el('span', `tarea-insignia insignia-${h.estado}`, ETIQUETA_ESTADO[h.estado]), el('span', 'tarea-otra-cuando', cuandoCorto(h.fin ?? h.inicio)), el('span', 'tarea-otra-texto', textoPlano(h.resultado)))
+        b.addEventListener('click', () => this.abrirDetalle(t, h))
+        lista.append(b)
+      }
+      partes.push(lista)
+    }
+    return partes
   }
 
   private titulo(t: TareaVista, estado: EjecucionTarea['estado'] | 'pausada' | null): HTMLElement {
