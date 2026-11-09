@@ -3,6 +3,8 @@ import { app, Notification, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
+import { registrarCofre } from './cofre/electron'
+import { asegurarReglas } from './agente/reglas'
 import { registrarPersonaje } from './personaje'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
@@ -141,6 +143,16 @@ app.whenReady().then(async () => {
   const configFigura = modoHumo ? resolverConfig({}, {}) : config
   registrarPersonaje({ ventana: orbe, config: configFigura })
   const actividad = await registrarConectores({ ventana: orbe, config: configFigura, carpetaDatos: datos, modoHumo })
+
+  // Seguridad (Etapa 0): el cofre cifrado de los conectores y las reglas de permisos. En la prueba de humo, `datos` es
+  // la carpeta temporal de la prueba: nunca toca el cofre ni las reglas reales.
+  const cofre = registrarCofre(orbe.ventana, join(datos, 'cofre.bin'))
+  actividad.filtrarCon((texto) => cofre.tachar(texto))
+  try {
+    if (asegurarReglas(join(datos, 'reglas.json'))) console.warn('[orbe] He creado reglas.json con las reglas por defecto.')
+  } catch {
+    console.warn('[orbe] No he podido crear reglas.json: valen las reglas por defecto.')
+  }
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
     archivoConversacion: join(datos, 'conversacion.json'),

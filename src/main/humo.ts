@@ -964,9 +964,9 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('#ajustes-boton')
     await esperarSelector('#ajustes:not([hidden]) .ajuste-seccion', 3000)
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
-    comprobar('tiene las cinco secciones (con «Personaje y conectores» e «Identidad»)', (await textosDe('#ajustes .ajuste-titulo')).length === 5, await textosDe('#ajustes .ajuste-titulo'))
+    comprobar('tiene las seis secciones (con «Identidad» y «Conectores»)', (await textosDe('#ajustes .ajuste-titulo')).length === 6, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
-    comprobar('la configuración se organiza en 5 grupos', (await contar('#ajustes .ajustes-grupo')) === 5)
+    comprobar('la configuración se organiza en 6 grupos', (await contar('#ajustes .ajustes-grupo')) === 6)
     const lista = await js<{ visible: number; contenido: number }>(`(() => { const l = document.querySelector('#ajustes .ajustes-grupos'); return { visible: l.clientHeight, contenido: l.scrollHeight } })()`)
     comprobar('la lista de grupos se ve entera (no se aplasta en un panel bajo)', lista.visible >= lista.contenido, lista)
     await esperar(300)
@@ -998,7 +998,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await capturar('11b-ajustes-rellenos')
 
     // Guardar: el .env recibe los cambios y la clave nunca vuelve a la pantalla
-    await js(`document.querySelector('#ajustes .boton-memoria.primario').click()`)
+    await js(`document.querySelector('#ajustes .memoria-acciones .boton-memoria.primario').click()`)
     await esperar(800)
     v.mensaje = await textoDe('#ajustes .memoria-cuerpo')
     comprobar('avisa de que se guarda y reinicia', String(v.mensaje).includes('Orbe se está reiniciando'), v.mensaje)
@@ -1010,6 +1010,38 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('la clave no queda en el DOM como texto visible', !(await js<string>(`document.getElementById('ajustes').innerText`)).includes('gsk_clave-de-prueba'))
     comprobar('hay un botón para cerrar Orbe por completo', /Cerrar Orbe por completo/.test(await textoDe('#ajustes')))
     await capturar('11c-ajustes-guardado')
+
+    // Conectores: un secreto de mentira entra cifrado en el cofre (de la carpeta temporal), no vuelve a la pantalla y se borra
+    const secretoHumo = 'sb_secret_HumoDePrueba1234567890'
+    const archivoCofre = join(app.getPath('userData'), 'cofre.bin')
+    await js(`document.querySelector('#ajustes .memoria-cabecera .boton-icono').click()`)
+    await esperar(300)
+    await js(`document.querySelector('#ajustes .ajustes-grupo[data-grupo="5"]').click()`)
+    await esperar(300)
+    v.filas = await contar('#ajustes .cofre-fila')
+    comprobar('Conectores enseña los seis secretos posibles, todos sin guardar', v.filas === 6 && (await contar('#ajustes .cofre-estado.guardado')) === 0, v.filas)
+    comprobar('en Conectores no aparece «Guardar y reiniciar»', !/Guardar y reiniciar/.test(await textoDe('#ajustes .memoria-cuerpo')))
+    comprobar('el campo del secreto es de contraseña', await js<boolean>(`document.querySelector('#ajustes input[aria-label="Clave secreta de Supabase"]').type === 'password'`))
+    await poner('#ajustes input[aria-label="Clave secreta de Supabase"]', secretoHumo)
+    await js(`document.querySelector('#ajustes .cofre-fila[data-clave="supabase.secret"] .boton-memoria.primario').click()`)
+    await esperar(600)
+    comprobar('al guardar, el secreto queda «Guardado»', /Guardado/.test(await textoDe('#ajustes .cofre-fila[data-clave="supabase.secret"] .cofre-estado')))
+    comprobar('el secreto no vuelve a la pantalla', !(await js<string>(`document.getElementById('ajustes').innerHTML`)).includes(secretoHumo) && (await js<string>(`document.querySelector('#ajustes input[aria-label="Clave secreta de Supabase"]').value`)) === '')
+    let cofreBin = Buffer.alloc(0)
+    try {
+      cofreBin = readFileSync(archivoCofre)
+    } catch {
+      // se comprueba abajo
+    }
+    comprobar('cofre.bin existe y está cifrado (el secreto no aparece en claro)', cofreBin.length > 0 && !cofreBin.includes(Buffer.from(secretoHumo)) && !cofreBin.includes(Buffer.from('supabase.secret')), cofreBin.length)
+    comprobar('el secreto no acaba en el .env', !readFileSync(archivoEnv, 'utf8').includes(secretoHumo))
+    await capturar('11d-conectores')
+    await js(`document.querySelector('#ajustes .cofre-fila[data-clave="supabase.secret"] .boton-memoria.peligro').click()`)
+    await esperar(200)
+    comprobar('borrar pide un segundo clic', /Pulsa otra vez/.test(await textoDe('#ajustes .cofre-fila[data-clave="supabase.secret"]')))
+    await js(`document.querySelector('#ajustes .cofre-fila[data-clave="supabase.secret"] .boton-memoria.peligro').click()`)
+    await esperar(600)
+    comprobar('y al confirmar queda «Sin guardar»', (await contar('#ajustes .cofre-estado.guardado')) === 0)
 
     // Esc vuelve al chat sin cerrar el panel
     await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)

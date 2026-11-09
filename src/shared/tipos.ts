@@ -1,4 +1,5 @@
 import type { ConfigIdentidad } from './identidad'
+import type { EstadoCofre, ResultadoCofre } from './cofre'
 /** Tipos y canales compartidos entre el proceso principal, el preload y la interfaz. */
 
 export type EstadoOrbe = 'reposo' | 'leyendo' | 'pensando' | 'respondiendo' | 'escuchando' | 'actuando'
@@ -70,7 +71,11 @@ export const CANALES = {
   tareasEjecutar: 'tareas:ejecutar',
   tareasCancelar: 'tareas:cancelar',
   tareasResponder: 'tareas:responder',
-  tareasCambio: 'tareas:cambio'
+  tareasCambio: 'tareas:cambio',
+  // El cofre no tiene canal de lectura de valores: solo estado (booleanos), guardar y borrar.
+  cofreEstado: 'cofre:estado',
+  cofreGuardar: 'cofre:guardar',
+  cofreBorrar: 'cofre:borrar'
 } as const
 
 export interface EstadoVentana {
@@ -643,4 +648,10 @@ export interface ApiOrbe {
   memoriaActivar(activa: boolean): Promise<ResultadoMemoria>
   memoriaCarpeta(): void
   memoriaVaciar(): Promise<ResultadoMemoria>
+
+  /** Qué secretos hay guardados en el cofre (solo sí o no, nunca el valor). */
+  cofreEstado(): Promise<EstadoCofre>
+  /** Guarda un secreto de la lista `SECRETOS`; el valor viaja una sola vez hacia el proceso principal. */
+  cofreGuardar(clave: string, valor: string): Promise<ResultadoCofre>
+  cofreBorrar(clave: string): Promise<ResultadoCofre>
 }

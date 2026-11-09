@@ -2514,6 +2514,52 @@ select.memoria-campo {
   color: var(--texto-suave);
 }
 
+/* Conectores: secretos del cofre. Solo se ve si hay algo guardado, nunca el valor. */
+.cofre-servicio {
+  margin: 10px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+.cofre-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+}
+.cofre-cabeza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cofre-estado {
+  flex: none;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--texto-suave);
+  border: 1px solid var(--linea);
+}
+.cofre-estado.guardado {
+  color: var(--cian);
+  border-color: var(--cian);
+}
+.cofre-fila .ajuste-clave {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cofre-fila .ajuste-clave .memoria-campo {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 /* ---------- Tareas: tarjetas compactas y resultado a pantalla completa ---------- */
 .tarea .tarea-titulo strong {
   font-size: 13.5px;

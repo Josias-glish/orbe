@@ -88,7 +88,11 @@ const api: ApiOrbe = {
   memoriaImportar: () => ipcRenderer.invoke(CANALES.memoriaImportar),
   memoriaActivar: (activa) => ipcRenderer.invoke(CANALES.memoriaActivar, activa),
   memoriaCarpeta: () => ipcRenderer.send(CANALES.memoriaCarpeta),
-  memoriaVaciar: () => ipcRenderer.invoke(CANALES.memoriaVaciar)
+  memoriaVaciar: () => ipcRenderer.invoke(CANALES.memoriaVaciar),
+
+  cofreEstado: () => ipcRenderer.invoke(CANALES.cofreEstado),
+  cofreGuardar: (clave, valor) => ipcRenderer.invoke(CANALES.cofreGuardar, clave, valor),
+  cofreBorrar: (clave) => ipcRenderer.invoke(CANALES.cofreBorrar, clave)
 }
 
 contextBridge.exposeInMainWorld('orbe', api)

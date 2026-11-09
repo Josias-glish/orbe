@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { perfilDe, presentacionIdentidad } from '../../shared/identidad'
 import type { InfoChat } from '../../shared/tipos'
 import type { RegistroHerramientas } from '../agente/registro'
+import { leerReglas } from '../agente/reglas'
 import { agenteActivo, type OpcionesAgente } from '../agente/sesion'
 import { nombreLegibleModelo, type Config } from '../entorno'
 import type { ProveedorChat } from './proveedor'
@@ -39,6 +40,10 @@ export function crearProveedor(
   registro?: RegistroHerramientas
 ): ProveedorChat {
   const agente = opcionesAgente(config, registro)
+  if (agente) {
+    const rutaReglas = join(datosApp, 'reglas.json')
+    agente.reglas = () => leerReglas(rutaReglas)
+  }
   const identidad = presentacionIdentidad(perfilDe(config.identidad))
   if (config.proveedor === 'api') {
     return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria, identidad, agente })

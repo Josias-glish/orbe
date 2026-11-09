@@ -32,7 +32,8 @@ Versión actual: ver `package.json`. Historial de versiones en las releases de G
 |---|---|
 | `src/main/` | Proceso principal: ventana, bandeja, configuración (`entorno.ts`, `configuracion.ts`), humo (`humo.ts`) |
 | `src/main/chat/` | Proveedores (`proveedor-cli.ts`, `-api.ts`, `-openai.ts`), `prompt-sistema.ts`, `fabrica.ts` |
-| `src/main/agente/` | Modo agente: herramientas (`herramientas/`), `politica.ts` (permisos), `servidor-mcp.ts` (el CLI usa las herramientas de Orbe por MCP como `mcp__orbe__*`), `envoltorio.ts` (contenido externo = datos) |
+| `src/main/cofre/` | Cofre cifrado (`cofre.bin`, `safeStorage`): `cofre.ts`, `ipc.ts` (estado/guardar/borrar, sin lectura), `electron.ts`. Lista cerrada de secretos en `src/shared/cofre.ts` |
+| `src/main/agente/` | Modo agente: herramientas (`herramientas/`), `politica.ts` (permisos), `reglas.ts` (`reglas.json`, 4 niveles + mínimos fijos), `servidor-mcp.ts` (el CLI usa las herramientas de Orbe por MCP como `mcp__orbe__*`), `envoltorio.ts` (contenido externo = datos) |
 | `src/main/tareas/` | Tareas de fondo: programación, cola, permisos, notificaciones |
 | `src/main/uso/` | Registro de consumo y tarifas |
 | `src/main/memoria/` | Memoria del usuario y detección de secretos (`secretos.ts`) |
@@ -72,12 +73,16 @@ prueba de humo, «control de visibilidad», «Esc corta la voz», «voz de Windo
 
 ## Estado y siguiente trabajo (Fase 4, aprobada)
 
-Hecho: v1.4.x (barra lateral, tareas tipo dots, consumo, gestos), v1.5.0 (Atlas), v1.5.1 (arreglo de Configuración).
+Hecho: v1.4.x (barra lateral, tareas tipo dots, consumo, gestos), v1.5.0 (Atlas), v1.5.1 (arreglo de Configuración),
+v1.6.0 (**Etapa 0, Seguridad**: cofre cifrado, `reglas.json`, Ajustes → Conectores, tachado de secretos en Actividad).
+
+Notas de la Etapa 0 para las siguientes: una herramienta de conector declara `accion` (p. ej. `gmail.borrador`) y la
+`Politica` aplica `reglas.json`; los conectores leen sus secretos con `cofre.leer()` en el proceso principal. Falta pasar
+la orden original del usuario a `Politica` (`ordenUsuario`) cuando exista la primera acción `si_lo_pediste` (Etapa 1):
+hasta entonces ese modo siempre pregunta.
 
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-0. **Seguridad**: cofre cifrado con `safeStorage` (`cofre.bin`), reglas de permisos en 4 niveles (`reglas.json`) y
-   pantalla Ajustes → Conectores para guardar secretos sin mostrarlos nunca.
 1. **Gmail**: API de Gmail con OAuth de escritorio (loopback 127.0.0.1 + PKCE), solo `gmail.readonly` y `gmail.compose`.
 2. **Instagram (lectura)**: API de Instagram con inicio de sesión de Instagram, Standard Access, sin revisión de Meta.
 3. **Contenido**: pestaña «Contenido»; textos con el CLI de Claude; diseños **exportados en PNG desde Claude Design**

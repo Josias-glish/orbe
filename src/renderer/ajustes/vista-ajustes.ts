@@ -1,6 +1,7 @@
 import { esIdIdentidad, perfilDe, type ConfigIdentidad } from '../../shared/identidad'
 import { DISENOS } from '../../shared/disenos'
 import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
+import { SECRETOS, type DefinicionSecreto, type EstadoCofre, type ResultadoCofre } from '../../shared/cofre'
 import { crearIcono } from '../chat/contexto-ui'
 
 type Proveedor = 'cli' | 'api' | 'openai'
@@ -81,8 +82,14 @@ export class VistaAjustes {
   private borrador: Borrador | null = null
   private mensaje: { texto: string; error: boolean } | null = null
   private guardando = false
-  /** El grupo abierto (0…4) o null para ver la lista de grupos: así no está todo en una sola lista larga. */
+  /** El grupo abierto (0…5) o null para ver la lista de grupos: así no está todo en una sola lista larga. */
   private grupo: number | null = null
+  /** Qué hay en el cofre (solo sí o no por clave: los valores nunca llegan a la interfaz). */
+  private cofre: EstadoCofre | null = null
+  private cofreMensaje: { texto: string; error: boolean } | null = null
+  /** La clave cuyo «Borrar» ya se pulsó una vez (el segundo clic borra). */
+  private borrarPendiente: string | null = null
+  private cofreOcupado = false
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -97,6 +104,13 @@ export class VistaAjustes {
     this.raiz.hidden = false
     this.mensaje = null
     this.guardando = false
+    this.cofreMensaje = null
+    this.borrarPendiente = null
+    try {
+      this.cofre = await window.orbe.cofreEstado()
+    } catch {
+      this.cofre = { disponible: false, error: 'No he podido consultar el cofre.', guardados: {} }
+    }
     try {
       this.vista = await window.orbe.configLeer()
       const v = this.vista
@@ -142,8 +156,108 @@ export class VistaAjustes {
       `${figura} · avisos de Claude Code ${b.eventos ? 'activados' : 'apagados'}`,
       b.dictado.url ? `${host(b.dictado.url)} · ${b.dictado.modelo}` : 'Sin configurar',
       b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows',
-      b.identidad.id === 'orbe' ? 'Orbe (cercano, de tú)' : `${perfilDe(b.identidad).nombre} · trata de «${perfilDe(b.identidad).trato}»`
+      b.identidad.id === 'orbe' ? 'Orbe (cercano, de tú)' : `${perfilDe(b.identidad).nombre} · trata de «${perfilDe(b.identidad).trato}»`,
+      this.resumenCofre()
     ]
+  }
+
+  private resumenCofre(): string {
+    if (!this.cofre?.disponible) return 'Cofre no disponible'
+    const n = SECRETOS.filter((s) => this.cofre?.guardados[s.clave]).length
+    return n === 0 ? 'Cofre cifrado · nada guardado' : `Cofre cifrado · ${n} ${n === 1 ? 'secreto guardado' : 'secretos guardados'}`
+  }
+
+  /**
+   * Conectores: cada secreto se guarda o se borra al momento (sin reiniciar). El campo es de contraseña, se vacía
+   * nada más pulsar Guardar y nunca se rellena con lo guardado: la interfaz solo sabe si hay algo o no.
+   */
+  private seccionConectores(): HTMLElement[] {
+    const estado = this.cofre
+    const hijos: HTMLElement[] = []
+    if (!estado?.disponible) {
+      hijos.push(el('p', 'memoria-error', estado?.error ?? 'El cofre no está disponible.'))
+      return hijos
+    }
+    const servicios = [...new Set(SECRETOS.map((s) => s.servicio))]
+    for (const servicio of servicios) {
+      hijos.push(el('h4', 'cofre-servicio', servicio))
+      for (const def of SECRETOS.filter((s) => s.servicio === servicio)) hijos.push(this.filaSecreto(def, estado.guardados[def.clave] === true))
+    }
+    if (this.cofreMensaje) hijos.push(el('p', this.cofreMensaje.error ? 'memoria-error' : 'memoria-nota', this.cofreMensaje.texto))
+    hijos.push(
+      el(
+        'p',
+        'memoria-nota',
+        'Se cifran con el cifrado de Windows (DPAPI), ligado a tu usuario, en cofre.bin. Orbe nunca los enseña, ni aquí ni en el chat, ni los manda al modelo. Si los copiaste, el portapapeles se vacía al guardar.'
+      )
+    )
+    return hijos
+  }
+
+  private filaSecreto(def: DefinicionSecreto, guardado: boolean): HTMLElement {
+    const fila = el('div', 'cofre-fila')
+    fila.dataset['clave'] = def.clave
+    const cabeza = el('div', 'cofre-cabeza')
+    cabeza.append(el('span', 'ajuste-etiqueta', def.nombre), el('span', `cofre-estado${guardado ? ' guardado' : ''}`, guardado ? 'Guardado' : 'Sin guardar'))
+    fila.append(cabeza)
+    const caja = el('div', 'ajuste-clave')
+    if (def.manual) {
+      const entrada = el('input', 'memoria-campo')
+      entrada.type = 'password'
+      entrada.autocomplete = 'off'
+      entrada.spellcheck = false
+      entrada.setAttribute('aria-label', def.nombre)
+      entrada.placeholder = guardado ? 'Pega uno nuevo para sustituirlo' : 'Pega aquí el valor'
+      const guardar = el('button', 'boton-memoria primario', 'Guardar')
+      guardar.type = 'button'
+      guardar.disabled = this.cofreOcupado
+      const enviar = (): void => {
+        const valor = entrada.value
+        // El valor sale del campo una sola vez: se vacía antes de enviarlo.
+        entrada.value = ''
+        if (valor) void this.cofreAccion(() => window.orbe.cofreGuardar(def.clave, valor), `${def.nombre}: guardado y cifrado.`)
+      }
+      guardar.addEventListener('click', enviar)
+      entrada.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') enviar()
+      })
+      caja.append(entrada, guardar)
+    }
+    if (guardado) {
+      const pendiente = this.borrarPendiente === def.clave
+      const borrar = el('button', 'boton-memoria peligro', pendiente ? '¿Seguro? Pulsa otra vez' : def.manual ? 'Borrar' : 'Revocar')
+      borrar.type = 'button'
+      borrar.disabled = this.cofreOcupado
+      borrar.addEventListener('click', () => {
+        if (!pendiente) {
+          this.borrarPendiente = def.clave
+          this.pintar()
+          return
+        }
+        this.borrarPendiente = null
+        void this.cofreAccion(() => window.orbe.cofreBorrar(def.clave), `${def.nombre}: borrado del cofre.`)
+      })
+      caja.append(borrar)
+    }
+    if (caja.childElementCount > 0) fila.append(caja)
+    fila.append(el('span', 'ajuste-ayuda', def.ayuda))
+    return fila
+  }
+
+  private async cofreAccion(accion: () => Promise<ResultadoCofre>, exito: string): Promise<void> {
+    if (this.cofreOcupado) return
+    this.cofreOcupado = true
+    this.cofreMensaje = null
+    this.pintar()
+    try {
+      const r = await accion()
+      this.cofre = r.estado
+      this.cofreMensaje = r.ok ? { texto: exito, error: false } : { texto: r.error, error: true }
+    } catch {
+      this.cofreMensaje = { texto: 'No se pudo hablar con el cofre.', error: true }
+    }
+    this.cofreOcupado = false
+    this.pintar()
   }
 
   // -------------------------------------------------------------------------------------------
@@ -234,7 +348,8 @@ export class VistaAjustes {
     volver.title = 'Volver al chat'
     volver.setAttribute('aria-label', 'Volver al chat')
     volver.append(crearIcono('volver', 18))
-    const grupos = ['Inteligencia', 'Personaje y conectores', 'Dictado (micrófono)', 'Voz neuronal', 'Identidad']
+    const grupos = ['Inteligencia', 'Personaje y avisos', 'Dictado (micrófono)', 'Voz neuronal', 'Identidad', 'Conectores']
+    const GRUPO_CONECTORES = 5
     volver.addEventListener('click', () => {
       if (this.grupo === null) this.alVolver()
       else {
@@ -344,7 +459,7 @@ export class VistaAjustes {
       )
     }
 
-    // --- Personaje y conectores ---
+    // --- Personaje y avisos ---
     const apariencia = this.selector(
       [
         { id: '3d', nombre: 'Personaje 3D (el conejo)' },
@@ -437,17 +552,19 @@ export class VistaAjustes {
 
     const secciones = [
       this.seccion('Quién responde', ...responde),
-      this.seccion('Personaje y conectores', ...secPersonaje),
+      this.seccion('Personaje y avisos', ...secPersonaje),
       this.seccion('Dictado (micrófono)', ...secDictado),
       this.seccion('Voz neuronal (leer en voz alta)', ...secVoz),
-      this.seccion('Identidad', ...secIdentidad)
+      this.seccion('Identidad', ...secIdentidad),
+      this.seccion('Conectores · cofre cifrado', ...this.seccionConectores())
     ]
+    secciones[GRUPO_CONECTORES]!.classList.add('ajustes-conectores')
     // Todas las secciones siguen en la página (lo que cambies en una no se pierde al ir a otra), pero solo se ve
     // la del grupo abierto; sin grupo abierto se ve la lista de grupos con lo que tiene puesto cada uno.
     secciones.forEach((sec, i) => (sec.hidden = this.grupo !== i))
     if (this.grupo === null) {
       const lista = el('div', 'ajustes-grupos')
-      const iconos = ['🧠', '🐰', '🎙', '🔊', '🎩']
+      const iconos = ['🧠', '🐰', '🎙', '🔊', '🎩', '🔐']
       const resumen = this.resumenes(b)
       grupos.forEach((nombre, i) => {
         const g = el('button', 'ajustes-grupo')
@@ -477,11 +594,14 @@ export class VistaAjustes {
     cancelar.type = 'button'
     cancelar.addEventListener('click', () => this.alVolver())
     acciones.append(guardar, cancelar)
-    cuerpo.append(acciones)
-    if (this.mensaje) cuerpo.append(el('p', this.mensaje.error ? 'memoria-error' : 'memoria-nota', this.mensaje.texto))
-    cuerpo.append(
-      el('p', 'memoria-nota', 'Las claves se guardan en el archivo .env de tu equipo y nunca vuelven a mostrarse aquí. Al guardar, Orbe se reinicia para aplicar los cambios.')
-    )
+    // En Conectores cada secreto se guarda en el momento: el botón de reiniciar no pinta nada ahí.
+    if (this.grupo !== GRUPO_CONECTORES) {
+      cuerpo.append(acciones)
+      if (this.mensaje) cuerpo.append(el('p', this.mensaje.error ? 'memoria-error' : 'memoria-nota', this.mensaje.texto))
+      cuerpo.append(
+        el('p', 'memoria-nota', 'Las claves se guardan en el archivo .env de tu equipo y nunca vuelven a mostrarse aquí. Al guardar, Orbe se reinicia para aplicar los cambios.')
+      )
+    }
 
     const salir = el('button', 'boton-memoria peligro', 'Cerrar Orbe por completo')
     salir.type = 'button'

@@ -52,6 +52,11 @@ export interface Herramienta<T = unknown> {
   descripcion: string
   esquema: EsquemaEntrada
   nivel: NivelPermiso
+  /**
+   * La acción de conector que hace (p. ej. `ig.publicar`). Si la declara, manda `reglas.json` (con sus mínimos fijos)
+   * en vez de `nivel`; las herramientas sin conector no la llevan y siguen como siempre.
+   */
+  accion?: string
   /** Comprueba y limpia lo que mandó el modelo; nunca se ejecuta nada con entrada sin validar. */
   validar(entrada: unknown): Validacion<T>
   /** La línea del chat («Buscando: tiempo en Lima»). */

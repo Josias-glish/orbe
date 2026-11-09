@@ -48,7 +48,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 ```
 
 ## Controles
-- **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y conectores, Dictado y Voz). En la cabecera solo quedan la potencia, conversación nueva, la chincheta y cerrar.
+- **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y avisos, Dictado, Voz, Identidad y Conectores). En la cabecera solo quedan la potencia, conversación nueva, la chincheta y cerrar.
 - **Doble clic** en el personaje: abrir o cerrar el chat (también **Ctrl + Mayús + Espacio** o la bandeja). Un **clic** solo lo hace jugar (salta, saluda, baila…), así no se abre el chat por tocarlo sin querer. **Esc** cierra el panel.
 - **Solo se toca el centro del personaje**: en Windows y macOS, el resto de su cuadro (las esquinas y los lados transparentes) deja pasar los clics a lo que haya debajo, así no tapa pestañas ni botones de otras aplicaciones. Con el panel abierto, igual: solo el panel y el centro del personaje reciben el ratón.
 - **Arrastrar** el personaje desde su centro (o la cabecera del panel): moverlo. Recuerda su última posición.
@@ -136,6 +136,13 @@ Orbe puede enterarse de lo que hacen otras herramientas y mostrarlo en el person
    node orbe-evento.mjs --titulo "Copia de seguridad lista" --tipo terminado --origen backup
    ```
    O una petición HTTP: `POST http://127.0.0.1:47821/v1/eventos` con `Authorization: Bearer <token>` y `{"titulo": "…", "tipo": "inicio|trabajando|esperando|terminado|error|info", "origen": "…", "detalle": "…", "expresion": "risa"}`.
+
+## Cofre cifrado y reglas de permisos (seguridad de los conectores)
+Base de seguridad para conectar Gmail, Instagram y Supabase (llegan en las siguientes versiones):
+
+- **Cofre cifrado** (`%APPDATA%orbecofre.bin`): en **Configuración → Conectores** se pegan los tokens y claves de los servicios. Se cifran con `safeStorage` de Electron (DPAPI de Windows, ligado a tu usuario), el campo se vacía al guardar y, si lo copiaste, también el portapapeles. La interfaz solo sabe si un secreto está «Guardado» o «Sin guardar»: **no existe ningún canal para leer un valor**, y nunca van al `.env`, a los registros ni al modelo. Si un secreto guardado apareciera en un aviso de «Actividad», se sustituye por `[secreto]`. Si `cofre.bin` no se puede abrir (otro usuario de Windows, archivo dañado), Orbe no escribe encima.
+- **Reglas de permisos** (`%APPDATA%orbeeglas.json`, se crea solo la primera vez y se relee en cada tarea): cada acción de un conector tiene un modo: `libre` (sin preguntar), `si_lo_pediste` (sin preguntar solo si tu orden la nombraba), `preguntar`, `tu_lo_haces` (Orbe lo deja preparado y lo haces tú) o `bloqueado`. Lo que no esté en el archivo se pregunta.
+- **Mínimos que el archivo no puede relajar**: publicar y responder en Instagram siempre piden permiso; enviar correos, seguir, dar me gusta, comentar en cuentas ajenas, borrar publicaciones, compras y contraseñas están bloqueados.
 
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
@@ -298,6 +305,8 @@ src/main/voz.ts    dictado y voz neuronal (servicios compatibles con OpenAI)
 src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
 src/main/conectores avisos de otras herramientas: bus de actividad, receptor local, hooks de Claude Code
+src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
+src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
 helper             lector de pantalla de Windows (PowerShell + C#, UI Automation) y OCR de Windows (ocr.ps1)
