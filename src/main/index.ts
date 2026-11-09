@@ -1,4 +1,4 @@
-import { app, type Tray } from 'electron'
+import { app, Notification, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
@@ -12,6 +12,10 @@ import { guardarAjustes, leerAjustes } from './ajustes'
 import { liberarAtajos, registrarAtajos } from './atajos'
 import { crearProveedor, infoChat } from './chat/fabrica'
 import { registrarChat } from './chat/ipc'
+import { RegistroUso } from './uso/registro'
+import { ServicioTareas } from './tareas/servicio'
+import { registrarTareas } from './tareas/ipc'
+import { registrarUso } from './uso/ipc'
 import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
@@ -225,6 +229,34 @@ app.whenReady().then(async () => {
     nivel: nivelInicial(leerAjustes().esfuerzo, config.esfuerzo),
     guardar: (nivel) => guardarAjustes({ esfuerzo: nivel })
   })
+  // Consumo: tokens y dólares de cada respuesta, por día y por modelo (la prueba de humo no toca el archivo real).
+  const registroUso = new RegistroUso(modoHumo ? null : join(datos, 'uso.json'))
+  app.once('will-quit', () => registroUso.guardarAhora())
+  const contadorUso = registrarUso(orbe.ventana, registroUso, () => ({ nombre: proveedor.nombre, modelo: proveedor.modelo }))
+  // Tareas de fondo (como los agentes «siempre encendidos»): instrucciones que Orbe hace solo cuando toca, cada una
+  // en una conversación limpia con el mismo modelo, la memoria y las herramientas del agente.
+  const tareas = new ServicioTareas({
+    archivo: modoHumo ? null : join(datos, 'tareas.json'),
+    crearProveedor: () =>
+      modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro),
+    bus: actividad,
+    contador: contadorUso,
+    notificar: (titulo, cuerpo) => {
+      if (modoHumo || !Notification.isSupported()) return
+      const aviso = new Notification({ title: titulo, body: cuerpo, silent: false })
+      aviso.on('click', () => {
+        orbe.mostrar()
+        orbe.establecerExpandido(true)
+      })
+      aviso.show()
+    },
+    alCambio: () => {
+      if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.tareasCambio)
+    }
+  })
+  registrarTareas(orbe.ventana, tareas)
+  tareas.iniciar()
+  app.once('will-quit', () => tareas.detener())
   servicioChat = registrarChat(
     orbe.ventana,
     proveedor,
@@ -234,7 +266,8 @@ app.whenReady().then(async () => {
       restaurar: (c) => pantalla.pendiente.restaurar(c),
       emitir: pantalla.emitir
     },
-    memoria
+    memoria,
+    contadorUso
   )
 
   registrarAtajos(

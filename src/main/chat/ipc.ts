@@ -11,7 +11,7 @@ import type { CapturaMemoria } from '../memoria/servicio'
 import type { Consumido } from '../pantalla/pendiente'
 import { esEnlaceSeguro } from './enlaces'
 import type { ProveedorChat } from './proveedor'
-import { ServicioChat } from './servicio'
+import { ServicioChat, type ContadorUso } from './servicio'
 
 /** Acceso al contexto de pantalla que el usuario ha pedido leer y que espera al próximo mensaje. */
 export interface ReservaContexto {
@@ -45,7 +45,8 @@ export function registrarChat(
   proveedor: ProveedorChat,
   info: InfoChat,
   reserva?: ReservaContexto,
-  memoria?: MemoriaChat
+  memoria?: MemoriaChat,
+  contador?: ContadorUso
 ): ServicioChat {
   const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => e.sender === ventana.webContents
   /** Turno en curso que lleva contexto de pantalla: si falla, ese contexto vuelve a la reserva. */
@@ -81,7 +82,7 @@ export function registrarChat(
       }
     }
     if (!ventana.isDestroyed()) ventana.webContents.send(CANALES.chatEvento, evento)
-  })
+  }, contador)
 
   ipcMain.handle(CANALES.chatInfo, (e) => (propia(e) ? info : null))
 

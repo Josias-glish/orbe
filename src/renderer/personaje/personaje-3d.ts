@@ -25,8 +25,9 @@ import type { CalibracionModelo, EstadoOrbe } from '../../shared/tipos'
 import { suavizar } from '../orbe/estados'
 import type { Avatar, Reaccion } from './avatar'
 import { Director } from './director'
+import { POSE_NEUTRA, poseGesto, type IdGesto, type Pose } from './gestos'
 import { aplicarDetalle, texturaDetalle } from './detalle-material'
-import { dibujarAdorno, dibujarOjoLed } from './dibujo-led'
+import { dibujarAdorno, dibujarMano, dibujarOjoLed } from './dibujo-led'
 
 /** Color de las luces (los «ojos» de las gafas y el contraluz) según el estado de la conversación. */
 const COLOR_ESTADO: Record<EstadoOrbe, string> = {
@@ -82,6 +83,9 @@ export class Personaje3D implements Avatar {
   private colorLuz = new Color(COLOR_ESTADO.reposo)
   private colorObjetivo = new Color(COLOR_ESTADO.reposo)
   private ultimaFirmaLed = ''
+  private pose: Pose = POSE_NEUTRA
+  /** Altura del modelo en unidades de la escena (para que los saltos midan lo mismo con cualquier modelo). */
+  private altoModelo = 1
 
   private visible = true
   private idRaf = 0
@@ -259,6 +263,9 @@ export class Personaje3D implements Avatar {
     this.cursor = { x, y, cuando: performance.now() }
     if (anterior && (anterior.x !== x || anterior.y !== y)) this.director.reaccionar('despertar')
   }
+  gesto(id: IdGesto, conCara = false): void {
+    this.director.gesticular(id, conCara)
+  }
   reaccionar(reaccion: Reaccion): void {
     this.director.reaccionar(reaccion)
   }
@@ -397,9 +404,18 @@ export class Personaje3D implements Avatar {
     const c = this.cara
     const bote = (c.bote * 0.5 + this.pulsoEnergia * 0.7) * Math.abs(Math.sin(this.t * 7))
     const respira = Math.sin(this.t * 1.7) * 0.012
-    this.pivote.rotation.set(this.mirada.y * 0.18, this.mirada.x * 0.42, (-(c.inclinacion + Math.sin(this.t * 0.9) * 1.2) * Math.PI) / 180)
-    this.pivote.position.y = bote * 0.035
-    this.pivote.scale.set(1 + respira * 0.4, 1 + respira, 1 + respira * 0.4)
+    // Gestos (saludar, saltar, bailar…): el modelo es de una pieza, así que se mueve, gira y estira entero.
+    const g = this.director.gestoActual()
+    this.pose = g ? poseGesto(g.id, g.progreso) : POSE_NEUTRA
+    const p = this.pose
+    const alto = this.altoModelo
+    this.pivote.rotation.set(
+      this.mirada.y * 0.18 + p.rotX,
+      this.mirada.x * 0.42 + p.rotY,
+      (-(c.inclinacion + Math.sin(this.t * 0.9) * 1.2) * Math.PI) / 180 + p.rotZ
+    )
+    this.pivote.position.set(p.posX * alto, bote * 0.035 + p.posY * alto, 0)
+    this.pivote.scale.set((1 + respira * 0.4) * p.escalaX, (1 + respira) * p.escalaY, (1 + respira * 0.4) * p.escalaX)
 
     this.colorLuz.lerp(this.colorObjetivo, Math.min(1, dt * 4))
     this.contraluz.color.copy(this.colorLuz)
@@ -443,5 +459,6 @@ export class Personaje3D implements Avatar {
     if (!ctx) return
     ctx.clearRect(0, 0, this.capaAdornos.width, this.capaAdornos.height)
     dibujarAdorno(ctx, this.formaVisible.adorno, this.t, this.capaAdornos.width)
+    if (this.pose.mano !== null) dibujarMano(ctx, this.capaAdornos.width, this.pose.mano)
   }
 }

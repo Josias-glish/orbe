@@ -1,11 +1,17 @@
 import { randomUUID } from 'node:crypto'
-import type { ErrorOrbe, EventoChat, PeticionChat } from '../../shared/tipos'
+import type { ErrorOrbe, EventoChat, PeticionChat, UsoTokens } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 import { aErrorOrbe, crearError } from './errores'
 import type { ProveedorChat } from './proveedor'
 
 export const MAX_TEXTO = 20_000
+
+/** Quien lleva la cuenta del consumo (tokens y dólares de cada llamada, y el límite del plan del CLI). */
+export interface ContadorUso {
+  uso(uso: UsoTokens): void
+  limite?(limite: { estado: string; tipo: string | null; reinicio: number | null }): void
+}
 
 export type ResultadoInicio = { ok: true } | { ok: false; error: ErrorOrbe }
 
@@ -20,7 +26,8 @@ export class ServicioChat {
 
   constructor(
     private readonly proveedor: ProveedorChat,
-    private readonly emitir: (evento: EventoChat) => void
+    private readonly emitir: (evento: EventoChat) => void,
+    private readonly contador?: ContadorUso
   ) {}
 
   /** ¿Se puede empezar un turno con esta petición? No lo empieza: sirve para decidir antes de gastar contexto o memoria. */
@@ -58,7 +65,9 @@ export class ServicioChat {
         alAviso: (texto) => this.emitir({ tipo: 'aviso', id, texto }),
         alAccion: (accion) => this.emitir({ tipo: 'accion', id, accion }),
         alFuentes: (fuentes) => this.emitir({ tipo: 'fuentes', id, fuentes }),
-        confirmar: (peticion) => this.pedirConfirmacion(id, peticion)
+        confirmar: (peticion) => this.pedirConfirmacion(id, peticion),
+        alUso: (uso) => this.contador?.uso(uso),
+        alLimite: (limite) => this.contador?.limite?.(limite)
       })
       this.emitir({ tipo: 'fin', id, motivo: resultado.motivo })
     } catch (e) {

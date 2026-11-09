@@ -1,4 +1,4 @@
-import type { AccionVista, FuenteVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
+import type { UsoTokens, AccionVista, FuenteVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 
@@ -13,6 +13,10 @@ export interface ManejadoresTurno {
   alAccion?(accion: AccionVista): void
   /** El agente consultó fuentes (una búsqueda web): se enseñan como enlaces bajo la respuesta. */
   alFuentes?(fuentes: FuenteVista[]): void
+  /** Cada llamada al modelo informa de lo que gastó (tokens y, si lo sabe, dólares). */
+  alUso?(uso: UsoTokens): void
+  /** El CLI informa del estado del límite del plan. */
+  alLimite?(limite: { estado: string; tipo: string | null; reinicio: number | null }): void
   /** El agente pide permiso al usuario para una acción; resuelve `true` si la permite. */
   confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
 }

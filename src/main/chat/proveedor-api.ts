@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { MotivoFin } from '../../shared/tipos'
+import type { MotivoFin, UsoTokens } from '../../shared/tipos'
 import { ejecutarBucle, type RespuestaPaso } from '../agente/bucle'
 import { agenteActivo, crearEjecutor, hayBusquedaWeb, type OpcionesAgente } from '../agente/sesion'
 import type { LlamadaHerramienta, ResultadoLlamada } from '../agente/tipos'
@@ -168,6 +168,7 @@ export class ProveedorApi implements ProveedorChat {
       })
 
       const final = await flujo.finalMessage()
+      manejadores.alUso?.(usoAnthropic(final.usage))
 
       if (final.stop_reason === 'refusal') {
         const categoria = final.stop_details?.category
@@ -254,6 +255,7 @@ export class ProveedorApi implements ProveedorChat {
         flujo.on('text', (delta) => m.alTexto(delta))
         flujo.on('contentBlock', (bloque) => busquedas.alBloque(bloque))
         const final = await flujo.finalMessage()
+        m.alUso?.(usoAnthropic(final.usage))
 
         if (final.stop_reason === 'refusal') {
           const categoria = final.stop_details?.category
@@ -304,5 +306,20 @@ export class ProveedorApi implements ProveedorChat {
 
   cerrar(): void {
     this.cancelar()
+  }
+}
+
+/** Lo que la API de Anthropic dice que gastó una respuesta. */
+export function usoAnthropic(u: {
+  input_tokens?: number | null
+  output_tokens?: number | null
+  cache_read_input_tokens?: number | null
+  cache_creation_input_tokens?: number | null
+} | null | undefined): UsoTokens {
+  return {
+    entrada: u?.input_tokens ?? 0,
+    salida: u?.output_tokens ?? 0,
+    cacheLectura: u?.cache_read_input_tokens ?? 0,
+    cacheEscritura: u?.cache_creation_input_tokens ?? 0
   }
 }

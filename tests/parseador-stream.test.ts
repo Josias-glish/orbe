@@ -114,22 +114,30 @@ describe('interpretarLinea', () => {
       result: '¡Hola!'
     }
     expect(interpretarLinea(linea(ev))).toEqual([
-      { k: 'resultado', error: false, terminal: 'completed', parada: 'end_turn', estadoHttp: null, texto: '¡Hola!' }
+      { k: 'resultado', error: false, terminal: 'completed', parada: 'end_turn', estadoHttp: null, texto: '¡Hola!', uso: null }
     ])
   })
 
   it('interpreta un resultado interrumpido por el usuario', () => {
     const ev = { type: 'result', subtype: 'error_during_execution', is_error: true, stop_reason: null, terminal_reason: 'aborted_streaming' }
     expect(interpretarLinea(linea(ev))).toEqual([
-      { k: 'resultado', error: true, terminal: 'aborted_streaming', parada: null, estadoHttp: null, texto: '' }
+      { k: 'resultado', error: true, terminal: 'aborted_streaming', parada: null, estadoHttp: null, texto: '', uso: null }
     ])
   })
 
   it('interpreta un resultado de error de la API con estado HTTP', () => {
     const ev = { type: 'result', is_error: true, terminal_reason: 'api_error', api_error_status: 429, result: 'limit' }
     expect(interpretarLinea(linea(ev))).toEqual([
-      { k: 'resultado', error: true, terminal: 'api_error', parada: null, estadoHttp: 429, texto: 'limit' }
+      { k: 'resultado', error: true, terminal: 'api_error', parada: null, estadoHttp: 429, texto: 'limit', uso: null }
     ])
+  })
+
+  it('lee el gasto del turno (tokens y dólares que calcula el CLI)', () => {
+    const ev = { type: 'result', is_error: false, result: 'ok', total_cost_usd: 0.0123, usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 300, cache_creation_input_tokens: 40 } }
+    expect(interpretarLinea(linea(ev))[0]).toMatchObject({
+      k: 'resultado',
+      uso: { entrada: 10, salida: 20, cacheLectura: 300, cacheEscritura: 40, costeUsd: 0.0123 }
+    })
   })
 })
 

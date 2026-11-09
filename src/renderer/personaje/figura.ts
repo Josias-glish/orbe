@@ -1,5 +1,6 @@
 import type { IdExpresion } from '../../shared/expresiones'
 import type { EstadoOrbe } from '../../shared/tipos'
+import type { IdGesto } from './gestos'
 import type { Avatar, Reaccion } from './avatar'
 
 /**
@@ -55,5 +56,8 @@ export class FiguraEsquina implements Avatar {
   }
   reaccionar(reaccion: Reaccion): void {
     this.actual?.reaccionar(reaccion)
+  }
+  gesto(id: IdGesto, conCara = false): void {
+    this.actual?.gesto?.(id, conCara)
   }
 }

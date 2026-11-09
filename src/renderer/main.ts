@@ -130,7 +130,10 @@ window.orbe.alEntorno((evento) => {
 const figuraLista = montarFigura().then(() => {
   // Un saludo al arrancar, según la hora: con sueño de madrugada, guiño por la tarde, contento por la mañana.
   const hora = new Date().getHours()
-  window.setTimeout(() => orbe.expresar(hora >= 23 || hora < 6 ? 'aburrido' : hora >= 13 ? 'guino' : 'feliz', 2500), 600)
+  window.setTimeout(() => {
+    orbe.expresar(hora >= 23 || hora < 6 ? 'aburrido' : hora >= 13 ? 'guino' : 'feliz', 2500)
+    orbe.gesto?.(hora >= 23 || hora < 6 ? 'estirarse' : 'saludo')
+  }, 600)
   menuPersonaje = new MenuPersonaje(
     orbe,
     document.getElementById('personaje-boton') as HTMLButtonElement,

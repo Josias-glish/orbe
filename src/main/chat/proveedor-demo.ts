@@ -118,6 +118,10 @@ export class ProveedorDemo implements ProveedorChat {
   async enviar(turno: TurnoEntrada, m: ManejadoresTurno): Promise<ResultadoTurno> {
     this.cancelado = false
     await esperar(this.ritmo.pensarMs)
+    // Lo que gastaría de verdad (para ver el panel de consumo con datos).
+    m.alUso?.({ entrada: 1200 + turno.texto.length, salida: 380, cacheLectura: 900, costeUsd: 0.0042 })
+    // Una tarea de fondo trae su instrucción en la tercera línea: se atiende igual que un mensaje del chat.
+    if (turno.texto.startsWith('Tarea programada')) turno = { ...turno, texto: turno.texto.split('\n')[2] ?? '' }
     if (turno.texto.startsWith('/error')) throw new ErrorChat(crearError('sin_conexion'))
     if (turno.texto.startsWith('/busca')) return this.simularBusqueda(m)
     if (turno.texto.startsWith('/acciones') || turno.texto.startsWith('/colgada')) return this.simularAgente(turno.texto, m)

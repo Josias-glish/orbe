@@ -1,5 +1,6 @@
 import type { IdExpresion } from '../../shared/expresiones'
 import type { EstadoOrbe } from '../../shared/tipos'
+import type { IdGesto } from './gestos'
 
 /** Gestos del usuario y cosas del entorno (te fuiste, volviste) que provocan una reacción. */
 export type Reaccion = 'encima' | 'fuera' | 'arrastre' | 'soltar' | 'abrir' | 'caricia' | 'despertar' | 'ausente' | 'vuelve'
@@ -24,4 +25,6 @@ export interface Avatar {
   /** El cursor, en coordenadas de pantalla: el personaje lo sigue con la mirada. */
   mirarA(x: number, y: number): void
   reaccionar(reaccion: Reaccion): void
+  /** Un gesto de todo el cuerpo (saludar, saltar, bailar…). El orbe clásico lo ignora. */
+  gesto?(id: IdGesto, conCara?: boolean): void
 }

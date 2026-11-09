@@ -1,6 +1,7 @@
 import { EXPRESIONES, IDS_EXPRESION, esIdExpresion, type IdExpresion } from '../../shared/expresiones'
 import type { EstadoActividad, EventoActividad, TipoActividad } from '../../shared/tipos'
 import { registrarMenu } from '../chat/menus'
+import { GESTOS, IDS_GESTO } from './gestos'
 import type { Avatar } from './avatar'
 import type { Sonidos } from './sonidos'
 
@@ -70,6 +71,9 @@ export class MenuPersonaje {
     this.ultimos = [...this.ultimos, evento].slice(-50)
     const cara = esIdExpresion(evento.expresion) ? evento.expresion : EXPRESION_DE_AVISO[evento.tipo]
     if (!this.fijada) this.avatar.expresar(cara, DURACION_AVISO[evento.tipo])
+    // Lo que te necesita te saluda para llamar tu atención; lo terminado se celebra; un error, niega con la cabeza.
+    const gesto = evento.tipo === 'esperando' ? 'saludo' : evento.tipo === 'terminado' ? 'reverencia' : evento.tipo === 'error' ? 'negar' : null
+    if (gesto) this.avatar.gesto?.(gesto)
     if (IMPORTANTES.includes(evento.tipo) && !(this.pestana === 'actividad' && !this.menu.hidden)) this.sinVer++
     this.pintarInsignia(evento)
     if (!this.menu.hidden && this.pestana === 'actividad') this.pintar()
@@ -162,7 +166,23 @@ export class MenuPersonaje {
       'memoria-nota',
       'Pulsa una para fijarla; en automático cambia según la conversación y los avisos. Sobre el personaje: la rueda del ratón recorre las caras y si lo acaricias con el cursor, reacciona.'
     )
-    const partes: HTMLElement[] = [rejilla, auto]
+    // Gestos: un movimiento de todo el cuerpo al momento (además de los que hace solo de vez en cuando).
+    const gestos = el('div', 'gestos-fila')
+    for (const id of IDS_GESTO) {
+      const g = GESTOS[id]
+      const b = el('button', 'expresion-boton gesto-boton', g.emoji)
+      b.type = 'button'
+      b.title = g.nombre
+      b.dataset['gesto'] = id
+      b.setAttribute('aria-label', g.nombre)
+      b.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.avatar.gesto?.(id, true)
+        this.sonidos?.tocar(id === 'salto' || id === 'baile' ? 'risa' : 'abrir')
+      })
+      gestos.append(b)
+    }
+    const partes: HTMLElement[] = [rejilla, auto, el('p', 'uso-subtitulo', 'Gestos'), gestos]
     if (this.sonidos) {
       const opcion = el('label', 'memoria-opcion')
       const casilla = el('input')

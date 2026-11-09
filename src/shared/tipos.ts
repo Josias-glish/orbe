@@ -58,7 +58,17 @@ export const CANALES = {
   memoriaImportar: 'memoria:importar',
   memoriaActivar: 'memoria:activar',
   memoriaCarpeta: 'memoria:carpeta',
-  memoriaVaciar: 'memoria:vaciar'
+  memoriaVaciar: 'memoria:vaciar',
+  usoResumen: 'uso:resumen',
+  usoBorrar: 'uso:borrar',
+  usoCambio: 'uso:cambio',
+  tareasEstado: 'tareas:estado',
+  tareasGuardar: 'tareas:guardar',
+  tareasBorrar: 'tareas:borrar',
+  tareasEjecutar: 'tareas:ejecutar',
+  tareasCancelar: 'tareas:cancelar',
+  tareasResponder: 'tareas:responder',
+  tareasCambio: 'tareas:cambio'
 } as const
 
 export interface EstadoVentana {
@@ -390,6 +400,102 @@ export interface EventoActividad {
   cuando: number
 }
 
+/** Cuándo se repite una tarea. Las horas son locales («08:30»). */
+export type ProgramaTarea =
+  | { tipo: 'ahora' }
+  | { tipo: 'una-vez'; en: number }
+  | { tipo: 'diaria'; hora: string }
+  /** 0 = domingo … 6 = sábado. */
+  | { tipo: 'semanal'; dias: number[]; hora: string }
+  | { tipo: 'cada'; minutos: number }
+
+export type EstadoEjecucion = 'en-curso' | 'esperando' | 'completada' | 'nada-nuevo' | 'error' | 'cancelada'
+
+export interface EjecucionTarea {
+  id: string
+  inicio: number
+  fin: number | null
+  estado: EstadoEjecucion
+  /** Lo que respondió el agente (recortado). */
+  resultado: string
+  /** Lo que va haciendo (la última acción), mientras está en curso. */
+  paso?: string
+  /** Una acción que espera tu permiso. */
+  permiso?: { confirmacionId: string; titulo: string; detalle: string; peligrosa: boolean }
+}
+
+/** Una tarea de fondo al estilo de los agentes «siempre encendidos»: una instrucción que Orbe hace solo cuando toca. */
+export interface TareaVista {
+  id: string
+  titulo: string
+  instruccion: string
+  programa: ProgramaTarea
+  activa: boolean
+  /** Solo avisar si el resultado trae algo nuevo o importante (si no, queda como «nada nuevo» sin molestar). */
+  soloSiHayAlgo: boolean
+  creada: number
+  /** Próxima vez que se hará (ms) o null si ya no toca más. */
+  proxima: number | null
+  ultima: EjecucionTarea | null
+  /** Las últimas ejecuciones, de la más reciente a la más antigua. */
+  historial: EjecucionTarea[]
+}
+
+export interface EstadoTareas {
+  tareas: TareaVista[]
+  /** Hay un modelo configurado capaz de hacer tareas (si no, se explica por qué). */
+  disponible: boolean
+  motivo?: string
+}
+
+/** Lo que el usuario escribe al crear o editar una tarea. */
+export interface TareaNueva {
+  id?: string
+  titulo: string
+  instruccion: string
+  programa: ProgramaTarea
+  activa?: boolean
+  soloSiHayAlgo?: boolean
+}
+
+/** Lo que gastó una llamada al modelo (o un turno entero, en el CLI). */
+export interface UsoTokens {
+  entrada: number
+  salida: number
+  /** Tokens leídos de la caché del servicio (más baratos). */
+  cacheLectura?: number
+  /** Tokens escritos en la caché. */
+  cacheEscritura?: number
+  /** Coste que da el propio servicio (el CLI de Claude lo da); si falta, Orbe lo estima con su tabla de precios. */
+  costeUsd?: number
+}
+
+export interface TotalUso {
+  entrada: number
+  salida: number
+  cache: number
+  peticiones: number
+  /** Dólares (estimados si `estimado`). */
+  costeUsd: number
+  /** Parte del coste no se conoce (servicios sin tarifa en la tabla): el total puede quedarse corto. */
+  sinPrecio: boolean
+}
+
+export interface ResumenUso {
+  hoy: TotalUso
+  semana: TotalUso
+  mes: TotalUso
+  total: TotalUso
+  /** Últimos 14 días, del más antiguo al de hoy (para el gráfico). */
+  dias: Array<{ fecha: string; tokens: number; costeUsd: number }>
+  /** De qué servicio y modelo vino el gasto (lo de este mes). */
+  porModelo: Array<{ proveedor: 'cli' | 'api' | 'openai'; modelo: string } & TotalUso>
+  /** Lo último que dijo el CLI de Claude sobre el límite de tu plan (si lo usas). */
+  limiteCli: { estado: string; tipo: string | null; reinicio: number | null; cuando: number } | null
+  /** Desde cuándo se cuenta (ms desde 1970), o null si aún no hay nada. */
+  desde: number | null
+}
+
 export interface EstadoActividad {
   /** El receptor local de eventos está encendido (ORBE_EVENTOS=1). */
   activo: boolean
@@ -496,6 +602,18 @@ export interface ApiOrbe {
   alEntorno(cb: (evento: EventoEntorno) => void): () => void
   /** Avisos de los conectores (Claude Code y otras herramientas). */
   alActividad(cb: (evento: EventoActividad) => void): () => void
+  tareasEstado(): Promise<EstadoTareas>
+  tareasGuardar(tarea: TareaNueva): Promise<EstadoTareas>
+  tareasBorrar(id: string): Promise<EstadoTareas>
+  tareasEjecutar(id: string): Promise<EstadoTareas>
+  tareasCancelar(id: string): Promise<EstadoTareas>
+  /** Responde a la petición de permiso de una tarea en curso. */
+  tareasResponder(id: string, confirmacionId: string, permitir: boolean): Promise<EstadoTareas>
+  alTareas(cb: () => void): () => void
+  usoResumen(): Promise<ResumenUso>
+  usoBorrar(): Promise<ResumenUso>
+  /** Avisa cuando cambia el consumo (al terminar cada respuesta). */
+  alUso(cb: () => void): () => void
   actividadHistorial(): Promise<EstadoActividad>
 
   vozInfo(): Promise<InfoVoz>

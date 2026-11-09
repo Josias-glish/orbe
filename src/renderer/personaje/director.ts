@@ -1,12 +1,16 @@
 import { EXPRESIONES_OCIOSAS, EXPRESION_DE_ESTADO, IDS_EXPRESION, type IdExpresion } from '../../shared/expresiones'
 import type { EstadoOrbe } from '../../shared/tipos'
 import type { Reaccion } from './avatar'
+import { GESTOS, GESTOS_OCIOSOS, type IdGesto } from './gestos'
 
 /** Tras este tiempo sin nada que hacer (y sin el cursor encima), el personaje se duerme. */
 export const SUENO_MS = 3 * 60_000
 /** Cada cuánto, en reposo, pone una cara distinta un momento (entre MIN y MAX). */
-export const OCIO_MIN_MS = 25_000
-export const OCIO_MAX_MS = 50_000
+export const OCIO_MIN_MS = 12_000
+export const OCIO_MAX_MS = 28_000
+/** Cada cuánto, en reposo, hace un gesto (mirar alrededor, estirarse, un bailecito…). */
+export const GESTO_OCIO_MIN_MS = 16_000
+export const GESTO_OCIO_MAX_MS = 38_000
 
 /** Lo que el director cuenta hacia fuera (para los sonidos). */
 export type EventoDirector = 'caricia' | 'rueda' | 'dormir' | 'despertar'
@@ -36,6 +40,8 @@ export class Director {
   private ausente = false
   private proximoOcio: number
   private ocio: { id: IdExpresion; hasta: number } | null = null
+  private gesto: { id: IdGesto; inicio: number; fin: number } | null = null
+  private proximoGestoOcio: number
 
   constructor(
     private readonly ahora: () => number = () => performance.now(),
@@ -44,6 +50,35 @@ export class Director {
   ) {
     this.ultimaActividad = ahora()
     this.proximoOcio = ahora() + OCIO_MIN_MS
+    this.proximoGestoOcio = ahora() + GESTO_OCIO_MIN_MS
+  }
+
+  /** Hace un gesto (saludar, saltar…). Con `conCara`, pone también su expresión mientras dura. */
+  gesticular(id: IdGesto, conCara = false): void {
+    const t = this.ahora()
+    const def = GESTOS[id]
+    this.gesto = { id, inicio: t, fin: t + def.duracionMs }
+    this.proximoGestoOcio = Math.max(this.proximoGestoOcio, t + GESTO_OCIO_MIN_MS)
+    if (conCara && def.expresion) this.expresar(def.expresion, def.duracionMs)
+  }
+
+  /**
+   * El gesto en curso y por dónde va (0…1), o null. En reposo, despierto y sin nada que hacer, de vez en cuando
+   * empieza uno tranquilo por su cuenta: así nunca se queda quieto mucho rato.
+   */
+  gestoActual(): { id: IdGesto; progreso: number } | null {
+    const t = this.ahora()
+    if (this.gesto && t >= this.gesto.fin) this.gesto = null
+    if (!this.gesto && t >= this.proximoGestoOcio) {
+      this.proximoGestoOcio = t + GESTO_OCIO_MIN_MS + Math.random() * (GESTO_OCIO_MAX_MS - GESTO_OCIO_MIN_MS)
+      const despierto = !this.dormido && !this.ausente && this.estado === 'reposo' && !this.fijada
+      if (despierto) {
+        const id = GESTOS_OCIOSOS[Math.floor(Math.random() * GESTOS_OCIOSOS.length)]
+        this.gesto = { id, inicio: t, fin: t + GESTOS[id].duracionMs }
+      }
+    }
+    if (!this.gesto) return null
+    return { id: this.gesto.id, progreso: (t - this.gesto.inicio) / (this.gesto.fin - this.gesto.inicio) }
   }
 
   establecerEstado(estado: EstadoOrbe): void {
@@ -93,9 +128,11 @@ export class Director {
         break
       case 'soltar':
         this.expresar('risa', 1200)
+        this.gesticular('sacudida')
         break
       case 'abrir':
         this.expresar('feliz', 1400)
+        this.gesticular('salto')
         break
       case 'caricia':
         this.expresar(Math.random() < 0.5 ? 'enamorado' : 'timido', 2600)
@@ -108,6 +145,7 @@ export class Director {
           this.ausente = false
           this.expresar('sorprendido', 900)
           this.avisar('despertar')
+          this.gesticular('saludo')
         }
         break
       case 'despertar':

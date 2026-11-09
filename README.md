@@ -48,6 +48,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 ```
 
 ## Controles
+- **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y conectores, Dictado y Voz). En la cabecera solo quedan la potencia, conversación nueva, la chincheta y cerrar.
 - **Clic** en el orbe: abrir o cerrar el panel. **Esc** también lo cierra.
 - **Arrastrar** el orbe (o la cabecera del panel): moverlo. Recuerda su última posición.
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
@@ -56,15 +57,15 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - El botón **[T]** lee el **texto de una imagen sin pantallazo** o **reconoce y resuelve una fórmula o una estructura química**: de la ventana que estabas usando, del portapapeles o de un archivo (ver «Texto de una imagen» y «Fórmulas»).
 - La **cámara** adjunta una **captura de pantalla** (último recurso; antes te pide confirmación).
 - **Cambiar el tamaño del panel**: arrastra el borde izquierdo o el superior (los libres, opuestos al orbe), o la esquina marcada. El orbe no se mueve de su esquina, hay un mínimo y un máximo (se ajusta a tu pantalla) y Orbe recuerda el tamaño que elijas.
-- El botón de la **imagen** de la cabecera (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
-- El **altavoz** de la cabecera abre el menú de **voz**: leer las respuestas en voz alta, «Estilo Jarvis», motor, voz, velocidad y tono.
+- El botón de la **imagen** de la barra lateral (si has configurado una carpeta de fondos) abre el menú del **fondo**: otro fondo, mostrarlo u ocultarlo y cuánto se ve.
+- El **altavoz** de la barra lateral abre el menú de **voz**: leer las respuestas en voz alta, «Estilo Jarvis», motor, voz, velocidad y tono.
 - El **micrófono** junto al campo de texto **dicta**: púlsalo, habla y vuelve a pulsarlo (máximo 60 s; **Esc** cancela). El texto se añade al campo para que lo revises; en el menú de voz puedes activar que se envíe solo.
 - El botón de los **controles deslizantes** abre la **configuración**: elegir quién responde (CLI de Claude, API de Anthropic u otra IA compatible con OpenAI), el dictado y la voz neuronal, sin tocar el `.env` a mano.
 - La **chincheta** fija el panel por encima de las demás ventanas (activada por defecto); soltada, otras ventanas pueden taparlo. La **X** cierra el panel y deja a Orbe en la esquina; para salir del todo, usa la bandeja o «Cerrar Orbe por completo» de la configuración.
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
 - El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
-- El **libro** de la cabecera abre la **memoria**: qué sabe Orbe de ti, con control total.
+- El **libro** de la barra lateral abre la **memoria**: qué sabe Orbe de ti, con control total.
 - Escribe **«Recuerda que…»** (también «Apunta que…», «Anota que…», «Ten en cuenta que…») en un mensaje con solo ese dato y Orbe lo guarda, con un botón para deshacerlo.
 - Con `npm run dev`, **Ctrl + Alt + D** muestra una barra para forzar los estados del orbe.
 
@@ -88,6 +89,31 @@ En la esquina ya no hay solo un orbe: hay un **personaje con 20 expresiones** (n
 - **Personaje de Rive**: con `ORBE_APARIENCIA=rive` y `ORBE_RIVE_ARCHIVO` (un `.riv` hecho en [rive.app](https://rive.app)), Orbe mueve estas entradas de su máquina de estados (`ORBE_RIVE_MAQUINA`, o la primera): `expresion` (0–19, en el orden de arriba), `estado` (0 reposo, 1 leyendo, 2 pensando, 3 respondiendo, 4 escuchando, 5 actuando), `mirarX` y `mirarY` (-100…100), los disparadores `pulso` y `tocar`, y `hablando` (reservada para cuando tenga voz; hoy siempre es falsa). El motor de Rive va dentro de Orbe. Si el archivo falla, se usa el personaje dibujado.
 - `ORBE_APARIENCIA=orbe` vuelve al orbe clásico.
 - El personaje **no habla** todavía: la entrada `hablando` queda lista para cuando se conecte una voz (por ejemplo, ElevenLabs).
+
+### Gestos (nunca se queda quieto)
+El conejo hace **10 gestos con todo el cuerpo**: saludar (con una manita), saltar, asentir, negar, dar una vuelta, bailar, estirarse, mirar alrededor, sacudirse y hacer una reverencia. Saluda al arrancar y cuando vuelves al ordenador, salta al abrir el panel, celebra (reverencia o baile) cuando termina algo, niega con la cabeza si hay un error y te saluda cuando una tarea o Claude Code te necesita. En reposo hace uno tranquilo cada 16–38 s y pone una cara distinta cada 12–28 s. En el menú de la carita, **Gestos** los lanza al momento.
+
+## Tareas de fondo (al estilo de los agentes «siempre encendidos»)
+El botón del reloj abre **Tareas**: instrucciones que Orbe hace **solo**, sin que estés mirando, con la IA que tengas configurada, tu memoria y las herramientas del agente. Es la misma idea que los agentes «siempre encendidos» como ChatGPT Dots, pero en tu equipo y con tu IA.
+
+- **Cuándo**: ahora, una vez más tarde, cada día a una hora, algunos días de la semana o cada cierto tiempo (de 15 min a 24 h).
+- **Tres listas**: **En curso** (lo que hace ahora y lo que está pidiendo), **Programadas** (con la próxima hora, Hacer ahora, Pausar, Editar y Borrar) y **Completadas** (el resultado de cada vez, con Repetir).
+- **Permisos**: lo delicado (abrir apps, enviar, comprar) **espera tu permiso** en «En curso». El botón del reloj muestra un globito amarillo y aparece una notificación de Windows. Si no respondes en 30 minutos, cuenta como «no».
+- **«Avisarme solo si hay algo»**: si no hay nada nuevo, la ejecución queda como «nada nuevo» y no te molesta (ideal para vigilar un precio o una web).
+- Cada ejecución es una conversación limpia (no mezcla tu chat). Se hace una tarea cada vez; las demás esperan en cola. Una tarea que tarde más de 15 minutos se detiene.
+- Si Orbe estaba cerrado a la hora de una tarea, la hace al abrirse si se pasó hace menos de 12 horas; si no, espera a la siguiente.
+- El personaje y las notificaciones avisan al empezar, al terminar, si hay un error o si te necesita. Se guardan en `%APPDATA%\orbe\tareas.json`.
+
+## Consumo
+El botón del gráfico abre **Consumo**: lo gastado **hoy, en 7 días y este mes** (dólares, tokens y peticiones), un gráfico de los últimos 14 días y el desglose **por modelo** (con el chat y las tareas).
+
+- **CLI de Claude**: el coste lo calcula el propio CLI. Con una suscripción no pagas por token, así que es lo que costaría con la API. Además ves el **estado del límite de tu plan** (dentro, cerca o alcanzado, y cuándo se renueva).
+- **API de Anthropic**: tokens de entrada, salida y caché, con las tarifas públicas de cada modelo.
+- **Gemini, Groq, OpenAI, Ollama…**: se cuentan los tokens (incluido el razonamiento). Los servicios cuya tarifa Orbe no conoce salen como «sin precio».
+- Se guarda por día en `%APPDATA%\orbe\uso.json` (sin el contenido de las conversaciones). «Poner a cero» borra el historial.
+
+## Configurarlo con Claude Code en tu PC
+[`docs/GUIA-CLAUDE-CODE-EN-TU-PC.md`](docs/GUIA-CLAUDE-CODE-EN-TU-PC.md) trae un mensaje listo para pegar en Claude Code (en tu ordenador). Con él, Claude Code revisa la versión, tu `.env` (sin enseñar las claves), prueba la IA, el receptor de avisos y los hooks, crea una tarea de prueba y te da un informe. Los borradores del rediseño de la interfaz están en [`docs/borradores-interfaz/`](docs/borradores-interfaz/).
 
 ## Conectores: avisos de Claude Code y otras herramientas
 Orbe puede enterarse de lo que hacen otras herramientas y mostrarlo en el personaje. Hoy responde solo con texto, pero esta es la base para conectarlo con más cosas.
