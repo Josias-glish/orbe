@@ -1,0 +1,212 @@
+import { afterEach, describe, expect, it } from 'vitest'
+import { DISENOS, disenoPorId } from '../src/shared/disenos'
+import { EXPRESIONES, EXPRESION_DE_ESTADO, IDS_EXPRESION, esIdExpresion, indiceExpresion } from '../src/shared/expresiones'
+import { Director } from '../src/renderer/personaje/director'
+import { BusActividad, HISTORIAL_MAX, normalizarEvento } from '../src/main/conectores/actividad'
+import { deClaudeCode } from '../src/main/conectores/claude-code'
+import { ServidorEventos } from '../src/main/conectores/servidor'
+import { configHooksClaudeCode, HOOKS_CLAUDE_CODE } from '../src/main/conectores/hooks'
+import { resolverConfig } from '../src/main/entorno'
+import { validarPeticion } from '../src/main/configuracion'
+
+describe('expresiones y diseños', () => {
+  it('hay 20 expresiones, todas definidas, y su número es estable para Rive', () => {
+    expect(IDS_EXPRESION).toHaveLength(20)
+    for (const id of IDS_EXPRESION) expect(EXPRESIONES[id].nombre).toBeTruthy()
+    expect(indiceExpresion('neutral')).toBe(0)
+    expect(indiceExpresion('orgulloso')).toBe(19)
+    expect(esIdExpresion('risa')).toBe(true)
+    expect(esIdExpresion('__proto__')).toBe(false)
+  })
+
+  it('cada estado tiene su cara y hay 20 diseños con id únicos', () => {
+    for (const id of Object.values(EXPRESION_DE_ESTADO)) expect(esIdExpresion(id)).toBe(true)
+    expect(DISENOS).toHaveLength(20)
+    expect(new Set(DISENOS.map((d) => d.id)).size).toBe(20)
+    expect(disenoPorId('no-existe').id).toBe('orbi')
+  })
+})
+
+describe('Director (qué cara toca)', () => {
+  const reloj = () => {
+    let t = 0
+    return { ahora: () => t, avanzar: (ms: number) => (t += ms) }
+  }
+
+  it('reposo neutral; el estado manda; una puntual gana mientras dura', () => {
+    const r = reloj()
+    const d = new Director(r.ahora, 1000)
+    expect(d.actual()).toBe('neutral')
+    d.establecerEstado('pensando')
+    expect(d.actual()).toBe('pensativo')
+    d.expresar('risa', 500)
+    expect(d.actual()).toBe('risa')
+    r.avanzar(600)
+    expect(d.actual()).toBe('pensativo')
+  })
+
+  it('fijar una expresión la mantiene hasta quitarla; null vuelve a automático', () => {
+    const d = new Director(reloj().ahora)
+    d.expresar('enamorado', 0)
+    d.establecerEstado('actuando')
+    expect(d.actual()).toBe('enamorado')
+    d.expresar(null)
+    expect(d.actual()).toBe('concentrado')
+  })
+
+  it('se duerme sin actividad y se despierta sorprendido con el cursor encima', () => {
+    const r = reloj()
+    const d = new Director(r.ahora, 1000)
+    r.avanzar(1500)
+    expect(d.actual()).toBe('dormido')
+    d.reaccionar('encima')
+    expect(d.actual()).toBe('sorprendido')
+    r.avanzar(1000)
+    expect(d.actual()).toBe('feliz')
+  })
+
+  it('acariciarlo con el cursor provoca una reacción; la rueda recorre las caras', () => {
+    const d = new Director(reloj().ahora)
+    expect(d.moverEncima(500)).toBe(false)
+    expect(d.moverEncima(500)).toBe(true)
+    expect(['enamorado', 'timido']).toContain(d.actual())
+    d.expresar(null)
+    expect(d.siguiente(1)).toBe('feliz')
+    expect(d.siguiente(-1)).toBe('neutral')
+  })
+})
+
+describe('avisos de actividad', () => {
+  it('normaliza: tipo válido, textos limpios y cortos, expresión solo si existe', () => {
+    const e = normalizarEvento({ titulo: '  Copia\u200B  lista\n', tipo: 'terminado', origen: 'backup<script>', detalle: 'x'.repeat(1000), expresion: 'risa' })!
+    expect(e.titulo).toBe('Copia lista')
+    expect(e.tipo).toBe('terminado')
+    expect(e.origen).toBe('backupscript')
+    expect(e.detalle!.length).toBeLessThanOrEqual(400)
+    expect(e.expresion).toBe('risa')
+    expect(normalizarEvento({ titulo: 'a', tipo: 'borrar-todo', expresion: 'malvado' })).toMatchObject({ tipo: 'info' })
+    expect(normalizarEvento({ titulo: 'a', expresion: 'malvado' })!.expresion).toBeUndefined()
+    expect(normalizarEvento({ tipo: 'info' })).toBeNull()
+    expect(normalizarEvento('texto')).toBeNull()
+  })
+
+  it('el bus guarda los últimos y avisa aunque un oyente falle', () => {
+    const bus = new BusActividad()
+    const vistos: string[] = []
+    bus.suscribir(() => {
+      throw new Error('roto')
+    })
+    bus.suscribir((e) => vistos.push(e.titulo))
+    for (let i = 0; i < HISTORIAL_MAX + 5; i++) bus.publicar(normalizarEvento({ titulo: `e${i}` })!)
+    expect(vistos).toHaveLength(HISTORIAL_MAX + 5)
+    expect(bus.ultimos()).toHaveLength(HISTORIAL_MAX)
+    expect(bus.ultimos()[0].titulo).toBe('e5')
+  })
+
+  it('traduce los hooks de Claude Code (con rutas de Windows y de Unix)', () => {
+    expect(deClaudeCode({ hook_event_name: 'Notification', cwd: 'C:\\proyectos\\orbe', message: 'Necesito permiso' })).toMatchObject({
+      origen: 'claude-code',
+      tipo: 'esperando',
+      titulo: 'Claude Code te necesita · orbe',
+      detalle: 'Necesito permiso',
+      expresion: 'sorprendido'
+    })
+    expect(deClaudeCode({ hook_event_name: 'PreToolUse', cwd: '/home/yo/web/', tool_name: 'Bash', tool_input: { command: 'npm test' } })).toMatchObject({
+      tipo: 'trabajando',
+      titulo: 'Claude Code usa Bash · web',
+      detalle: '$ npm test'
+    })
+    expect(deClaudeCode({ hook_event_name: 'Stop' })).toMatchObject({ tipo: 'terminado', titulo: 'Claude Code terminó' })
+    expect(deClaudeCode({ hook_event_name: 'PostToolUse' })).toBeNull()
+    expect(deClaudeCode(null)).toBeNull()
+  })
+
+  it('los hooks para pegar en settings.json llaman al script con --claude-code', () => {
+    const json = JSON.parse(configHooksClaudeCode('C:\\Program Files\\Orbe\\resources\\conectores\\orbe-evento.mjs'))
+    expect(Object.keys(json.hooks)).toEqual([...HOOKS_CLAUDE_CODE])
+    expect(json.hooks.PreToolUse[0].matcher).toBe('*')
+    expect(json.hooks.Stop[0].hooks[0].command).toBe('node "C:\\Program Files\\Orbe\\resources\\conectores\\orbe-evento.mjs" --claude-code')
+  })
+})
+
+describe('receptor local de avisos', () => {
+  let servidor: ServidorEventos | null = null
+  afterEach(() => servidor?.detener())
+
+  async function montar() {
+    const bus = new BusActividad()
+    servidor = new ServidorEventos(bus)
+    const { puerto, token } = await servidor.iniciar(0)
+    const pedir = (ruta: string, cuerpo: unknown, cabeceras: Record<string, string> = { Authorization: `Bearer ${token}` }) =>
+      fetch(`http://127.0.0.1:${puerto}${ruta}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...cabeceras }, body: JSON.stringify(cuerpo) })
+    return { bus, puerto, token, pedir }
+  }
+
+  it('con el token, publica el aviso (genérico o de Claude Code)', async () => {
+    const t = await montar()
+    expect((await t.pedir('/v1/eventos', { titulo: 'Copia lista', tipo: 'terminado', origen: 'backup' })).status).toBe(202)
+    expect((await t.pedir('/v1/claude-code', { hook_event_name: 'Stop', cwd: '/x/orbe' })).status).toBe(202)
+    expect((await t.pedir('/v1/claude-code', { hook_event_name: 'PostToolUse' })).status).toBe(204)
+    expect(t.bus.ultimos().map((e) => e.titulo)).toEqual(['Copia lista', 'Claude Code terminó · orbe'])
+    const estado = await fetch(`http://127.0.0.1:${t.puerto}/v1/estado`, { headers: { Authorization: `Bearer ${t.token}` } })
+    expect(await estado.json()).toEqual({ ok: true, app: 'orbe' })
+  })
+
+  it('sin token o con uno falso, no publica nada', async () => {
+    const t = await montar()
+    expect((await t.pedir('/v1/eventos', { titulo: 'x' }, {})).status).toBe(401)
+    expect((await t.pedir('/v1/eventos', { titulo: 'x' }, { Authorization: 'Bearer falso' })).status).toBe(401)
+    expect(t.bus.ultimos()).toHaveLength(0)
+  })
+
+  it('rechaza peticiones de páginas web (con Origin) y JSON roto', async () => {
+    const t = await montar()
+    expect((await t.pedir('/v1/eventos', { titulo: 'x' }, { Authorization: `Bearer ${t.token}`, Origin: 'https://malo.example' })).status).toBe(403)
+    const roto = await fetch(`http://127.0.0.1:${t.puerto}/v1/eventos`, { method: 'POST', headers: { Authorization: `Bearer ${t.token}` }, body: '{no es json' })
+    expect(roto.status).toBe(400)
+    expect((await t.pedir('/v1/otra', {})).status).toBe(404)
+    expect(t.bus.ultimos()).toHaveLength(0)
+  })
+})
+
+describe('configuración del personaje y los conectores', () => {
+  it('por defecto: personaje Orbi y receptor apagado', () => {
+    const c = resolverConfig({}, {})
+    expect(c.apariencia).toBe('personaje')
+    expect(c.diseno).toBe('orbi')
+    expect(c.eventos).toEqual({ activo: false, puerto: 47821 })
+  })
+
+  it('lee apariencia, diseño, Rive y el receptor; avisa de lo inválido', () => {
+    const c = resolverConfig({ ORBE_APARIENCIA: 'rive', ORBE_RIVE_ARCHIVO: 'C:\\p.riv', ORBE_DISENO: 'Noctis', ORBE_EVENTOS: '1', ORBE_EVENTOS_PUERTO: '50000' }, {})
+    expect(c.apariencia).toBe('rive')
+    expect(c.diseno).toBe('noctis')
+    expect(c.eventos).toEqual({ activo: true, puerto: 50000 })
+    const mala = resolverConfig({ ORBE_APARIENCIA: 'rive', ORBE_DISENO: 'xx', ORBE_EVENTOS_PUERTO: '80' }, {})
+    expect(mala.apariencia).toBe('personaje')
+    expect(mala.diseno).toBe('orbi')
+    expect(mala.avisos.length).toBe(3)
+  })
+
+  const base = { proveedor: 'cli', modelo: '', openaiUrl: '', dictado: {}, voz: {} }
+  it('la pantalla de configuración guarda apariencia, diseño, .riv y receptor', () => {
+    const r = validarPeticion({ ...base, apariencia: 'rive', diseno: 'pico', riveArchivo: 'C:\\personajes\\orbe.riv', eventos: true })
+    expect(r).toMatchObject({ ok: true, cambios: { ORBE_APARIENCIA: 'rive', ORBE_DISENO: 'pico', ORBE_RIVE_ARCHIVO: 'C:\\personajes\\orbe.riv', ORBE_EVENTOS: '1' } })
+    expect(validarPeticion({ ...base, eventos: false })).toMatchObject({ ok: true, cambios: { ORBE_EVENTOS: null } })
+    const sinNada = validarPeticion(base)
+    expect(sinNada.ok && 'ORBE_APARIENCIA' in sinNada.cambios).toBe(false)
+  })
+
+  it.each([
+    [{ apariencia: 'payaso' }, /apariencia/],
+    [{ diseno: 'no-existe' }, /diseño/],
+    [{ apariencia: 'rive', riveArchivo: '' }, /\.riv/],
+    [{ riveArchivo: 'relativo.riv' }, /ruta completa/],
+    [{ riveArchivo: 'C:\\virus.exe' }, /\.riv/],
+    [{ eventos: 'sí' }, /conectores/]
+  ])('rechaza %j', (extra, error) => {
+    const r = validarPeticion({ ...base, ...extra })
+    expect(r.ok).toBe(false)
+    expect((r as { error: string }).error).toMatch(error)
+  })
+})

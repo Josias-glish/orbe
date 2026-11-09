@@ -45,12 +45,21 @@ export function plantillaBandeja(acciones: AccionesBandeja, estado: EstadoBandej
 
 /** Si Orbe arranca con Windows (siempre falso fuera de la app instalada). */
 export function iniciaConWindows(): boolean {
-  return app.isPackaged && app.getLoginItemSettings().openAtLogin
+  return app.isPackaged && app.getLoginItemSettings(opcionesInicio()).openAtLogin
 }
 
 export function fijarInicioConWindows(valor: boolean): void {
   if (!app.isPackaged) return
-  app.setLoginItemSettings({ openAtLogin: valor })
+  app.setLoginItemSettings({ openAtLogin: valor, ...opcionesInicio() })
+}
+
+/**
+ * La versión portable se descomprime en una carpeta temporal en cada arranque: lo que tiene que arrancar con Windows
+ * es el `.exe` portable original (electron-builder lo deja en PORTABLE_EXECUTABLE_FILE), no el temporal.
+ */
+function opcionesInicio(): { path?: string } {
+  const portable = process.env['PORTABLE_EXECUTABLE_FILE']
+  return portable ? { path: portable } : {}
 }
 
 /** El icono junto al reloj: clic para mostrar u ocultar, clic derecho para el menú. */

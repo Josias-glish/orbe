@@ -1,6 +1,8 @@
 import { app, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
+import { registrarConectores } from './conectores'
+import { registrarPersonaje } from './personaje'
 import { CANALES } from '../shared/tipos'
 import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -32,6 +34,10 @@ import { FuenteHelper, type FuenteUia } from './pantalla/contexto'
 import { FuenteDemo } from './pantalla/fuente-demo'
 import { ClienteHelper } from './pantalla/helper-uia'
 import { registrarPantalla } from './pantalla/ipc'
+import { ServicioTextoImagen } from './pantalla/ocr'
+import { OcrDemo } from './pantalla/ocr-demo'
+import { cargarImagenElectron, crearDepsOcrReales } from './pantalla/ocr-electron'
+import { ServicioFormula } from './pantalla/formula'
 import { VentanaOrbe } from './ventana'
 
 const modoHumo = process.argv.includes('--smoke')
@@ -64,7 +70,9 @@ let bandeja: Tray | null = null
 
 /** Dónde buscar el .env: junto al proyecto en desarrollo, junto al .exe al instalar, y en los datos del usuario. */
 function rutasEnv(): string[] {
-  const rutas = app.isPackaged ? [join(dirname(process.execPath), '.env')] : [join(app.getAppPath(), '.env')]
+  // En la versión portable, «junto al .exe» es junto al portable original, no la carpeta temporal donde se descomprime.
+  const carpetaExe = process.env['PORTABLE_EXECUTABLE_DIR'] || dirname(process.execPath)
+  const rutas = app.isPackaged ? [join(carpetaExe, '.env')] : [join(app.getAppPath(), '.env')]
   rutas.push(join(app.getPath('userData'), '.env'))
   return rutas
 }
@@ -74,7 +82,7 @@ function carpetaHelper(): string {
   return app.isPackaged ? join(process.resourcesPath, 'helper') : join(app.getAppPath(), 'helper')
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const lectura = leerArchivosEnv(rutasEnv())
   const config = resolverConfig(lectura.valores)
   for (const aviso of config.avisos) console.warn('[orbe]', aviso)
@@ -101,16 +109,33 @@ app.whenReady().then(() => {
   // Captura de respaldo: en la prueba de humo es de mentira (ni fotografía la pantalla real ni oculta la ventana).
   const capturaDemo = modoHumo ? new CapturaDemo() : null
   const captura = new ServicioCaptura(capturaDemo ?? crearDepsReales(orbe, () => fuente.ventana()))
+  // Texto de imagen (OCR de Windows, en el equipo): en la prueba de humo, de mentira (ni lee nada real ni lanza PowerShell).
+  const ocrDemo = modoHumo ? new OcrDemo() : null
+  const depsOcr = ocrDemo ?? crearDepsOcrReales({ ventana: orbe, ventanaObjetivo: () => fuente.ventana(), carpetaHelper: carpetaHelper() })
+  const textoImagen = new ServicioTextoImagen(depsOcr, { contextoMax: config.contextoMax })
+  // Fórmulas y química: la misma forma de conseguir la imagen; en la prueba de humo, una imagen de mentira.
+  const formula = new ServicioFormula({
+    obtener: (origen) => depsOcr.obtener(origen),
+    cargar: ocrDemo ? () => ocrDemo.cargar() : cargarImagenElectron
+  })
   const pantalla = registrarPantalla({
     ventana: orbe,
     fuente,
     contextoMax: config.contextoMax,
-    captura
+    captura,
+    textoImagen,
+    formula
   })
 
   // Memoria: los recuerdos del usuario (propios o traídos de la memoria de Claude) y su conversación guardada.
   // La prueba de humo empieza siempre de cero y con notas de mentira: nunca lee ni enseña la memoria real.
   const datos = app.getPath('userData')
+
+  // La figura de la esquina (personaje, orbe o Rive) y los avisos de otras herramientas (Claude Code, scripts…).
+  // La prueba de humo usa siempre el personaje dibujado y nunca abre el receptor de avisos.
+  const configFigura = modoHumo ? resolverConfig({}, {}) : config
+  registrarPersonaje({ ventana: orbe, config: configFigura })
+  const actividad = await registrarConectores({ ventana: orbe, config: configFigura, carpetaDatos: datos, modoHumo })
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
     archivoConversacion: join(datos, 'conversacion.json'),
@@ -170,7 +195,9 @@ app.whenReady().then(() => {
     archivoEnv: modoHumo ? join(datos, '.env') : (lectura.usados[0] ?? join(datos, '.env')),
     reiniciar: () => {
       if (modoHumo) return
-      app.relaunch()
+      // La portable se relanza desde su .exe original: la carpeta temporal donde se descomprime se borra al salir.
+      const portable = process.env['PORTABLE_EXECUTABLE_FILE']
+      app.relaunch(portable ? { execPath: portable, args: [] } : undefined)
       app.exit(0)
     },
     salir: () => {
@@ -240,7 +267,7 @@ app.whenReady().then(() => {
   }
 
   if (fuenteDemo && capturaDemo) {
-    void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo })
+    void ejecutarHumo(orbe, humoReal, { fuente: fuenteDemo, leerConAtajo: pantalla.leerConAtajo, memoria, captura: capturaDemo, ocr: ocrDemo ?? undefined, actividad })
   }
 })
 

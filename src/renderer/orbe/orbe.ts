@@ -1,3 +1,5 @@
+import type { IdExpresion } from '../../shared/expresiones'
+import type { Avatar } from '../personaje/avatar'
 import type { EstadoOrbe } from '../../shared/tipos'
 import fuenteFragmento from './shaders/orbe.frag.glsl?raw'
 import fuenteVertice from './shaders/orbe.vert.glsl?raw'
@@ -19,7 +21,7 @@ const NOMBRES_UNIFORMS = [
 type NombreUniform = (typeof NOMBRES_UNIFORMS)[number]
 
 /** Orbe fluido dibujado con un fragment shader (WebGL2). Gestiona su propio bucle de animación. */
-export class Orbe {
+export class Orbe implements Avatar {
   private readonly gl: WebGL2RenderingContext
   private readonly uniforms = {} as Record<NombreUniform, WebGLUniformLocation | null>
 
@@ -113,6 +115,14 @@ export class Orbe {
   pulso(intensidad = 0.5): void {
     this.pulsoEnergia = Math.min(1, this.pulsoEnergia + intensidad)
   }
+
+  /** El orbe clásico no tiene cara: las expresiones, la mirada y las reacciones no hacen nada. */
+  expresar(_id: IdExpresion | null, _duracionMs?: number): void {}
+  expresionActual(): IdExpresion | null {
+    return null
+  }
+  mirarA(_x: number, _y: number): void {}
+  reaccionar(): void {}
 
   /** Pausa o reanuda la animación (ventana oculta o minimizada). */
   fijarVisible(visible: boolean): void {

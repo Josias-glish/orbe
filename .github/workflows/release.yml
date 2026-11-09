@@ -5,6 +5,8 @@ name: Publicar instalador
 on:
   push:
     tags: ['v*']
+  # También a mano (pestaña Actions → «Publicar instalador» → Run workflow), con la versión de package.json.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,8 +29,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          etiqueta="$GITHUB_REF_NAME"
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then etiqueta="v$(node -p "require('./package.json').version")"; fi
+          gh release create "$etiqueta" \
             "dist/Orbe-Setup-"*.exe \
             "dist/Orbe-Setup-"*.exe.blockmap \
-            --title "Orbe $GITHUB_REF_NAME" \
+            "dist/Orbe-Portable-"*.exe \
+            "dist/Orbe-"*"-win.zip" \
+            --target "$GITHUB_SHA" \
+            --title "Orbe $etiqueta" \
             --generate-notes

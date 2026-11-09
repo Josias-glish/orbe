@@ -109,31 +109,48 @@ export class ServicioCaptura {
       throw new ErrorChat(crearError('captura_no_disponible', { detalle: 'Windows no devolvió ninguna imagen de la pantalla.' }))
     }
 
-    // Primero con la calidad normal; si pesa demasiado, se baja la calidad y luego el tamaño.
-    let reducida = cruda.reducir(LADO_MAX)
-    let jpeg = reducida.aJpeg(CALIDAD_JPEG)
-    for (const [lado, calidad] of [[LADO_MAX, 70], [1200, 70], [1000, 60]] as const) {
-      if (jpeg.length <= MAX_BYTES_JPEG) break
-      reducida = cruda.reducir(lado)
-      jpeg = reducida.aJpeg(calidad)
-    }
-    if (jpeg.length > MAX_BYTES_JPEG) {
-      throw new ErrorChat(crearError('captura_no_disponible', { detalle: 'La imagen pesa demasiado incluso reducida.' }))
-    }
-
-    const { ancho, alto } = reducida.tamano()
-    const miniatura = `data:image/jpeg;base64,${aBase64(reducida.reducir(LADO_MINIATURA).aJpeg(70))}`
-    const kb = Math.max(1, Math.round(jpeg.length / 1024))
+    const lista = comprimirImagen(cruda)
     return {
-      imagen: { tipoMime: 'image/jpeg', base64: aBase64(jpeg), ancho, alto },
+      imagen: lista.imagen,
       parte: {
         clave: 'imagen',
         etiqueta: 'Captura',
-        resumen: `${ancho}×${alto} · ${new Intl.NumberFormat('es-ES').format(kb)} KB`,
+        resumen: lista.resumen,
         vista: 'Esta captura de tu pantalla viajará con tu próximo mensaje si lo envías.',
-        miniatura
+        miniatura: lista.miniatura
       },
       avisos: cruda.esNegra() ? [AVISO_NEGRA] : []
     }
+  }
+}
+
+/** Una imagen ya reducida y en JPEG para el modelo, con su miniatura para la vista previa y un resumen («1500×844 · 210 KB»). */
+export interface ImagenComprimida {
+  imagen: NonNullable<ContextoPantalla['imagen']>
+  miniatura: string
+  resumen: string
+}
+
+/**
+ * Reduce a ~1500 px y pasa a JPEG; si pesa demasiado, baja la calidad y luego el tamaño. Lanza `captura_no_disponible`
+ * si ni así cabe. La usan la captura de pantalla y las fórmulas.
+ */
+export function comprimirImagen(cruda: ImagenNativa): ImagenComprimida {
+  let reducida = cruda.reducir(LADO_MAX)
+  let jpeg = reducida.aJpeg(CALIDAD_JPEG)
+  for (const [lado, calidad] of [[LADO_MAX, 70], [1200, 70], [1000, 60]] as const) {
+    if (jpeg.length <= MAX_BYTES_JPEG) break
+    reducida = cruda.reducir(lado)
+    jpeg = reducida.aJpeg(calidad)
+  }
+  if (jpeg.length > MAX_BYTES_JPEG) {
+    throw new ErrorChat(crearError('captura_no_disponible', { detalle: 'La imagen pesa demasiado incluso reducida.' }))
+  }
+  const { ancho, alto } = reducida.tamano()
+  const kb = Math.max(1, Math.round(jpeg.length / 1024))
+  return {
+    imagen: { tipoMime: 'image/jpeg', base64: aBase64(jpeg), ancho, alto },
+    miniatura: `data:image/jpeg;base64,${aBase64(reducida.reducir(LADO_MINIATURA).aJpeg(70))}`,
+    resumen: `${ancho}×${alto} · ${new Intl.NumberFormat('es-ES').format(kb)} KB`
   }
 }

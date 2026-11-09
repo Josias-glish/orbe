@@ -1,4 +1,5 @@
 import type {
+  OrigenTextoImagen,
   AccionVista,
   ClaveParte,
   ErrorOrbe,
@@ -12,12 +13,13 @@ import { esPreguntaVisual } from '../../shared/visual'
 import { EntradaTeclado } from '../entrada/entrada'
 import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
-import type { Orbe } from '../orbe/orbe'
+import type { Avatar } from '../personaje/avatar'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
 import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
 import { MenuVoz } from '../voz/menu-voz'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
+import { MenuTextoImagen, type ModoImagen } from './ocr-ui'
 import { ConfirmacionAccion } from './confirmacion-accion'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
@@ -53,6 +55,9 @@ export class PanelChat {
   private readonly botonDetenerOrbe: HTMLButtonElement
   private readonly sugerencia: SugerenciaCaptura
   private capturando = false
+  private readonly botonTextoImagen: HTMLButtonElement
+  private readonly menuTextoImagen: MenuTextoImagen
+  private reconociendo = false
   private readonly botonMicro: HTMLButtonElement
   private readonly lector: LectorVoz
   private readonly menuVoz: MenuVoz
@@ -77,7 +82,7 @@ export class PanelChat {
   private inicioLectura = 0
 
   constructor(
-    private readonly orbe: Orbe,
+    private readonly orbe: Avatar,
     raiz: Document = document
   ) {
     const porId = <T extends HTMLElement>(id: string): T => raiz.getElementById(id) as T
@@ -93,6 +98,8 @@ export class PanelChat {
     this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
+    this.botonTextoImagen = porId('texto-imagen')
+    this.menuTextoImagen = new MenuTextoImagen(this.botonTextoImagen, porId('texto-imagen-menu'), (modo, origen) => void this.leerImagen(modo, origen))
     this.botonMicro = porId('microfono')
     let almacen: Storage | null = null
     try {
@@ -270,6 +277,7 @@ export class PanelChat {
 
   /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
   alPulsarEscape(): boolean {
+    if (this.menuTextoImagen.cerrarSiAbierto()) return true
     if (this.menuVoz.cerrarSiAbierto()) return true
     if (this.menuPotencia.cerrarSiAbierto()) return true
     if (this.dictado.grabando) {
@@ -420,6 +428,50 @@ export class PanelChat {
       this.botonCapturar.classList.remove('leyendo')
       if (!this.turno && !this.leyendo) this.cambiarEstadoOrbe('reposo')
       this.evaluarSugerencia()
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Texto de una imagen (OCR de Windows en el equipo, sin pantallazo del monitor)
+  // -------------------------------------------------------------------------------------------
+
+  /** Lo que se escribe solo al preparar una fórmula, si el campo está vacío (se puede cambiar antes de enviar). */
+  static readonly PEDIDO_FORMULA = 'Reconoce la fórmula o la estructura de la imagen y resuélvela paso a paso.'
+
+  /**
+   * Texto: reconoce el texto de una imagen (ventana, portapapeles o archivo) en el equipo y lo deja pendiente.
+   * Fórmula: deja la imagen pendiente, con su miniatura, para que la IA la reconozca y la resuelva.
+   */
+  async leerImagen(modo: ModoImagen, origen: OrigenTextoImagen): Promise<void> {
+    if (this.reconociendo || this.capturando || this.leyendo) return
+    this.reconociendo = true
+    this.botonTextoImagen.disabled = true
+    this.botonTextoImagen.classList.add('leyendo')
+    if (!this.turno) this.cambiarEstadoOrbe('leyendo')
+    try {
+      const antes = this.lectura?.partes.find((p) => p.clave === (modo === 'formula' ? 'imagen' : 'texto_imagen'))?.resumen
+      const respuesta = modo === 'formula' ? await window.orbe.pantallaFormula(origen) : await window.orbe.pantallaTextoImagen(origen)
+      if (respuesta.ok) {
+        const lectura = { partes: respuesta.partes, avisos: respuesta.avisos, sugerirCaptura: respuesta.sugerirCaptura }
+        const clave = modo === 'formula' ? 'imagen' : 'texto_imagen'
+        const nueva = respuesta.partes.find((p) => p.clave === clave)
+        // Solo si de verdad hay algo nuevo (cancelar el diálogo de archivo deja todo como estaba).
+        const hayNueva = !!nueva && nueva.resumen !== antes
+        if (hayNueva) this.barra.abrir(clave)
+        if (respuesta.partes.length > 0) this.fijarLectura(lectura)
+        if (hayNueva && modo === 'formula' && !this.entrada.hayTexto()) this.entrada.insertar(PanelChat.PEDIDO_FORMULA)
+      } else {
+        this.lista.agregarError(respuesta.error, respuesta.error.reintentable ? () => void this.leerImagen(modo, origen) : undefined)
+      }
+    } catch (e) {
+      this.lista.agregarError(this.errorLocal(e))
+    } finally {
+      this.reconociendo = false
+      this.botonTextoImagen.disabled = false
+      this.botonTextoImagen.classList.remove('leyendo')
+      if (!this.turno && !this.leyendo && !this.capturando) this.cambiarEstadoOrbe('reposo')
+      this.evaluarSugerencia()
+      this.entrada.enfocar()
     }
   }
 
@@ -699,7 +751,7 @@ export class PanelChat {
   // Presentación
   // -------------------------------------------------------------------------------------------
 
-  private cambiarEstadoOrbe(estado: Parameters<Orbe['establecerEstado']>[0]): void {
+  private cambiarEstadoOrbe(estado: Parameters<Avatar['establecerEstado']>[0]): void {
     window.clearTimeout(this.temporizadorReposo)
     this.orbe.establecerEstado(estado)
   }

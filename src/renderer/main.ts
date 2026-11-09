@@ -3,6 +3,11 @@ import type { EstadoOrbe, EstadoVentana } from '../shared/tipos'
 import { FondoChat } from './chat/fondo-ui'
 import { PanelChat } from './chat/panel'
 import { Orbe } from './orbe/orbe'
+import type { Apariencia } from '../shared/tipos'
+import { FiguraEsquina } from './personaje/figura'
+import { MenuPersonaje } from './personaje/menu-personaje'
+import { Personaje } from './personaje/personaje'
+import { disenoPorId } from '../shared/disenos'
 
 const UMBRAL_ARRASTRE = 4
 /** Elementos que reciben sus propios clics: no deben iniciar un arrastre de la ventana. */
@@ -14,8 +19,62 @@ const canvas = document.getElementById('orbe-canvas') as HTMLCanvasElement
 const cabecera = document.getElementById('panel-cabecera') as HTMLElement
 const panelEl = document.getElementById('panel') as HTMLElement
 
-const orbe = new Orbe(canvas)
-orbe.iniciar()
+// La figura de la esquina: el personaje por defecto; el orbe clásico o un personaje de Rive si así se configuró.
+const orbe = new FiguraEsquina()
+let apariencia: Apariencia = 'personaje'
+
+let diseno = 'orbi'
+
+function ponerPersonaje(): void {
+  canvas.hidden = true
+  caja.classList.add('con-personaje')
+  orbe.poner(new Personaje(caja, disenoPorId(diseno)))
+}
+
+async function montarFigura(): Promise<void> {
+  let recursos: Awaited<ReturnType<typeof window.orbe.personajeRecursos>> = { apariencia: 'personaje', diseno: 'orbi' }
+  try {
+    recursos = await window.orbe.personajeRecursos()
+  } catch {
+    // sin respuesta, el personaje de siempre
+  }
+  apariencia = recursos.apariencia
+  diseno = recursos.diseno
+  if (recursos.apariencia === 'orbe') {
+    try {
+      orbe.poner(new Orbe(canvas))
+      return
+    } catch {
+      apariencia = 'personaje' // sin WebGL2, el personaje (que es SVG) funciona igual
+    }
+  }
+  if (recursos.apariencia === 'rive' && recursos.rive) {
+    try {
+      canvas.hidden = true
+      caja.classList.add('con-personaje')
+      const { PersonajeRive } = await import('./personaje/personaje-rive')
+      orbe.poner(await PersonajeRive.crear(caja, recursos.rive))
+      return
+    } catch (e) {
+      console.warn('[orbe] Personaje de Rive no disponible:', e)
+      apariencia = 'personaje'
+    }
+  }
+  if (recursos.aviso) console.warn('[orbe]', recursos.aviso)
+  ponerPersonaje()
+}
+
+const figuraLista = montarFigura().then(() => {
+  menuPersonaje = new MenuPersonaje(
+    orbe,
+    document.getElementById('personaje-boton') as HTMLButtonElement,
+    document.getElementById('personaje-menu') as HTMLElement,
+    document.getElementById('actividad-insignia') as HTMLElement,
+    apariencia !== 'orbe'
+  )
+})
+let menuPersonaje: MenuPersonaje | null = null
+window.orbe.alCursor((p) => orbe.mirarA(p.x, p.y))
 const panel = new PanelChat(orbe)
 void panel.restaurarConversacion()
 const fondo = new FondoChat(
@@ -27,7 +86,7 @@ const fondo = new FondoChat(
 void fondo.iniciar()
 
 /** Distingue clic de arrastre sobre un elemento: el arrastre mueve la ventana, el clic ejecuta `alClic`. */
-function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
+function hacerArrastrable(elemento: HTMLElement, alClic?: () => void, gestos?: { alEmpezar(): void; alSoltar(): void }): void {
   let inicio: { x: number; y: number } | null = null
   let arrastrando = false
 
@@ -45,6 +104,7 @@ function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
       if (Math.hypot(e.screenX - inicio.x, e.screenY - inicio.y) < UMBRAL_ARRASTRE) return
       arrastrando = true
       elemento.classList.add('arrastrando')
+      gestos?.alEmpezar()
       window.orbe.arrastreInicio(inicio.x, inicio.y)
     }
     window.orbe.arrastreMover(e.screenX, e.screenY)
@@ -53,8 +113,10 @@ function hacerArrastrable(elemento: HTMLElement, alClic?: () => void): void {
   const terminar = (e: PointerEvent): void => {
     if (!inicio) return
     if (elemento.hasPointerCapture(e.pointerId)) elemento.releasePointerCapture(e.pointerId)
-    if (arrastrando) window.orbe.arrastreFin()
-    else if (e.type === 'pointerup') alClic?.()
+    if (arrastrando) {
+      window.orbe.arrastreFin()
+      gestos?.alSoltar()
+    } else if (e.type === 'pointerup') alClic?.()
     inicio = null
     arrastrando = false
     elemento.classList.remove('arrastrando')
@@ -91,7 +153,10 @@ function hacerRedimensionable(agarre: HTMLElement): void {
   agarre.addEventListener('pointercancel', terminar)
 }
 
-hacerArrastrable(caja, () => window.orbe.alternar())
+hacerArrastrable(caja, () => window.orbe.alternar(), {
+  alEmpezar: () => orbe.reaccionar('arrastre'),
+  alSoltar: () => orbe.reaccionar('soltar')
+})
 hacerArrastrable(cabecera)
 document.querySelectorAll<HTMLElement>('.agarre').forEach(hacerRedimensionable)
 
@@ -108,6 +173,7 @@ function aplicarEstadoVentana(estado: EstadoVentana): void {
 
   if (estado.expandido) {
     // Abrir el panel es la señal de que se va a usar: se prepara el chat y se deja el cursor listo.
+    orbe.reaccionar('abrir')
     if (primeraApertura) {
       primeraApertura = false
       window.orbe.chatPrecalentar()
@@ -123,7 +189,7 @@ window.orbe.alCambiarVisibilidad((visible) => orbe.fijarVisible(visible))
 // Escape cierra el gestor de memoria si está abierto y, si no, el panel.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || !raiz.classList.contains('expandido')) return
-  if (fondo.cerrarMenuSiAbierto() || panel.alPulsarEscape()) return
+  if (fondo.cerrarMenuSiAbierto() || menuPersonaje?.cerrarSiAbierto() || panel.alPulsarEscape()) return
   window.orbe.alternar()
 })
 
@@ -137,6 +203,7 @@ w.__orbeEstado = (estado: EstadoOrbe): void => {
   if (estado === 'respondiendo') temporizadorPulsos = window.setInterval(() => orbe.pulso(0.45), 220)
 }
 w.__orbeDiagnostico = () => orbe.diagnostico()
+w.__orbeFiguraLista = () => figuraLista.then(() => true)
 
 // El selector de estados solo existe con el servidor de desarrollo (npm run dev); Ctrl+Alt+D lo muestra u oculta.
 if (location.protocol === 'http:') {

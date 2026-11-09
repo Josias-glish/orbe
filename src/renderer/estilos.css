@@ -690,12 +690,13 @@ kbd {
 .compositor {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 12px 12px;
   border-top: 1px solid var(--linea);
 }
 .entrada {
   flex: 1;
+  min-width: 0;
   min-height: 38px;
   max-height: 120px;
   padding: 8px 12px;
@@ -752,8 +753,9 @@ kbd {
   flex: none;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 35px;
+  height: 35px;
+  margin-bottom: 1.5px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--linea);
@@ -1791,4 +1793,225 @@ kbd {
 }
 #fijar-boton[aria-pressed='false'] svg {
   transform: rotate(35deg);
+}
+
+/* ---- Texto de imagen (OCR en el equipo) ---- */
+.ocr-menu {
+  top: auto;
+  bottom: 64px;
+  right: auto;
+  left: 12px;
+  width: 260px;
+}
+.ocr-menu .memoria-nota {
+  white-space: normal;
+  overflow: visible;
+}
+.ocr-modos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.ocr-modo {
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ocr-modo[aria-checked='true'] {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--texto);
+}
+.ocr-modo:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+}
+.ocr-menu-titulo {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto);
+}
+.ocr-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ocr-opcion:hover,
+.ocr-opcion:focus-visible {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.09);
+  outline: none;
+}
+.ocr-opcion-titulo {
+  font-size: 12.5px;
+}
+.ocr-opcion-ayuda {
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+
+/* ---- Fórmulas (KaTeX) en las respuestas ---- */
+.contenido .katex {
+  font-size: 1.08em;
+  color: inherit;
+}
+.contenido .katex-display {
+  margin: 0.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+/* ---- Personaje (sustituye al orbe por defecto) ---- */
+.orbe-caja .personaje,
+.orbe-caja .personaje-rive {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.orbe-canvas[hidden] {
+  display: none;
+}
+.personaje-sombra {
+  transition: opacity 200ms;
+}
+
+/* El globito con los avisos sin ver de los conectores (Claude Code y otras herramientas). */
+.actividad-insignia {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 3;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(10, 10, 30, 0.85);
+  pointer-events: none;
+  animation: insignia-aparece 260ms ease-out;
+}
+.actividad-insignia[hidden] {
+  display: none;
+}
+.actividad-insignia[data-tipo='terminado'] {
+  background: #10b981;
+}
+.actividad-insignia[data-tipo='esperando'] {
+  background: #f59e0b;
+}
+@keyframes insignia-aparece {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* ---- Menú del personaje: expresiones y actividad ---- */
+.personaje-menu {
+  width: 272px;
+  max-height: min(440px, calc(100% - 70px));
+  overflow-y: auto;
+}
+.expresiones-rejilla {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.expresion-boton {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.expresion-boton:hover,
+.expresion-boton:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+.expresion-boton[aria-pressed='true'] {
+  border-color: rgba(125, 211, 252, 0.8);
+  background: rgba(125, 211, 252, 0.16);
+}
+.actividad-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.actividad-item {
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid #64748b;
+}
+.actividad-esperando {
+  border-left-color: #f59e0b;
+}
+.actividad-terminado {
+  border-left-color: #10b981;
+}
+.actividad-error {
+  border-left-color: #f43f5e;
+}
+.actividad-trabajando {
+  border-left-color: #38bdf8;
+}
+.actividad-cabeza {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10.5px;
+  color: var(--texto-suave);
+}
+.actividad-tipo {
+  font-weight: 600;
+  color: var(--texto);
+}
+.actividad-hora {
+  margin-left: auto;
+}
+.actividad-titulo {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+.actividad-detalle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--texto-suave);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

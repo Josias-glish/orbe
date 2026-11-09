@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src blob:; connect-src 'self' ws://localhost:* http://localhost:*"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; media-src blob:; connect-src 'self' blob: ws://localhost:* http://localhost:*"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Orbe</title>
@@ -23,6 +23,14 @@
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M3.34 19a10 10 0 1 1 17.32 0" />
                 <path class="aguja" d="M12 14V6.5" />
+              </svg>
+            </button>
+            <button id="personaje-boton" class="boton-icono" type="button" title="Personaje: expresiones y actividad" aria-label="Personaje: expresiones y actividad" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8.5 14.5s1.3 2 3.5 2 3.5-2 3.5-2" />
+                <path d="M9 9.5h.01" />
+                <path d="M15 9.5h.01" />
               </svg>
             </button>
             <button id="voz-boton" class="boton-icono" type="button" title="Voz y dictado" aria-label="Voz y dictado" aria-expanded="false">
@@ -93,6 +101,8 @@
 
           <div id="sugerencia" class="sugerencia" role="status" hidden></div>
 
+          <div id="texto-imagen-menu" class="fondo-menu ocr-menu" role="menu" aria-label="De dónde leer el texto de la imagen" hidden></div>
+
           <div id="estado-linea" class="estado-linea" role="status" hidden></div>
 
           <button id="detener-accion" class="detener-accion" type="button" title="Detener la tarea ahora mismo (Esc)" hidden>
@@ -128,6 +138,22 @@
               </svg>
             </button>
             <button
+              id="texto-imagen"
+              class="boton-leer boton-texto-imagen"
+              type="button"
+              title="Imagen sin pantallazo: leer su texto (en tu equipo) o reconocer y resolver una fórmula o una estructura química"
+              aria-label="Texto, fórmula o química de una imagen"
+            >
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <path d="M8 8h8" />
+                <path d="M12 8v8" />
+              </svg>
+            </button>
+            <button
               id="microfono"
               class="boton-leer boton-micro"
               type="button"
@@ -140,7 +166,7 @@
                 <path d="M12 19v3" />
               </svg>
             </button>
-            <textarea id="entrada" class="entrada" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" spellcheck="true"></textarea>
+            <textarea id="entrada" class="entrada" rows="1" placeholder="Escribe…" aria-label="Mensaje" spellcheck="true"></textarea>
             <button id="enviar" class="boton-enviar" type="button" aria-label="Enviar" disabled>
               <svg class="icono-enviar" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 19V5" />
@@ -158,6 +184,7 @@
 
         <div id="fondo-menu" class="fondo-menu" role="dialog" aria-label="Opciones del fondo" hidden></div>
         <div id="voz-menu" class="fondo-menu voz-menu" role="dialog" aria-label="Opciones de voz" hidden></div>
+        <div id="personaje-menu" class="fondo-menu personaje-menu" role="dialog" aria-label="Expresiones y actividad" hidden></div>
         <div id="potencia-menu" class="fondo-menu potencia-menu" role="dialog" aria-label="Potencia del modelo" hidden></div>
 
         <!-- Agarres para cambiar el tamaño: están en los bordes libres (los opuestos al orbe, que no se mueve). -->
@@ -168,6 +195,7 @@
 
       <div id="orbe-caja" class="orbe-caja" title="Clic para abrir o cerrar · arrastra para mover">
         <canvas id="orbe-canvas" class="orbe-canvas"></canvas>
+        <span id="actividad-insignia" class="actividad-insignia" role="status" hidden></span>
         <button id="detener-orbe" class="detener-orbe" type="button" title="Detener la tarea" aria-label="Detener la tarea" hidden>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
             <rect x="6" y="6" width="12" height="12" rx="2.5" />

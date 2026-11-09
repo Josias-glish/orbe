@@ -1,6 +1,7 @@
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, isAbsolute, win32 } from 'node:path'
+import { DISENOS } from '../shared/disenos'
 import { CANALES, type ConfigVista, type PeticionConfig, type ResultadoConfig } from '../shared/tipos'
 import type { Config } from './entorno'
 
@@ -18,7 +19,11 @@ export const CLAVES_EDITABLES = [
   'ORBE_TTS_URL',
   'ORBE_TTS_KEY',
   'ORBE_TTS_MODELO',
-  'ORBE_TTS_VOZ'
+  'ORBE_TTS_VOZ',
+  'ORBE_APARIENCIA',
+  'ORBE_DISENO',
+  'ORBE_RIVE_ARCHIVO',
+  'ORBE_EVENTOS'
 ] as const
 
 type Cambios = Record<string, string | null>
@@ -138,6 +143,30 @@ export function validarPeticion(p: unknown): { ok: true; cambios: Cambios } | { 
   poner('ORBE_TTS_KEY', v.ttsKey)
   poner('ORBE_TTS_MODELO', v.ttsModelo)
   poner('ORBE_TTS_VOZ', v.ttsVoz)
+  // Apariencia y conectores: opcionales, para que una petición antigua (sin ellos) no los toque.
+  const apariencia = o['apariencia']
+  if (apariencia !== undefined) {
+    if (apariencia !== 'personaje' && apariencia !== 'orbe' && apariencia !== 'rive') return { ok: false, error: 'La apariencia no es válida.' }
+    cambios['ORBE_APARIENCIA'] = apariencia
+  }
+  const diseno = o['diseno']
+  if (diseno !== undefined) {
+    if (typeof diseno !== 'string' || !DISENOS.some((d) => d.id === diseno)) return { ok: false, error: 'El diseño del personaje no existe.' }
+    cambios['ORBE_DISENO'] = diseno
+  }
+  const rive = o['riveArchivo']
+  if (rive !== undefined) {
+    if (typeof rive !== 'string' || rive.length > 500 || /[\r\n]/.test(rive)) return { ok: false, error: 'La ruta del archivo de Rive no es válida.' }
+    const r = rive.trim()
+    if (r && (!(isAbsolute(r) || win32.isAbsolute(r)) || !/\.riv$/i.test(r))) return { ok: false, error: 'El personaje de Rive tiene que ser un archivo .riv (con su ruta completa).' }
+    cambios['ORBE_RIVE_ARCHIVO'] = r || null
+  }
+  if (apariencia === 'rive' && !(typeof rive === 'string' && rive.trim())) return { ok: false, error: 'Elige el archivo .riv del personaje de Rive.' }
+  const eventos = o['eventos']
+  if (eventos !== undefined) {
+    if (typeof eventos !== 'boolean') return { ok: false, error: 'El valor de los conectores no es válido.' }
+    cambios['ORBE_EVENTOS'] = eventos ? '1' : null
+  }
   return { ok: true, cambios }
 }
 
@@ -151,7 +180,11 @@ export function vistaConfig(config: Config, valores: Record<string, string>): Co
     tieneClaveOpenai: Boolean(v('ORBE_OPENAI_KEY') || v('OPENAI_API_KEY')),
     tieneClaveAnthropic: Boolean(v('ANTHROPIC_API_KEY')),
     dictado: { url: v('ORBE_STT_URL'), modelo: v('ORBE_STT_MODELO'), idioma: v('ORBE_STT_IDIOMA'), tieneClave: Boolean(v('ORBE_STT_KEY')) },
-    voz: { url: v('ORBE_TTS_URL'), modelo: v('ORBE_TTS_MODELO'), voz: v('ORBE_TTS_VOZ'), tieneClave: Boolean(v('ORBE_TTS_KEY')) }
+    voz: { url: v('ORBE_TTS_URL'), modelo: v('ORBE_TTS_MODELO'), voz: v('ORBE_TTS_VOZ'), tieneClave: Boolean(v('ORBE_TTS_KEY')) },
+    apariencia: config.apariencia,
+    diseno: config.diseno,
+    riveArchivo: v('ORBE_RIVE_ARCHIVO'),
+    eventos: config.eventos.activo
   }
 }
 
@@ -196,6 +229,15 @@ export function registrarConfiguracion(o: OpcionesConfiguracion): void {
     // Se reinicia un instante después, para que la interfaz reciba antes la respuesta.
     setTimeout(o.reiniciar, 400)
     return { ok: true }
+  })
+  ipcMain.handle(CANALES.configElegirRive, async (e): Promise<string | null> => {
+    exigir(e)
+    const r = await dialog.showOpenDialog(o.ventana, {
+      title: 'Elige el personaje de Rive',
+      properties: ['openFile'],
+      filters: [{ name: 'Personaje de Rive', extensions: ['riv'] }]
+    })
+    return r.canceled ? null : (r.filePaths[0] ?? null)
   })
   ipcMain.handle(CANALES.appSalir, (e): void => {
     exigir(e)
