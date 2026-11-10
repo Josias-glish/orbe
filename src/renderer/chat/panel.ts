@@ -784,7 +784,10 @@ export class PanelChat {
       return
     }
     this.mostrandoDictado = true
-    if (estado === 'grabando') {
+    if (estado === 'preparando') {
+      this.mostrarEstado('Abriendo el micrófono… (Esc cancela)')
+      if (!this.turno) this.cambiarEstadoOrbe('escuchando')
+    } else if (estado === 'grabando') {
       const tiempo = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, '0')}`
       this.mostrarEstado(`Grabando… ${tiempo} · pulsa el micrófono para terminar (Esc cancela)`)
       if (!this.turno) this.cambiarEstadoOrbe('escuchando')

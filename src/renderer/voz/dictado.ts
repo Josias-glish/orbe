@@ -1,4 +1,5 @@
-export type EstadoDictado = 'reposo' | 'grabando' | 'transcribiendo'
+/** `preparando`: se ha pulsado y Windows está abriendo el micrófono (puede tardar varios segundos). */
+export type EstadoDictado = 'reposo' | 'preparando' | 'grabando' | 'transcribiendo'
 
 export interface CallbacksDictado {
   alEstado(estado: EstadoDictado, segundos: number): void
@@ -49,14 +50,33 @@ export class Dictado {
     return this.estado !== 'reposo'
   }
 
+  /** Hay una grabación en marcha o abriéndose: es lo que Esc cancela. */
   get grabando(): boolean {
-    return this.estado === 'grabando'
+    return this.estado === 'grabando' || this.estado === 'preparando'
   }
 
-  /** Un clic empieza a grabar; otro clic termina y transcribe. Durante la transcripción no hace nada. */
+  /**
+   * Un clic empieza a grabar; otro clic termina y transcribe. Si el micrófono aún se está abriendo, el segundo clic
+   * cancela (nunca arranca otra grabación). Durante la transcripción no hace nada.
+   */
   async alternar(): Promise<void> {
     if (this.estado === 'reposo') await this.iniciar()
+    else if (this.estado === 'preparando') this.cancelar()
     else if (this.estado === 'grabando') this.terminar()
+  }
+
+  private soltarMicrofono(): void {
+    this.flujo?.getTracks().forEach((t) => t.stop())
+    this.flujo = null
+  }
+
+  private aReposo(error?: string): void {
+    window.clearInterval(this.reloj)
+    this.soltarMicrofono()
+    this.grabador = null
+    this.estado = 'reposo'
+    this.cb.alEstado('reposo', 0)
+    if (error) this.cb.alError(error)
   }
 
   private async iniciar(): Promise<void> {
@@ -64,34 +84,45 @@ export class Dictado {
       this.cb.alError('Este equipo no permite grabar audio desde Orbe.')
       return
     }
+    // Abrir el micrófono puede tardar segundos (más con auriculares Bluetooth). Se marca ya como ocupado y se avisa:
+    // sin esto, un segundo clic durante la espera arrancaba otra grabación que nadie cerraba.
+    this.estado = 'preparando'
+    this.descartar = false
+    this.cb.alEstado('preparando', 0)
+
     let info
     try {
       info = await window.orbe.vozInfo()
     } catch {
-      this.cb.alError('No he podido comprobar el dictado.')
-      return
+      return this.aReposo('No he podido comprobar el dictado.')
     }
     if (!info.dictado) {
-      this.cb.alError('El dictado no está configurado. Añade ORBE_STT_KEY (o ORBE_OPENAI_KEY) en el archivo .env y reinicia Orbe.')
-      return
+      return this.aReposo('El dictado no está configurado. Añade ORBE_STT_KEY (o ORBE_OPENAI_KEY) en el archivo .env y reinicia Orbe.')
     }
+    if (this.descartar) return this.aReposo()
 
     try {
       this.flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
     } catch (e) {
-      this.cb.alError(mensajeDeMicrofono(e))
-      return
+      return this.aReposo(mensajeDeMicrofono(e))
     }
+    // Se canceló mientras se abría: se suelta el micrófono sin grabar nada.
+    if (this.descartar) return this.aReposo()
 
     this.trozos = []
-    this.descartar = false
-    const tipo = elegirTipo()
-    this.grabador = new MediaRecorder(this.flujo, tipo ? { mimeType: tipo } : undefined)
-    this.grabador.ondataavailable = (ev) => {
-      if (ev.data.size > 0) this.trozos.push(ev.data)
+    try {
+      const tipo = elegirTipo()
+      this.grabador = new MediaRecorder(this.flujo, tipo ? { mimeType: tipo } : undefined)
+      this.grabador.ondataavailable = (ev) => {
+        if (ev.data.size > 0) this.trozos.push(ev.data)
+      }
+      this.grabador.onstop = () => void this.alParar()
+      this.grabador.start(250)
+    } catch {
+      return this.aReposo('No he podido empezar a grabar con ese micrófono.')
     }
-    this.grabador.onstop = () => void this.alParar()
-    this.grabador.start(250)
+    // Si el micrófono desaparece a media grabación (auriculares que se desconectan), se cierra con lo que haya.
+    for (const pista of this.flujo.getTracks()) pista.onended = () => this.terminar()
 
     this.estado = 'grabando'
     this.inicio = Date.now()
@@ -105,28 +136,29 @@ export class Dictado {
 
   /** Deja de grabar y manda el audio a transcribir. */
   terminar(): void {
-    if (this.estado === 'grabando' && this.grabador?.state === 'recording') this.grabador.stop()
+    if (this.estado !== 'grabando') return
+    if (this.grabador?.state === 'recording') this.grabador.stop()
+    // El grabador ya se paró solo (falló el dispositivo): se cierra igualmente, para no quedarse «grabando».
+    else void this.alParar()
   }
 
-  /** Descarta la grabación en curso (por ejemplo, con Esc): no se transcribe ni se envía nada. */
+  /** Descarta la grabación en curso o la que se está abriendo (por ejemplo, con Esc): no se transcribe ni se envía nada. */
   cancelar(): void {
-    if (this.estado !== 'grabando') return
+    if (this.estado !== 'grabando' && this.estado !== 'preparando') return
     this.descartar = true
     this.terminar()
   }
 
   private async alParar(): Promise<void> {
+    if (this.estado !== 'grabando') return
     window.clearInterval(this.reloj)
-    this.flujo?.getTracks().forEach((t) => t.stop())
-    this.flujo = null
+    this.soltarMicrofono()
     const bruto = new Blob(this.trozos, { type: this.grabador?.mimeType || 'audio/webm' })
     this.trozos = []
 
     if (this.descartar || bruto.size < MIN_BYTES) {
       const descartada = this.descartar
-      this.estado = 'reposo'
-      this.cb.alEstado('reposo', 0)
-      if (!descartada) this.cb.alError('No he oído nada. Prueba otra vez, más cerca del micrófono.')
+      this.aReposo(descartada ? undefined : 'No he oído nada. Prueba otra vez, más cerca del micrófono.')
       return
     }
 

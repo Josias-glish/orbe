@@ -9,5 +9,5 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
-  "include": ["src/renderer/**/*", "src/shared/**/*", "src/preload/index.d.ts"]
+  "include": ["src/renderer/**/*", "src/shared/**/*", "src/preload/index.d.ts", "tests/dictado.test.ts"]
 }
