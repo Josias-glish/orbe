@@ -12,6 +12,9 @@ import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
 import { crearHerramientasGmail } from './agente/herramientas/gmail'
 import { crearHerramientasInstagram } from './agente/herramientas/instagram'
+import { crearHerramientasContenido } from './agente/herramientas/contenido'
+import { AlmacenContenido } from './contenido/almacen'
+import { registrarContenido, renderizarPng } from './contenido/ipc'
 import { Gmail } from './conectores/gmail/cliente'
 import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
@@ -238,7 +241,15 @@ app.whenReady().then(async () => {
   // guardar uno en Ajustes vale sin reiniciar.
   const tokenIg = crearFuenteTokenIg((clave) => cofre.leer<TokenGuardado>(clave), (clave, valor) => cofre.guardar(clave, valor))
   const instagram = crearHerramientasInstagram((cuenta) => new Instagram(() => tokenIg(cuenta), fetch, cuenta))
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram])
+  // Contenido: propuestas para Instagram y los PNG exportados de Claude Design, todo en local (la prueba de humo
+  // empieza siempre de cero en su carpeta temporal).
+  if (modoHumo) rmSync(join(datos, 'contenido'), { recursive: true, force: true })
+  const contenido = new AlmacenContenido(join(datos, 'contenido'), { renderizar: renderizarPng })
+  registrarContenido(orbe.ventana, contenido)
+  const avisarContenido = (): void => {
+    if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.contenidoCambio)
+  }
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, ...crearHerramientasContenido(contenido, avisarContenido)])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

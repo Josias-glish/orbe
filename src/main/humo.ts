@@ -1,6 +1,6 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, nativeImage } from 'electron'
 import { CANALES } from '../shared/tipos'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { leerAjustes } from './ajustes'
 import { ALTO_EXTRA_ORBE, TAM_PANEL_MIN, panelDeVentana } from './geometria'
@@ -939,6 +939,27 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(300)
     await capturar('13f-consumo')
     await pulsar('#uso-boton')
+    await esperar(200)
+
+    // Contenido: un PNG exportado (como desde Claude Design) aparece como pieza; uno de otras medidas avisa y se queda
+    const entradaMorfy = join(app.getPath('userData'), 'contenido', 'entrada', 'morfy')
+    const exportar = (nombre: string, ancho: number, alto: number): void => {
+      const ruta = join(entradaMorfy, nombre)
+      writeFileSync(ruta, nativeImage.createFromBitmap(Buffer.alloc(ancho * alto * 4, 0x9a), { width: ancho, height: alto }).toPNG())
+      utimesSync(ruta, new Date(Date.now() - 10_000), new Date(Date.now() - 10_000))
+    }
+    exportar('lanzamiento.png', 1080, 1350)
+    exportar('torcido.png', 900, 900)
+    await pulsar('#contenido-boton')
+    comprobar('se abre Contenido y recoge el PNG exportado', await esperarSelector('#contenido:not([hidden]) .contenido-pieza .contenido-miniaturas img', 5000))
+    v.avisoContenido = await textoDe('#contenido .memoria-error')
+    comprobar('el PNG de otras medidas avisa con el motivo', /torcido\.png: mide 900×900/.test(String(v.avisoContenido)), v.avisoContenido)
+    await js(`[...document.querySelectorAll('#contenido .contenido-pieza button')].find((b) => b.textContent === 'Aprobar').click()`)
+    await esperar(400)
+    v.piezaContenido = await textoDe('#contenido .contenido-pieza .tarea-insignia')
+    comprobar('aprobar marca la pieza como aprobada (sin publicar nada)', /morfy · Aprobada/.test(String(v.piezaContenido)), v.piezaContenido)
+    await capturar('13g-contenido')
+    await pulsar('#contenido-boton')
     await esperar(200)
 
     // La identidad responde sola a «parte» y «protocolo …» (sin llamar al modelo)
