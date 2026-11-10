@@ -11,5 +11,6 @@
     "types": ["node"],
     "lib": ["ES2022"]
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*", "electron.vite.config.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*", "electron.vite.config.ts"],
+  "exclude": ["tests/dictado.test.ts"]
 }

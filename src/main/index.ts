@@ -11,7 +11,9 @@ import { existsSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
 import { crearHerramientasGmail } from './agente/herramientas/gmail'
+import { crearHerramientasInstagram } from './agente/herramientas/instagram'
 import { Gmail } from './conectores/gmail/cliente'
+import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
 import { crearDepsSistema } from './agente/sistema'
 import { guardarAjustes, leerAjustes } from './ajustes'
@@ -232,7 +234,11 @@ app.whenReady().then(async () => {
   const gmail = existsSync(rutaClienteGoogle)
     ? crearHerramientasGmail(new Gmail(crearFuenteDeToken(() => leerClienteGoogle(rutaClienteGoogle), () => cofre.leer('gmail.refresh'))))
     : []
-  const registro = crearRegistro(config, sistema, gmail)
+  // Instagram (solo lectura) se ofrece siempre: sin token guardado, cada herramienta dice dónde guardarlo, y así
+  // guardar uno en Ajustes vale sin reiniciar.
+  const tokenIg = crearFuenteTokenIg((clave) => cofre.leer<TokenGuardado>(clave), (clave, valor) => cofre.guardar(clave, valor))
+  const instagram = crearHerramientasInstagram((cuenta) => new Instagram(() => tokenIg(cuenta), fetch, cuenta))
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

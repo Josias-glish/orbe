@@ -88,9 +88,36 @@ Decisiones de la Etapa 1: no hay variables `ORBE_GMAIL*`; Gmail se ofrece si exi
 El aviso de correos nuevos por sondeo (`history`) queda para la Etapa 5. Fallo intermitente conocido bajo carga:
 `agente-proveedor-cli.test.ts` «una herramienta lenta… no cuentan como un CLI colgado» (pasa en solitario).
 
+v1.8.0 (**Etapa 2, Instagram lectura**: `ig_perfil`, `ig_publicaciones`, `ig_metricas`, `ig_comentarios`, todas `ig.leer`).
+
+Decisiones de la Etapa 2: la versión de la API es una constante (`VERSION_API` en `conectores/instagram/cliente.ts`), no
+una variable; las herramientas se ofrecen siempre y sin token dicen dónde guardarlo; el token (`ig.<cuenta>`, con fecha)
+se renueva solo a los 30 días al usarlo. Las ventanas falsas de las pruebas de IPC no tienen `isDestroyed`: la guarda de
+ventana destruida solo está en `ventana.ts`. En `npm run dev`, «Guardar» de Ajustes escribe el `.env` del repositorio y
+relanza Orbe sin servidor de interfaz: hay que volver a ejecutar `npm run dev`. Con el equipo cargado, `npm test` da
+tiempos agotados sueltos; `npx vitest run --no-file-parallelism` es la referencia.
+
+**En curso (10-nov-2026), retomar aquí.** Etapa 1: PR #15 en borrador sin fusionar, release v1.7.0 publicada. Etapa 2:
+código, pruebas y documentación hechos en `claude/etapa-2-instagram` (sale de `claude/etapa-1-gmail`), **PR #16 en borrador
+y release v1.8.0 publicada** a petición del usuario, con la prueba real de métricas aún pendiente. La app de Meta del usuario usa la API de Instagram con **inicio de sesión
+unificado** (token `EAA…` de usuario del sistema, `graph.facebook.com`, cuenta por id desde
+`/me/assigned_instagram_accounts`); el conector acepta esa variante y la de inicio de sesión de Instagram
+(`graph.instagram.com`, `/me`), eligiendo por el prefijo del token. Probado con sus tokens reales: perfil, publicaciones y
+comentarios funcionan (token por cabecera `Authorization` incluido). Falta: las métricas dan error 10 porque al token le
+falta `instagram_manage_insights`; el usuario debe añadirlo y generar el token de nuevo, y entonces comprobar métricas de
+carruseles. Además `ig.morfy` e `ig.personal` guardan el mismo token y los dos ven solo `@josias.segura` (su marca
+personal): la fila de morfy necesita un token con la cuenta de morfy. Cuando las métricas pasen: PR en borrador +
+`gh workflow run release.yml --ref claude/etapa-2-instagram`. La v1.8.0 instalada en su PC se compiló en local desde esta
+rama (`npm run dist` + `dist\Orbe-Setup-1.8.0.exe /S /allusers`). Sin verificar: la variante de inicio de sesión de
+Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Voz neuronal: **aplazada** por decisión
+del usuario hasta que contrate ElevenLabs (hoy apunta a un Kokoro local en `localhost:8880` que no está en marcha y cae a
+la voz de Windows); entonces habrá que ver si su API encaja con `/audio/speech` o necesita un adaptador. Dictado: abrir el
+micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea pendiente de aprobación (no es parte del plan):
+dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
+`proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
+
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-2. **Instagram (lectura)**: API de Instagram con inicio de sesión de Instagram, Standard Access, sin revisión de Meta.
 3. **Contenido**: pestaña «Contenido»; textos con el CLI de Claude; diseños **exportados en PNG desde Claude Design**
    a `%APPDATA%\orbe\contenido\entrada\<marca>\` (respaldo: HTML → PNG en ventana oculta sin red). Marcas: jsdesign, morfy, personal.
 4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.

@@ -153,6 +153,15 @@ Orbe puede buscar y leer tu correo y dejarte **borradores** listos; **no puede e
 
 Lo que dice un correo llega al modelo como **datos de terceros**, nunca como instrucciones, y solo en texto (sin HTML, imágenes ni adjuntos; máximo 8000 caracteres por correo).
 
+## Instagram (solo lectura)
+Orbe puede consultar el perfil, las publicaciones, las métricas y los comentarios de **tus** cuentas profesionales; **no publica, no responde, no sigue ni da «me gusta»** (no existe ninguna herramienta que lo haga; publicar llegará más adelante y siempre con tu aprobación).
+
+1. Sigue [`docs/fase3-borradores/01-guia-meta.md`](docs/fase3-borradores/01-guia-meta.md): app en Meta Developers en modo desarrollo y tus cuentas con rol en ella. Valen las dos variantes de la API de Instagram: **inicio de sesión unificado** (token `EAA…` de usuario del sistema; permisos `instagram_basic`, `instagram_manage_insights`, `instagram_manage_comments`) e **inicio de sesión de Instagram** (permisos `instagram_business_*`). Orbe distingue el token y habla con el servidor que toca.
+2. Genera el token de cada cuenta y pégalo en **Configuración → Conectores → Instagram** (J&S Design, morfy o marca personal), cada uno en su fila. Se guarda **cifrado en el cofre** y no hace falta reiniciar. El de inicio de sesión de Instagram lo renueva Orbe cada 30 días (dura 60); el `EAA…` caduca cuando hayas elegido al crearlo en Meta.
+3. Pide cosas como «¿cómo rindieron mis últimos 5 posts de morfy?» o «¿qué comentan en la última publicación de J&S Design?». Leer es libre (`ig.leer` en `reglas.json`).
+
+Los pies de foto y los comentarios llegan al modelo como **datos de terceros**. Meta puede tardar hasta 48 h en tener las métricas de una publicación nueva.
+
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 
@@ -315,6 +324,7 @@ src/renderer/voz   lector en voz alta, dictado, reproductor y menú de voz
 src/main/pantalla  lector de pantalla: cliente del helper, limpieza, prioridad de fuentes, captura, texto de imagen (OCR), contexto pendiente, IPC
 src/main/conectores avisos de otras herramientas: bus de actividad, receptor local, hooks de Claude Code
 src/main/conectores/gmail  Gmail: OAuth de escritorio (loopback + PKCE) y cliente de la API (buscar, leer, borradores)
+src/main/conectores/instagram  Instagram: cliente de solo lectura (perfil, publicaciones, métricas, comentarios) y renovación del token
 src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
 src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú
