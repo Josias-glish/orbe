@@ -109,17 +109,24 @@ carruseles. Además `ig.morfy` e `ig.personal` guardan el mismo token y los dos 
 personal): la fila de morfy necesita un token con la cuenta de morfy. Cuando las métricas pasen: PR en borrador +
 `gh workflow run release.yml --ref claude/etapa-2-instagram`. La v1.8.0 instalada en su PC se compiló en local desde esta
 rama (`npm run dist` + `dist\Orbe-Setup-1.8.0.exe /S /allusers`). Sin verificar: la variante de inicio de sesión de
-Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Voz neuronal: **aplazada** por decisión
-del usuario hasta que contrate ElevenLabs (hoy apunta a un Kokoro local en `localhost:8880` que no está en marcha y cae a
-la voz de Windows); entonces habrá que ver si su API encaja con `/audio/speech` o necesita un adaptador. Dictado: abrir el
+Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Voz neuronal: **aplazada** a una fase
+posterior; el usuario la quiere con **Google** (ya no ElevenLabs). Hoy apunta a un Kokoro local en `localhost:8880` que no
+está en marcha y cae a la voz de Windows; Google Cloud Text-to-Speech no es compatible con `/audio/speech` de OpenAI
+(no verificado si hay pasarela compatible): hará falta un adaptador. Dictado: abrir el
 micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea pendiente de aprobación (no es parte del plan):
 dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
 `proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
 
+v1.9.0 (**Etapa 3, Contenido**, rama `claude/etapa-3-contenido`, sale de `claude/etapa-2-instagram`): pestaña
+«Contenido», `contenido/contenido.json`, fichas `marcas/<marca>/marca.md`, herramientas libres `contenido_ficha_marca` y
+`contenido_proponer` (sin acción de conector: solo local). Decisiones: el PNG se une a su pieza por el **nombre**
+(`<id>.png`, `<id>-N.png`), que dicta el encargo de «Diseñar»; sin vigilante de carpeta: la pestaña abierta mira la
+entrada cada 4 s; un archivo modificado hace menos de 2 s no se toca; los que no valen se quedan con aviso; borrar mueve a
+`papelera/`. Aplazado del borrador: el diseñador automático por CLI (`contenido_guardar_diseno`, modo «exportado»).
+HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca exportar PNG en la cuenta del usuario.
+
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-3. **Contenido**: pestaña «Contenido»; textos con el CLI de Claude; diseños **exportados en PNG desde Claude Design**
-   a `%APPDATA%\orbe\contenido\entrada\<marca>\` (respaldo: HTML → PNG en ventana oculta sin red). Marcas: jsdesign, morfy, personal.
 4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
 5. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
 6. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.

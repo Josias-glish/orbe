@@ -141,7 +141,8 @@ Orbe puede enterarse de lo que hacen otras herramientas y mostrarlo en el person
 Base de seguridad para conectar Gmail, Instagram y Supabase (llegan en las siguientes versiones):
 
 - **Cofre cifrado** (`%APPDATA%orbecofre.bin`): en **Configuración → Conectores** se pegan los tokens y claves de los servicios. Se cifran con `safeStorage` de Electron (DPAPI de Windows, ligado a tu usuario), el campo se vacía al guardar y, si lo copiaste, también el portapapeles. La interfaz solo sabe si un secreto está «Guardado» o «Sin guardar»: **no existe ningún canal para leer un valor**, y nunca van al `.env`, a los registros ni al modelo. Si un secreto guardado apareciera en un aviso de «Actividad», se sustituye por `[secreto]`. Si `cofre.bin` no se puede abrir (otro usuario de Windows, archivo dañado), Orbe no escribe encima.
-- **Reglas de permisos** (`%APPDATA%orbeeglas.json`, se crea solo la primera vez y se relee en cada tarea): cada acción de un conector tiene un modo: `libre` (sin preguntar), `si_lo_pediste` (sin preguntar solo si tu orden la nombraba), `preguntar`, `tu_lo_haces` (Orbe lo deja preparado y lo haces tú) o `bloqueado`. Lo que no esté en el archivo se pregunta.
+- **Reglas de permisos** (`%APPDATA%orbe
+eglas.json`, se crea solo la primera vez y se relee en cada tarea): cada acción de un conector tiene un modo: `libre` (sin preguntar), `si_lo_pediste` (sin preguntar solo si tu orden la nombraba), `preguntar`, `tu_lo_haces` (Orbe lo deja preparado y lo haces tú) o `bloqueado`. Lo que no esté en el archivo se pregunta.
 - **Mínimos que el archivo no puede relajar**: publicar y responder en Instagram siempre piden permiso; enviar correos, seguir, dar me gusta, comentar en cuentas ajenas, borrar publicaciones, compras y contraseñas están bloqueados.
 
 ## Gmail (leer y crear borradores)
@@ -161,6 +162,15 @@ Orbe puede consultar el perfil, las publicaciones, las métricas y los comentari
 3. Pide cosas como «¿cómo rindieron mis últimos 5 posts de morfy?» o «¿qué comentan en la última publicación de J&S Design?». Leer es libre (`ig.leer` en `reglas.json`).
 
 Los pies de foto y los comentarios llegan al modelo como **datos de terceros**. Meta puede tardar hasta 48 h en tener las métricas de una publicación nueva.
+
+## Contenido (propuestas para Instagram, todo en tu PC)
+La pestaña **Contenido** (icono de capas en la barra lateral) reúne las publicaciones que preparas para J&S Design, morfy y tu marca personal. **Nada sale del equipo**: aprobar solo marca la pieza como lista; publicar llegará en la siguiente versión, con tu aprobación.
+
+1. Rellena una vez la ficha de cada marca: `%APPDATA%\orbe\contenido\marcas\<marca>\marca.md` (público, tono, temas, hashtags). Orbe la crea vacía al arrancar.
+2. Pide en el chat «propón un post para morfy sobre…». Claude lee la ficha (`contenido_ficha_marca`) y guarda idea, texto de la imagen, pie y hashtags (`contenido_proponer`); las dos herramientas son libres porque solo leen y guardan en local.
+3. Pulsa **Diseñar**: el encargo se copia al portapapeles y se abre Claude Design. Pégalo en el proyecto de tu marca y exporta el PNG a `%APPDATA%\orbe\contenido\entrada\<marca>\` con el nombre que indica el encargo (`<id>.png`; carrusel: `<id>-1.png`, `<id>-2.png`…). El botón **Carpeta** abre esa carpeta.
+4. Con la pestaña abierta, Orbe recoge el PNG en unos segundos: comprueba que mide 1080×1350, 1080×1080 o 1080×1920 y pesa menos de 8 MB, y lo une a su pieza. Un PNG con otro nombre crea una pieza nueva; uno que no vale se queda en la carpeta con el motivo en rojo. Si llega un **HTML**, Orbe lo convierte en PNG de 1080×1350 en una ventana oculta sin internet ni JavaScript.
+5. Revisa, corrige el texto (**Guardar texto**) y **Aprobar**. Cambiar el texto o añadir una imagen quita la aprobación. **Borrar** pide confirmación y mueve las imágenes a `contenido\papelera\`.
 
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
@@ -326,6 +336,7 @@ src/main/conectores avisos de otras herramientas: bus de actividad, receptor loc
 src/main/conectores/gmail  Gmail: OAuth de escritorio (loopback + PKCE) y cliente de la API (buscar, leer, borradores)
 src/main/conectores/instagram  Instagram: cliente de solo lectura (perfil, publicaciones, métricas, comentarios) y renovación del token
 src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
+src/main/contenido  contenido: piezas (contenido.json), recogida y validación de PNG, HTML → PNG sin red, IPC
 src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC
