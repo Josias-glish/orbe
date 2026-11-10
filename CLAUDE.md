@@ -109,7 +109,10 @@ carruseles. Además `ig.morfy` e `ig.personal` guardan el mismo token y los dos 
 personal): la fila de morfy necesita un token con la cuenta de morfy. Cuando las métricas pasen: PR en borrador +
 `gh workflow run release.yml --ref claude/etapa-2-instagram`. La v1.8.0 instalada en su PC se compiló en local desde esta
 rama (`npm run dist` + `dist\Orbe-Setup-1.8.0.exe /S /allusers`). Sin verificar: la variante de inicio de sesión de
-Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Idea pendiente de aprobación (no es parte del plan):
+Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Voz neuronal: **aplazada** por decisión
+del usuario hasta que contrate ElevenLabs (hoy apunta a un Kokoro local en `localhost:8880` que no está en marcha y cae a
+la voz de Windows); entonces habrá que ver si su API encaja con `/audio/speech` o necesita un adaptador. Dictado: abrir el
+micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea pendiente de aprobación (no es parte del plan):
 dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
 `proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
 
