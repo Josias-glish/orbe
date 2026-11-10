@@ -42,10 +42,11 @@ export function hayBusquedaWeb(agente: OpcionesAgente): boolean {
 export const NOMBRE_BUSCAR_WEB = 'buscar_web'
 
 /** Prepara el ejecutor de una tarea: política y marca de contenido externo nuevas, atadas a los manejadores del turno. */
-export function crearEjecutor(agente: OpcionesAgente, senal: AbortSignal, m: ManejadoresTurno): EjecutorHerramientas {
+/** `ordenUsuario` es solo lo que escribió el usuario (nunca el contexto de pantalla ni un correo): decide «si_lo_pediste». */
+export function crearEjecutor(agente: OpcionesAgente, senal: AbortSignal, m: ManejadoresTurno, ordenUsuario?: string): EjecutorHerramientas {
   return new EjecutorHerramientas({
     registro: agente.registro,
-    politica: new Politica({ reglas: agente.reglas?.() }),
+    politica: new Politica({ reglas: agente.reglas?.(), ordenUsuario }),
     senal,
     alAccion: (accion) => m.alAccion?.(accion),
     alFuentes: (fuentes) => m.alFuentes?.(fuentes),

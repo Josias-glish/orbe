@@ -61,7 +61,7 @@ export const SECRETOS: readonly DefinicionSecreto[] = [
   {
     clave: 'gmail.refresh',
     nombre: 'Acceso a Gmail',
-    ayuda: 'Se guarda solo al conectar Gmail (llega en la siguiente etapa). Aquí puedes ver si existe y revocarlo.',
+    ayuda: 'Solo leer y crear borradores (Orbe no puede enviar). Antes, guarda google-cliente.json en la carpeta de datos de Orbe (guía 02, paso 3).',
     manual: false,
     forma: 'texto',
     servicio: 'Gmail'

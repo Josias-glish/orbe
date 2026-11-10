@@ -90,6 +90,7 @@ export class VistaAjustes {
   /** La clave cuyo «Borrar» ya se pulsó una vez (el segundo clic borra). */
   private borrarPendiente: string | null = null
   private cofreOcupado = false
+  private conectandoGmail = false
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -222,6 +223,25 @@ export class VistaAjustes {
         if (e.key === 'Enter') enviar()
       })
       caja.append(entrada, guardar)
+    } else if (def.clave === 'gmail.refresh') {
+      // Gmail no se pega: se da el permiso en el navegador y Orbe lo guarda solo.
+      const conectar = el('button', 'boton-memoria primario', this.conectandoGmail ? 'Cancelar' : guardado ? 'Volver a conectar' : 'Conectar')
+      conectar.type = 'button'
+      conectar.disabled = this.cofreOcupado && !this.conectandoGmail
+      conectar.addEventListener('click', () => {
+        // Si Google da un error en el navegador, nunca vuelve: se puede dejar de esperar.
+        if (this.conectandoGmail) return window.orbe.gmailCancelar()
+        this.conectandoGmail = true
+        void this.cofreAccion(
+          () => window.orbe.gmailConectar(),
+          'Gmail conectado: Orbe puede leer tu correo y crear borradores (no enviar).',
+          'Termina en tu navegador: elige tu cuenta de Google y marca los dos permisos.'
+        ).finally(() => {
+          this.conectandoGmail = false
+          this.pintar()
+        })
+      })
+      caja.append(conectar)
     }
     if (guardado) {
       const pendiente = this.borrarPendiente === def.clave
@@ -244,10 +264,10 @@ export class VistaAjustes {
     return fila
   }
 
-  private async cofreAccion(accion: () => Promise<ResultadoCofre>, exito: string): Promise<void> {
+  private async cofreAccion(accion: () => Promise<ResultadoCofre>, exito: string, mientras?: string): Promise<void> {
     if (this.cofreOcupado) return
     this.cofreOcupado = true
-    this.cofreMensaje = null
+    this.cofreMensaje = mientras ? { texto: mientras, error: false } : null
     this.pintar()
     try {
       const r = await accion()

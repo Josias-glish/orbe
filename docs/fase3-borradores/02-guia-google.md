@@ -27,9 +27,9 @@ Tiempo estimado: 30–45 min. Se hace una sola vez. **No pegues claves ni códig
 2. **Descargar JSON** → guárdalo como `%APPDATA%\orbe\google-cliente.json`.
    (En apps de escritorio Google no considera secreto este archivo, pero igualmente no lo compartas ni lo subas a git.)
 
-## 4. Conectar (cuando exista en Orbe)
+## 4. Conectar (desde Orbe 1.7.0)
 
-1. Orbe → Ajustes → Conectores → Gmail → **Conectar**.
+1. Reinicia Orbe (para que vea `google-cliente.json`) → Configuración → Conectores → Gmail → **Conectar**.
 2. Se abre tu navegador con la pantalla de Google. Verás «Google no ha verificado esta app» →
    *Configuración avanzada* → *Ir a Orbe (no seguro)*. Es tu propia app.
 3. Marca los dos permisos → Continuar. El navegador dirá «Ya puedes volver a Orbe».

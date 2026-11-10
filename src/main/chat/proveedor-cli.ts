@@ -269,7 +269,7 @@ export class ProveedorCli implements ProveedorChat {
         temporizadorSilencio: null,
         temporizadorInterrupcion: null,
         controlador,
-        ejecutor: this.agente ? crearEjecutor(this.agente, controlador.signal, manejadores) : null,
+        ejecutor: this.agente ? crearEjecutor(this.agente, controlador.signal, manejadores, entrada.texto) : null,
         pasos: 0,
         limitePasos: false,
         herramientasEnCurso: 0,

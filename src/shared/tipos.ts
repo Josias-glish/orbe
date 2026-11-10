@@ -75,7 +75,10 @@ export const CANALES = {
   // El cofre no tiene canal de lectura de valores: solo estado (booleanos), guardar y borrar.
   cofreEstado: 'cofre:estado',
   cofreGuardar: 'cofre:guardar',
-  cofreBorrar: 'cofre:borrar'
+  cofreBorrar: 'cofre:borrar',
+  // Gmail: abre el navegador para dar permiso; el permiso va del proceso principal al cofre, nunca a la interfaz.
+  gmailConectar: 'gmail:conectar',
+  gmailCancelar: 'gmail:cancelar'
 } as const
 
 export interface EstadoVentana {
@@ -654,4 +657,8 @@ export interface ApiOrbe {
   /** Guarda un secreto de la lista `SECRETOS`; el valor viaja una sola vez hacia el proceso principal. */
   cofreGuardar(clave: string, valor: string): Promise<ResultadoCofre>
   cofreBorrar(clave: string): Promise<ResultadoCofre>
+  /** Conecta Gmail con OAuth en el navegador (puede tardar: espera a que termines en Google). */
+  gmailConectar(): Promise<ResultadoCofre>
+  /** Deja de esperar al navegador (la conexión en curso termina con «Conexión cancelada»). */
+  gmailCancelar(): void
 }

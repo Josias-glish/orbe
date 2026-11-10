@@ -295,7 +295,7 @@ export class ProveedorOpenai implements ProveedorChat {
     const acumulado = { texto: '' }
 
     try {
-      if (agente) return await this.turnoAgente(agente, completo, soloTexto, m, controlador, armar)
+      if (agente) return await this.turnoAgente(agente, completo, soloTexto, m, controlador, armar, entrada.texto)
 
       const r = await this.pedir(
         [{ role: 'system', content: this.prompt }, ...this.historial, { role: 'user', content: completo }],
@@ -453,11 +453,12 @@ export class ProveedorOpenai implements ProveedorChat {
     soloTexto: string,
     m: ManejadoresTurno,
     controlador: AbortController,
-    armar: (ms: number, motivo: 'conexion' | 'silencio') => void
+    armar: (ms: number, motivo: 'conexion' | 'silencio') => void,
+    ordenUsuario: string
   ): Promise<ResultadoTurno> {
     const mensajes: MensajeApi[] = [...this.historial, { role: 'user', content: soloTexto }]
     const posUsuario = mensajes.length - 1
-    const ejecutor = crearEjecutor(agente, controlador.signal, m)
+    const ejecutor = crearEjecutor(agente, controlador.signal, m, ordenUsuario)
     const definiciones = agente.registro.paraOpenai()
     let primera = true
 
