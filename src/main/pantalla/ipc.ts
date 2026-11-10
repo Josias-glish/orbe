@@ -50,7 +50,7 @@ export function registrarPantalla(opciones: {
   }
   const pendiente = new ContextoPendiente(() => emitir({ tipo: 'vacio', motivo: 'caducado' }))
   const servicio = new ServicioPantalla(opciones.fuente, { contextoMax: opciones.contextoMax })
-  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => e.sender === ventana.ventana.webContents
+  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => !ventana.ventana.isDestroyed() && e.sender === ventana.ventana.webContents
 
   ipcMain.handle(CANALES.pantallaLeer, async (e): Promise<RespuestaLectura> => {
     if (!propia(e)) throw new Error('Remitente no autorizado')

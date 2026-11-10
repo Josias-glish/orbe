@@ -246,7 +246,9 @@ export class VentanaOrbe {
   }
 
   private registrarIpc(): void {
-    const propia = (evento: Electron.IpcMainEvent): boolean => evento.sender === this.ventana.webContents
+    // Al cerrar puede quedar un mensaje en vuelo: con la ventana destruida, leer webContents lanza y tumba el proceso.
+    const propia = (evento: Electron.IpcMainEvent): boolean =>
+      !this.ventana.isDestroyed() && evento.sender === this.ventana.webContents
 
     ipcMain.handle(CANALES.ventanaFijar, (evento, valor: unknown): boolean => {
       if (!propia(evento as unknown as Electron.IpcMainEvent)) throw new Error('Remitente no autorizado')

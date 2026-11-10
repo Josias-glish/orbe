@@ -895,7 +895,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await js(`document.querySelector('#tareas .tareas-form button[type="submit"]').click()`)
     await esperarSelector('#tareas .tarea', 2000)
     v.programada = await textoDe('#tareas .tarea .tarea-meta')
-    comprobar('queda programada cada día a su hora', /Cada día a las 08:30\s*Próxima: mañana 08:30/.test(String(v.programada)), v.programada)
+    comprobar('queda programada cada día a su hora', /Cada día a las 08:30\s*Próxima: (hoy|mañana) 08:30/.test(String(v.programada)), v.programada)
     await esperar(300)
     await capturar('13c-tarea-programada')
 

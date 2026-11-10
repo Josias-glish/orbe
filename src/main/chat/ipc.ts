@@ -48,7 +48,7 @@ export function registrarChat(
   memoria?: MemoriaChat,
   contador?: ContadorUso
 ): ServicioChat {
-  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => e.sender === ventana.webContents
+  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => !ventana.isDestroyed() && e.sender === ventana.webContents
   /** Turno en curso que lleva contexto de pantalla: si falla, ese contexto vuelve a la reserva. */
   let turnoConContexto: { id: string; consumido: Consumido } | null = null
   /** Turno en curso cuya respuesta se va guardando para poder seguir la conversación tras reiniciar Orbe. */
