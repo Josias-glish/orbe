@@ -7,7 +7,16 @@
 
 /** Versión de la API. Meta retira versiones con el tiempo: https://developers.facebook.com/docs/graph-api/changelog */
 export const VERSION_API = 'v27.0'
-const BASE = `https://graph.instagram.com/${VERSION_API}`
+/**
+ * Meta tiene dos familias de token y cada una va a su servidor (misma API, mismas rutas):
+ * - inicio de sesión de Instagram: token de usuario de Instagram, `graph.instagram.com`, la cuenta es `/me`;
+ * - inicio de sesión unificado (o de Facebook): token `EAA…` de usuario del sistema, `graph.facebook.com`, y la cuenta
+ *   se pide por su id, que sale de `/me/assigned_instagram_accounts` (ahí `/me` es el usuario del sistema, no la cuenta).
+ * https://developers.facebook.com/documentation/instagram-platform/overview
+ */
+const BASE_IG = `https://graph.instagram.com/${VERSION_API}`
+const BASE_FB = `https://graph.facebook.com/${VERSION_API}`
+const esDeFacebook = (token: string): boolean => token.startsWith('EAA')
 const RENOVAR = 'https://graph.instagram.com/refresh_access_token'
 const DIA = 86_400_000
 /** Un token dura 60 días y se puede renovar si tiene más de 24 h: lo renovamos a los 30. */
@@ -59,31 +68,63 @@ export interface Comentario {
 function errorDeMeta(codigo: number | undefined, status: number): Error {
   if (codigo === 190) return new Error('El token de Instagram caducó o se revocó: genera uno nuevo en Meta Developers y guárdalo en Configuración → Conectores.')
   if (codigo === 4 || codigo === 17 || codigo === 32 || codigo === 613) return new Error('Instagram pide ir más despacio (límite de peticiones): espera unos minutos.')
-  if (codigo === 10 || codigo === 200) return new Error('A la app de Meta le falta ese permiso para esta cuenta (revisa los permisos de la guía 01, paso 2).')
+  if (codigo === 10 || codigo === 200) {
+    return new Error('A la app de Meta le falta ese permiso para esta cuenta (para las métricas hace falta «instagram_manage_insights»): añádelo en Meta Developers y genera el token de nuevo.')
+  }
   if (codigo === 100) return new Error('Instagram no reconoce esa petición (el id no existe o ese dato no está disponible para esa publicación).')
   return new Error(`Instagram respondió con un error (${codigo ? `código ${codigo}` : status}).`)
 }
 
 export class Instagram {
+  /** El id de la cuenta con un token `EAA…`, por token: se pregunta una vez. */
+  private idPorToken: { token: string; id: string } | null = null
+
+  /** `cuenta` solo hace falta si un mismo token `EAA…` tiene varias cuentas asignadas: elige la que se le parece. */
   constructor(
     private readonly token: () => Promise<string>,
-    private readonly pedir: typeof fetch = fetch
+    private readonly pedir: typeof fetch = fetch,
+    private readonly cuenta = ''
   ) {}
 
-  private async llamar<T>(ruta: string, params: Record<string, string>, senal?: AbortSignal): Promise<T> {
-    const r = await this.pedir(`${BASE}${ruta}?${new URLSearchParams(params)}`, {
-      headers: { Authorization: `Bearer ${await this.token()}` },
-      signal: senal
-    })
+  private async pedirJson<T>(url: string, token: string, senal?: AbortSignal): Promise<T> {
+    const r = await this.pedir(url, { headers: { Authorization: `Bearer ${token}` }, signal: senal })
     const j = (await r.json().catch(() => ({}))) as T & { error?: { code?: number } }
     if (!r.ok || j.error) throw errorDeMeta(j.error?.code, r.status)
     return j
   }
 
+  // ponytail: con varias cuentas en un token se elige por parecido del nombre de usuario con el nombre interno
+  // (morfy → @morfy…); si hiciera falta afinar, guardar el usuario de cada cuenta junto al token.
+  private async idDeCuenta(token: string, senal?: AbortSignal): Promise<string> {
+    if (this.idPorToken?.token === token) return this.idPorToken.id
+    const j = await this.pedirJson<{ data?: Array<{ id: string; username?: string }> }>(`${BASE_FB}/me/assigned_instagram_accounts?fields=id,username`, token, senal)
+    const cuentas = j.data ?? []
+    const limpio = (t: string): string => t.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const elegida = cuentas.length === 1 ? cuentas[0] : cuentas.find((c) => this.cuenta && limpio(c.username ?? '').includes(limpio(this.cuenta)))
+    if (!elegida) {
+      throw new Error(
+        cuentas.length === 0
+          ? 'Ese token no tiene ninguna cuenta de Instagram asignada: al generarlo en Meta Developers, elige la cuenta.'
+          : `Ese token da acceso a varias cuentas (${cuentas.map((c) => `@${c.username}`).join(', ')}) y no sé cuál es esta: genera un token solo con la cuenta que toca.`
+      )
+    }
+    this.idPorToken = { token, id: elegida.id }
+    return elegida.id
+  }
+
+  /** `ruta` empieza por `/me` (la cuenta) o por `/<id de publicación>`. */
+  private async llamar<T>(ruta: string, params: Record<string, string>, senal?: AbortSignal): Promise<T> {
+    const token = await this.token()
+    const deFacebook = esDeFacebook(token)
+    const destino = deFacebook && ruta.startsWith('/me') ? `/${await this.idDeCuenta(token, senal)}${ruta.slice(3)}` : ruta
+    return this.pedirJson<T>(`${deFacebook ? BASE_FB : BASE_IG}${destino}?${new URLSearchParams(params)}`, token, senal)
+  }
+
   async perfil(senal?: AbortSignal): Promise<Perfil> {
+    // `account_type` solo existe con el inicio de sesión de Instagram; `graph.facebook.com` ignora los campos de más.
     const p = await this.llamar<{ username?: string; name?: string; account_type?: string; followers_count?: number; follows_count?: number; media_count?: number }>(
       '/me',
-      { fields: 'user_id,username,name,account_type,followers_count,follows_count,media_count' },
+      { fields: `username,name,followers_count,follows_count,media_count${esDeFacebook(await this.token()) ? '' : ',user_id,account_type'}` },
       senal
     )
     return {
@@ -129,7 +170,7 @@ export class Instagram {
 }
 
 /**
- * Da el token de una cuenta desde el cofre y lo renueva solo cuando lleva 30 días guardado (Meta lo alarga 60 más).
+ * Da el token de una cuenta desde el cofre. El de inicio de sesión de Instagram lo renueva solo cuando lleva 30 días guardado (Meta lo alarga 60 más).
  * Si la renovación falla (sin conexión, Meta caído) sigue con el que hay: aún vale, y si ya caducó la propia petición
  * dirá que hay que generar otro. La dirección de renovación lleva el token (así lo pide Meta) y nunca se registra.
  */
@@ -142,15 +183,8 @@ export function crearFuenteTokenIg(
   return async (cuenta) => {
     const g = leer(`ig.${cuenta}`)
     if (!g?.token) throw new Error(`Instagram de ${NOMBRE_CUENTA[cuenta]} no está conectado: guarda su token en Configuración → Conectores → Instagram.`)
-    // Los tokens del «inicio de sesión de Facebook» (Explorador de la API Graph) empiezan por EAA y graph.instagram.com
-    // los rechaza con un 190 que parece un token caducado: mejor decir cuál es el problema de verdad.
-    if (g.token.startsWith('EAA')) {
-      throw new Error(
-        `El token guardado para ${NOMBRE_CUENTA[cuenta]} es de Facebook (empieza por EAA) y no sirve aquí. Genera el de Instagram en Meta Developers → ` +
-          'tu app → Instagram → Configuración de la API con inicio de sesión de Instagram → Generar identificadores de acceso, y guárdalo en Configuración → Conectores.'
-      )
-    }
-    if (ahora() - Date.parse(g.renovado) < DIAS_PARA_RENOVAR * DIA) return g.token
+    // Los tokens `EAA…` (inicio de sesión unificado) no se renuevan aquí: su caducidad se elige en Meta al crearlos.
+    if (esDeFacebook(g.token) || ahora() - Date.parse(g.renovado) < DIAS_PARA_RENOVAR * DIA) return g.token
     try {
       const r = await pedir(`${RENOVAR}?${new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: g.token })}`)
       const j = (await r.json().catch(() => ({}))) as { access_token?: string }

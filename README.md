@@ -156,8 +156,8 @@ Lo que dice un correo llega al modelo como **datos de terceros**, nunca como ins
 ## Instagram (solo lectura)
 Orbe puede consultar el perfil, las publicaciones, las métricas y los comentarios de **tus** cuentas profesionales; **no publica, no responde, no sigue ni da «me gusta»** (no existe ninguna herramienta que lo haga; publicar llegará más adelante y siempre con tu aprobación).
 
-1. Sigue [`docs/fase3-borradores/01-guia-meta.md`](docs/fase3-borradores/01-guia-meta.md): app en Meta Developers en modo desarrollo, API con inicio de sesión de Instagram y tus cuentas como evaluadoras.
-2. Genera el token de cada cuenta y pégalo en **Configuración → Conectores → Instagram** (J&S Design, morfy o marca personal). Se guarda **cifrado en el cofre**, no hace falta reiniciar y Orbe lo renueva solo cada 30 días (dura 60).
+1. Sigue [`docs/fase3-borradores/01-guia-meta.md`](docs/fase3-borradores/01-guia-meta.md): app en Meta Developers en modo desarrollo y tus cuentas con rol en ella. Valen las dos variantes de la API de Instagram: **inicio de sesión unificado** (token `EAA…` de usuario del sistema; permisos `instagram_basic`, `instagram_manage_insights`, `instagram_manage_comments`) e **inicio de sesión de Instagram** (permisos `instagram_business_*`). Orbe distingue el token y habla con el servidor que toca.
+2. Genera el token de cada cuenta y pégalo en **Configuración → Conectores → Instagram** (J&S Design, morfy o marca personal), cada uno en su fila. Se guarda **cifrado en el cofre** y no hace falta reiniciar. El de inicio de sesión de Instagram lo renueva Orbe cada 30 días (dura 60); el `EAA…` caduca cuando hayas elegido al crearlo en Meta.
 3. Pide cosas como «¿cómo rindieron mis últimos 5 posts de morfy?» o «¿qué comentan en la última publicación de J&S Design?». Leer es libre (`ig.leer` en `reglas.json`).
 
 Los pies de foto y los comentarios llegan al modelo como **datos de terceros**. Meta puede tardar hasta 48 h en tener las métricas de una publicación nueva.

@@ -99,13 +99,17 @@ tiempos agotados sueltos; `npx vitest run --no-file-parallelism` es la referenci
 
 **En curso (10-nov-2026), retomar aquí.** Etapa 1: PR #15 en borrador sin fusionar, release v1.7.0 publicada. Etapa 2:
 código, pruebas y documentación hechos en `claude/etapa-2-instagram` (sale de `claude/etapa-1-gmail`), subida **sin PR ni
-release** porque falta la prueba real. Bloqueo: los tokens guardados (`ig.morfy`, `ig.personal`) son de la variante con
-inicio de sesión de **Facebook** (empiezan por `EAA`, permisos `instagram_basic`…, sin página de Facebook accesible ni
-`instagram_manage_insights`) y `graph.instagram.com` los rechaza con 190. El usuario tiene que decidir: generar tokens de
-inicio de sesión de Instagram (`IGAA…`, plan aprobado, recomendado) o adaptar el conector a la variante Facebook. Con el
-token correcto guardado: repetir la prueba real (perfil, últimos 5 posts con métricas, comentarios), y entonces PR en
-borrador + `gh workflow run release.yml --ref claude/etapa-2-instagram`. Sin verificar hasta esa prueba: `/me/media` como
-alias, token por cabecera `Authorization` y métricas de carruseles. Idea pendiente de aprobación (no es parte del plan):
+release** porque la prueba real está a medias. La app de Meta del usuario usa la API de Instagram con **inicio de sesión
+unificado** (token `EAA…` de usuario del sistema, `graph.facebook.com`, cuenta por id desde
+`/me/assigned_instagram_accounts`); el conector acepta esa variante y la de inicio de sesión de Instagram
+(`graph.instagram.com`, `/me`), eligiendo por el prefijo del token. Probado con sus tokens reales: perfil, publicaciones y
+comentarios funcionan (token por cabecera `Authorization` incluido). Falta: las métricas dan error 10 porque al token le
+falta `instagram_manage_insights`; el usuario debe añadirlo y generar el token de nuevo, y entonces comprobar métricas de
+carruseles. Además `ig.morfy` e `ig.personal` guardan el mismo token y los dos ven solo `@josias.segura` (su marca
+personal): la fila de morfy necesita un token con la cuenta de morfy. Cuando las métricas pasen: PR en borrador +
+`gh workflow run release.yml --ref claude/etapa-2-instagram`. La v1.8.0 instalada en su PC se compiló en local desde esta
+rama (`npm run dist` + `dist\Orbe-Setup-1.8.0.exe /S /allusers`). Sin verificar: la variante de inicio de sesión de
+Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`. Idea pendiente de aprobación (no es parte del plan):
 dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
 `proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
 

@@ -47,6 +47,38 @@ describe('cliente de Instagram', () => {
     expect(meta.llamadas[2]!.url.searchParams.get('metric')).toBe('views,reach,likes,comments,shares,saved,total_interactions')
   })
 
+  it('con un token EAA… (inicio de sesión unificado) va a graph.facebook.com y pide la cuenta por su id', async () => {
+    const meta = metaFalso({
+      '/me/assigned_instagram_accounts': { data: [{ id: '178', username: 'josias.segura' }] },
+      '/178': { username: 'josias.segura', name: 'Josias', followers_count: 821, follows_count: 1816, media_count: 14 },
+      '/178/media': { data: [{ id: '111', media_type: 'CAROUSEL_ALBUM', media_product_type: 'FEED' }] },
+      '/111/insights': { data: [{ name: 'reach', values: [{ value: 50 }] }] }
+    })
+    const ig = new Instagram(async () => 'EAA-token-secreto', meta.fetch)
+    expect(await ig.perfil()).toMatchObject({ usuario: 'josias.segura', tipo: '', seguidores: 821 })
+    expect((await ig.publicaciones(3))[0]).toMatchObject({ id: '111', tipo: 'carrusel' })
+    expect(await ig.metricas('111')).toEqual({ reach: 50 })
+    const rutas = meta.llamadas.map((l) => l.url.pathname)
+    // La cuenta se pregunta una sola vez y `/me` nunca se usa como cuenta (ahí es el usuario del sistema).
+    expect(rutas).toEqual([`/${VERSION_API}/me/assigned_instagram_accounts`, `/${VERSION_API}/178`, `/${VERSION_API}/178/media`, `/${VERSION_API}/111/insights`])
+    for (const l of meta.llamadas) {
+      expect(l.url.origin).toBe('https://graph.facebook.com')
+      expect(l.url.href).not.toContain('EAA-token-secreto')
+    }
+    expect(meta.llamadas[1]!.url.searchParams.get('fields')).not.toContain('account_type')
+  })
+
+  it('con varias cuentas en un token EAA… elige la que se parece a la pedida; sin ninguna o sin parecido, lo explica', async () => {
+    const varias = { data: [{ id: '1', username: 'jys.design' }, { id: '2', username: 'morfy.co' }] }
+    const con = (cuentas: unknown, cuenta: string): { ig: Instagram; meta: ReturnType<typeof metaFalso> } => {
+      const meta = metaFalso({ '/me/assigned_instagram_accounts': cuentas, '/2': { username: 'morfy.co' } })
+      return { ig: new Instagram(async () => 'EAA-x', meta.fetch, cuenta), meta }
+    }
+    expect((await con(varias, 'morfy').ig.perfil()).usuario).toBe('morfy.co')
+    await expect(con(varias, 'personal').ig.perfil()).rejects.toThrow(/varias cuentas \(@jys\.design, @morfy\.co\)/)
+    await expect(con({ data: [] }, 'morfy').ig.perfil()).rejects.toThrow(/ninguna cuenta de Instagram asignada/)
+  })
+
   it('traduce los errores de Meta (190 token caducado, 4 límite, 10 permiso) sin enseñar el token', async () => {
     const con = (code: number): Instagram => new Instagram(async () => 'token-secreto', (async () => json({ error: { code, message: 'token-secreto' } }, 400)) as typeof fetch)
     await expect(con(190).perfil()).rejects.toThrow(/caducó o se revocó/)
@@ -70,11 +102,10 @@ describe('token de Instagram', () => {
     await expect(fuente('morfy')).rejects.toThrow(/Conectores → Instagram/)
   })
 
-  it('un token de Facebook (EAA…) se rechaza con una explicación, sin llamar a Meta', async () => {
+  it('un token EAA… (inicio de sesión unificado) vale y no se renueva aquí, aunque lleve meses guardado', async () => {
     const meta = metaFalso({})
-    const fuente = crearFuenteTokenIg(() => ({ token: 'EAAxxxxxxxxxxxx', renovado: new Date(HOY).toISOString() }), () => {}, meta.fetch, () => HOY)
-    await expect(fuente('morfy')).rejects.toThrow(/es de Facebook/)
-    await fuente('morfy').catch((e: Error) => expect(e.message).not.toContain('EAAxxx'))
+    const fuente = crearFuenteTokenIg(() => ({ token: 'EAAxxxxxxxxxxxx', renovado: new Date(HOY - 90 * DIA).toISOString() }), () => {}, meta.fetch, () => HOY)
+    expect(await fuente('morfy')).toBe('EAAxxxxxxxxxxxx')
     expect(meta.llamadas).toHaveLength(0)
   })
 

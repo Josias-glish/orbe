@@ -237,7 +237,7 @@ app.whenReady().then(async () => {
   // Instagram (solo lectura) se ofrece siempre: sin token guardado, cada herramienta dice dónde guardarlo, y así
   // guardar uno en Ajustes vale sin reiniciar.
   const tokenIg = crearFuenteTokenIg((clave) => cofre.leer<TokenGuardado>(clave), (clave, valor) => cofre.guardar(clave, valor))
-  const instagram = crearHerramientasInstagram((cuenta) => new Instagram(() => tokenIg(cuenta)))
+  const instagram = crearHerramientasInstagram((cuenta) => new Instagram(() => tokenIg(cuenta), fetch, cuenta))
   const registro = crearRegistro(config, sistema, [...gmail, ...instagram])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {

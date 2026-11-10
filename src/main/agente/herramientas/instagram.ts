@@ -48,7 +48,8 @@ export function crearHerramientasInstagram(ig: (cuenta: Cuenta) => Instagram): H
       describir: (e) => `Mirando el perfil de Instagram de ${NOMBRE_CUENTA[e.cuenta]}`,
       async ejecutar(e, ctx) {
         const p = await ig(e.cuenta).perfil(ctx.senal)
-        const texto = [`Usuario: @${p.usuario}`, `Nombre: ${p.nombre}`, `Tipo de cuenta: ${p.tipo}`, `Seguidores: ${p.seguidores}`, `Seguidos: ${p.seguidos}`, `Publicaciones: ${p.publicaciones}`]
+        // El tipo de cuenta solo lo da el inicio de sesión de Instagram.
+        const texto = [`Usuario: @${p.usuario}`, `Nombre: ${p.nombre}`, ...(p.tipo ? [`Tipo de cuenta: ${p.tipo}`] : []), `Seguidores: ${p.seguidores}`, `Seguidos: ${p.seguidos}`, `Publicaciones: ${p.publicaciones}`]
         return { texto: texto.join('\n'), externo: { origen: 'Instagram' } }
       }
     }),
