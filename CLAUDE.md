@@ -98,8 +98,8 @@ relanza Orbe sin servidor de interfaz: hay que volver a ejecutar `npm run dev`. 
 tiempos agotados sueltos; `npx vitest run --no-file-parallelism` es la referencia.
 
 **En curso (10-nov-2026), retomar aquí.** Etapa 1: PR #15 en borrador sin fusionar, release v1.7.0 publicada. Etapa 2:
-código, pruebas y documentación hechos en `claude/etapa-2-instagram` (sale de `claude/etapa-1-gmail`), subida **sin PR ni
-release** porque la prueba real está a medias. La app de Meta del usuario usa la API de Instagram con **inicio de sesión
+código, pruebas y documentación hechos en `claude/etapa-2-instagram` (sale de `claude/etapa-1-gmail`), **PR #16 en borrador
+y release v1.8.0 publicada** a petición del usuario, con la prueba real de métricas aún pendiente. La app de Meta del usuario usa la API de Instagram con **inicio de sesión
 unificado** (token `EAA…` de usuario del sistema, `graph.facebook.com`, cuenta por id desde
 `/me/assigned_instagram_accounts`); el conector acepta esa variante y la de inicio de sesión de Instagram
 (`graph.instagram.com`, `/me`), eligiendo por el prefijo del token. Probado con sus tokens reales: perfil, publicaciones y
