@@ -88,9 +88,29 @@ Decisiones de la Etapa 1: no hay variables `ORBE_GMAIL*`; Gmail se ofrece si exi
 El aviso de correos nuevos por sondeo (`history`) queda para la Etapa 5. Fallo intermitente conocido bajo carga:
 `agente-proveedor-cli.test.ts` «una herramienta lenta… no cuentan como un CLI colgado» (pasa en solitario).
 
+v1.8.0 (**Etapa 2, Instagram lectura**: `ig_perfil`, `ig_publicaciones`, `ig_metricas`, `ig_comentarios`, todas `ig.leer`).
+
+Decisiones de la Etapa 2: la versión de la API es una constante (`VERSION_API` en `conectores/instagram/cliente.ts`), no
+una variable; las herramientas se ofrecen siempre y sin token dicen dónde guardarlo; el token (`ig.<cuenta>`, con fecha)
+se renueva solo a los 30 días al usarlo. Las ventanas falsas de las pruebas de IPC no tienen `isDestroyed`: la guarda de
+ventana destruida solo está en `ventana.ts`. En `npm run dev`, «Guardar» de Ajustes escribe el `.env` del repositorio y
+relanza Orbe sin servidor de interfaz: hay que volver a ejecutar `npm run dev`. Con el equipo cargado, `npm test` da
+tiempos agotados sueltos; `npx vitest run --no-file-parallelism` es la referencia.
+
+**En curso (10-nov-2026), retomar aquí.** Etapa 1: PR #15 en borrador sin fusionar, release v1.7.0 publicada. Etapa 2:
+código, pruebas y documentación hechos en `claude/etapa-2-instagram` (sale de `claude/etapa-1-gmail`), subida **sin PR ni
+release** porque falta la prueba real. Bloqueo: los tokens guardados (`ig.morfy`, `ig.personal`) son de la variante con
+inicio de sesión de **Facebook** (empiezan por `EAA`, permisos `instagram_basic`…, sin página de Facebook accesible ni
+`instagram_manage_insights`) y `graph.instagram.com` los rechaza con 190. El usuario tiene que decidir: generar tokens de
+inicio de sesión de Instagram (`IGAA…`, plan aprobado, recomendado) o adaptar el conector a la variante Facebook. Con el
+token correcto guardado: repetir la prueba real (perfil, últimos 5 posts con métricas, comentarios), y entonces PR en
+borrador + `gh workflow run release.yml --ref claude/etapa-2-instagram`. Sin verificar hasta esa prueba: `/me/media` como
+alias, token por cabecera `Authorization` y métricas de carruseles. Idea pendiente de aprobación (no es parte del plan):
+dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
+`proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
+
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-2. **Instagram (lectura)**: API de Instagram con inicio de sesión de Instagram, Standard Access, sin revisión de Meta.
 3. **Contenido**: pestaña «Contenido»; textos con el CLI de Claude; diseños **exportados en PNG desde Claude Design**
    a `%APPDATA%\orbe\contenido\entrada\<marca>\` (respaldo: HTML → PNG en ventana oculta sin red). Marcas: jsdesign, morfy, personal.
 4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
