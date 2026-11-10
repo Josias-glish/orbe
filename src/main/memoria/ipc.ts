@@ -40,7 +40,7 @@ function limpiarCambios(entrada: unknown): CambiosRecuerdo | null {
 
 /** Conecta el gestor de memoria del panel con el servicio. Todo se valida aquí: la interfaz no es de fiar. */
 export function registrarMemoria(ventana: BrowserWindow, servicio: ServicioMemoria): void {
-  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => !ventana.isDestroyed() && e.sender === ventana.webContents
+  const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => e.sender === ventana.webContents
   const exigir = (e: IpcMainInvokeEvent): void => {
     if (!propia(e)) throw new Error('Remitente no autorizado')
   }
