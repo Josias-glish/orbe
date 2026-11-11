@@ -102,7 +102,8 @@ const api: ApiOrbe = {
   contenidoBorrar: (id) => ipcRenderer.invoke(CANALES.contenidoBorrar, id),
   contenidoDisenar: (id) => ipcRenderer.invoke(CANALES.contenidoDisenar, id),
   contenidoCarpeta: (marca) => ipcRenderer.send(CANALES.contenidoCarpeta, marca),
-  alContenido: (cb) => suscribir<null>(CANALES.contenidoCambio, () => cb())
+  alContenido: (cb) => suscribir<null>(CANALES.contenidoCambio, () => cb()),
+  metricasLeer: (cuenta, actualizar) => ipcRenderer.invoke(CANALES.metricasLeer, cuenta, actualizar)
 }
 
 contextBridge.exposeInMainWorld('orbe', api)

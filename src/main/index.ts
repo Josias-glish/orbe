@@ -15,6 +15,10 @@ import { crearHerramientasInstagram } from './agente/herramientas/instagram'
 import { crearHerramientasContenido } from './agente/herramientas/contenido'
 import { AlmacenContenido } from './contenido/almacen'
 import { registrarContenido, renderizarPng } from './contenido/ipc'
+import { ServicioMetricas, dia } from './metricas/servicio'
+import { programarFotoDiaria, registrarMetricas } from './metricas/ipc'
+import { instagramDemo } from './metricas/demo'
+import { crearHerramientaCrecimiento } from './agente/herramientas/metricas'
 import { Gmail } from './conectores/gmail/cliente'
 import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
@@ -249,7 +253,22 @@ app.whenReady().then(async () => {
   const avisarContenido = (): void => {
     if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.contenidoCambio)
   }
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, ...crearHerramientasContenido(contenido, avisarContenido)])
+  // Métricas: perfil y publicaciones con sus cifras, comparadas con la media, más un historial diario en metricas.json.
+  const metricas = new ServicioMetricas(
+    modoHumo ? null : join(datos, 'metricas.json'),
+    modoHumo && !humoReal ? () => instagramDemo() : (cuenta) => new Instagram(() => tokenIg(cuenta), fetch, cuenta)
+  )
+  registrarMetricas(orbe.ventana, metricas)
+  if (!modoHumo) {
+    const pararFotos = programarFotoDiaria(metricas, (c) => cofre.leer(`ig.${c}`) !== undefined, () => dia(new Date()))
+    app.once('will-quit', pararFotos)
+  }
+  const registro = crearRegistro(config, sistema, [
+    ...gmail,
+    ...instagram,
+    crearHerramientaCrecimiento(metricas),
+    ...crearHerramientasContenido(contenido, avisarContenido)
+  ])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

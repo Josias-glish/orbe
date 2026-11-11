@@ -163,6 +163,14 @@ Orbe puede consultar el perfil, las publicaciones, las métricas y los comentari
 
 Los pies de foto y los comentarios llegan al modelo como **datos de terceros**. Meta puede tardar hasta 48 h en tener las métricas de una publicación nueva.
 
+## Métricas y crecimiento (solo lectura)
+La pestaña **Métricas** (icono de tendencia) enseña, por cuenta (J&S Design, morfy, personal): seguidores y cuánto han cambiado en 7 y 30 días, alcance medio, tasa de interacción (interacciones sobre alcance) y las últimas 12 publicaciones, cada una frente a la media de la cuenta (en verde si está por encima, en rojo si está por debajo). Pulsar una publicación la abre en Instagram.
+
+- **Historial propio:** Instagram solo da datos recientes, así que Orbe guarda una foto diaria (seguidores y alcance medio) de cada cuenta conectada en `%APPDATA%\orbe\metricas.json`. La gráfica «Seguidores por día» aparece a partir del segundo día.
+- **Analizar con Claude:** manda al chat un encargo de experto en crecimiento de cuentas y marcas personales: diagnóstico con cifras, qué funcionó y por qué, qué dejar de hacer, tres acciones para la semana y dos ideas listas (que puede guardar en Contenido si se lo pides). Usa la herramienta `ig_crecimiento` (libre, `ig.leer`).
+- **Informe semanal:** en Tareas hay una plantilla «Informe de crecimiento semanal» (lunes 08:00).
+- Requiere el permiso `instagram_manage_insights` en el token; sin él, la pestaña lo dice y enseña solo lo básico («me gusta» y comentarios).
+
 ## Contenido (propuestas para Instagram, todo en tu PC)
 La pestaña **Contenido** (icono de capas en la barra lateral) reúne las publicaciones que preparas para J&S Design, morfy y tu marca personal. **Nada sale del equipo**: aprobar solo marca la pieza como lista; publicar llegará en la siguiente versión, con tu aprobación.
 
@@ -336,6 +344,7 @@ src/main/conectores avisos de otras herramientas: bus de actividad, receptor loc
 src/main/conectores/gmail  Gmail: OAuth de escritorio (loopback + PKCE) y cliente de la API (buscar, leer, borradores)
 src/main/conectores/instagram  Instagram: cliente de solo lectura (perfil, publicaciones, métricas, comentarios) y renovación del token
 src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
+src/main/metricas   métricas: lectura por cuenta, medias, historial diario (metricas.json) e IPC
 src/main/contenido  contenido: piezas (contenido.json), recogida y validación de PNG, HTML → PNG sin red, IPC
 src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú

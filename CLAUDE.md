@@ -131,9 +131,17 @@ long»). Pendiente si se retoma: humo tras el render por CDP y una prueba real c
 del PR actual usa `capturePage`, que con el escalado de Windows al 150 % sale desplazado; el respaldo HTML → PNG del PR
 #17 tiene ese fallo (el arreglo por CDP está en la rama en espera).
 
+v1.10.0 (**Etapa 4, Métricas y crecimiento**, rama `claude/etapa-4-metricas`, sale de `claude/etapa-3-contenido`): por
+decisión del usuario (11-nov-2026) la **Publicación queda aparte** y esta etapa ocupa su lugar. Pestaña «Métricas»,
+`metricas/servicio.ts` (12 publicaciones, medias, tasa = interacciones/alcance, o /seguidores sin alcance), historial
+diario en `metricas.json` (foto automática cada 6 h si no hay una de hoy y la cuenta tiene token), herramienta
+`ig_crecimiento` (`ig.leer`), «Analizar con Claude» manda un encargo al chat (no hay llamada aparte al modelo) y
+plantilla de tarea semanal. En la prueba de humo, Instagram es `metricas/demo.ts`. Prueba real pendiente del permiso
+`instagram_manage_insights`.
+
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
+4. **Publicación** (aparte por decisión del usuario; no se hace hasta que lo pida): aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
 5. **Composio** (pedido por el usuario el 11-nov-2026, para tener muchos conectores sin programarlos uno a uno):
    Orbe como cliente MCP de `https://connect.composio.dev/mcp` (clave en la cabecera `x-consumer-api-key`, guardada en
    el cofre como `composio.clave`; fuente: https://docs.composio.dev/docs/composio-connect.md). Composio expone 7

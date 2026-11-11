@@ -86,7 +86,9 @@ export const CANALES = {
   contenidoBorrar: 'contenido:borrar',
   contenidoDisenar: 'contenido:disenar',
   contenidoCarpeta: 'contenido:carpeta',
-  contenidoCambio: 'contenido:cambio'
+  contenidoCambio: 'contenido:cambio',
+  // Métricas de Instagram (solo lectura).
+  metricasLeer: 'metricas:leer'
 } as const
 
 export interface EstadoVentana {
@@ -681,7 +683,55 @@ export interface ApiOrbe {
   /** Abre la carpeta de entrada de una marca (donde se exportan los PNG). */
   contenidoCarpeta(marca: MarcaContenido): void
   alContenido(cb: () => void): () => void
+
+  /** Métricas de una cuenta. Sin `actualizar`, lo último leído (si lo hay) sin llamar a Instagram. */
+  metricasLeer(cuenta: MarcaContenido, actualizar: boolean): Promise<ResultadoMetricas>
 }
+
+// ---------------------------------------------------------------------------------------------
+// Métricas
+// ---------------------------------------------------------------------------------------------
+
+export interface DiaMetricas {
+  /** AAAA-MM-DD (día local). */
+  fecha: string
+  seguidores: number
+  alcanceMedio?: number
+}
+
+export interface PublicacionMetricas {
+  id: string
+  tipo: string
+  fecha: string
+  enlace: string
+  pie: string
+  meGusta: number
+  comentarios: number
+  visualizaciones?: number
+  alcance?: number
+  compartidos?: number
+  guardados?: number
+  interacciones?: number
+  /** Interacciones sobre alcance (o sobre seguidores si no hay alcance), en %. */
+  tasa?: number
+}
+
+export interface InformeMetricas {
+  cuenta: MarcaContenido
+  leido: number
+  usuario: string
+  seguidores: number
+  numPublicaciones: number
+  publicaciones: PublicacionMetricas[]
+  medias: { alcance: number | null; interacciones: number | null; tasa: number | null }
+  /** Seguidores ganados (o perdidos) en 7 y 30 días según el historial guardado; `null` sin datos suficientes. */
+  crecimiento: { dias7: number | null; dias30: number | null }
+  historial: DiaMetricas[]
+  /** Por qué faltan las métricas detalladas (p. ej., falta el permiso de estadísticas). */
+  avisoMetricas?: string
+}
+
+export type ResultadoMetricas = { ok: true; informe: InformeMetricas } | { ok: false; error: string; informe: InformeMetricas | null }
 
 // ---------------------------------------------------------------------------------------------
 // Contenido

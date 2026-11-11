@@ -20,6 +20,7 @@ import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
 import { VistaUso } from '../uso/vista-uso'
 import { VistaContenido } from '../contenido/vista-contenido'
+import { VistaMetricas } from '../metricas/vista-metricas'
 import { VistaTareas } from '../tareas/vista-tareas'
 import type { Avatar } from '../personaje/avatar'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
@@ -82,6 +83,8 @@ export class PanelChat {
   private readonly ajustes: VistaAjustes
   private readonly uso: VistaUso
   private readonly contenido: VistaContenido
+  private readonly metricas: VistaMetricas
+  private readonly botonMetricas: HTMLButtonElement
   private readonly botonContenido: HTMLButtonElement
   private readonly tareas: VistaTareas
   private readonly botonTareas: HTMLButtonElement
@@ -117,6 +120,11 @@ export class PanelChat {
     this.botonUso = porId('uso-boton')
     this.contenido = new VistaContenido(porId('contenido'), () => this.cerrarContenido())
     this.botonContenido = porId('contenido-boton')
+    this.metricas = new VistaMetricas(porId('metricas'), () => this.cerrarMetricas(), (encargo) => {
+      this.volverAlChat()
+      this.alPedirEnvio(encargo)
+    })
+    this.botonMetricas = porId('metricas-boton')
     this.botonTareas = porId('tareas-boton')
     const insignia = porId('tareas-insignia')
     this.tareas = new VistaTareas(porId('tareas'), () => this.cerrarTareas(), (n) => {
@@ -195,11 +203,12 @@ export class PanelChat {
     this.botonMemoria.addEventListener('click', () => void this.alternarMemoria())
     this.botonUso.addEventListener('click', () => void this.alternarUso())
     this.botonContenido.addEventListener('click', () => void this.alternarContenido())
+    this.botonMetricas.addEventListener('click', () => void this.alternarMetricas())
     this.botonTareas.addEventListener('click', () => void this.alternarTareas())
     // Barra lateral: «Chat» cierra la sección abierta, y se marca solo cuando no hay ninguna.
     const botonChat = porId<HTMLButtonElement>('chat-boton')
     botonChat.addEventListener('click', () => this.volverAlChat())
-    const secciones = ['memoria', 'ajustes', 'uso', 'tareas', 'contenido'].map((id) => porId(id))
+    const secciones = ['memoria', 'ajustes', 'uso', 'tareas', 'contenido', 'metricas'].map((id) => porId(id))
     const marcarChat = (): void => botonChat.setAttribute('aria-pressed', String(secciones.every((sec) => sec.hidden)))
     const observador = new MutationObserver(marcarChat)
     for (const sec of secciones) observador.observe(sec, { attributes: true, attributeFilter: ['hidden'] })
@@ -242,7 +251,7 @@ export class PanelChat {
   }
 
   enfocar(): void {
-    if (!this.memoria.visible && !this.ajustes.visible && !this.uso.visible && !this.tareas.visible && !this.contenido.visible) this.entrada.enfocar()
+    if (!this.memoria.visible && !this.ajustes.visible && !this.uso.visible && !this.tareas.visible && !this.contenido.visible && !this.metricas.visible) this.entrada.enfocar()
   }
 
   // -------------------------------------------------------------------------------------------
@@ -257,6 +266,7 @@ export class PanelChat {
     this.cerrarMemoria()
     this.cerrarUso()
     this.cerrarContenido()
+    this.cerrarMetricas()
     this.cerrarTareas()
     this.cuerpoPanel.hidden = true
     this.botonAjustes.setAttribute('aria-pressed', 'true')
@@ -280,6 +290,7 @@ export class PanelChat {
     this.cerrarAjustes()
     this.cerrarTareas()
     this.cerrarContenido()
+    this.cerrarMetricas()
     this.cuerpoPanel.hidden = true
     this.botonUso.setAttribute('aria-pressed', 'true')
     await this.uso.abrir()
@@ -302,6 +313,7 @@ export class PanelChat {
     this.cerrarAjustes()
     this.cerrarUso()
     this.cerrarTareas()
+    this.cerrarMetricas()
     this.cuerpoPanel.hidden = true
     this.botonContenido.setAttribute('aria-pressed', 'true')
     await this.contenido.abrir()
@@ -315,11 +327,35 @@ export class PanelChat {
     this.entrada.enfocar()
   }
 
+  private async alternarMetricas(): Promise<void> {
+    if (this.metricas.visible) {
+      this.cerrarMetricas()
+      return
+    }
+    this.cerrarMemoria()
+    this.cerrarAjustes()
+    this.cerrarUso()
+    this.cerrarTareas()
+    this.cerrarContenido()
+    this.cuerpoPanel.hidden = true
+    this.botonMetricas.setAttribute('aria-pressed', 'true')
+    await this.metricas.abrir()
+  }
+
+  private cerrarMetricas(): void {
+    if (!this.metricas.visible) return
+    this.metricas.cerrar()
+    this.cuerpoPanel.hidden = false
+    this.botonMetricas.setAttribute('aria-pressed', 'false')
+    this.entrada.enfocar()
+  }
+
   /** Cierra la sección que esté abierta (tareas, consumo, memoria o ajustes) y vuelve a la conversación. */
   private volverAlChat(): void {
     this.cerrarTareas()
     this.cerrarUso()
     this.cerrarContenido()
+    this.cerrarMetricas()
     this.cerrarMemoria()
     this.cerrarAjustes()
     this.entrada.enfocar()
@@ -334,6 +370,7 @@ export class PanelChat {
     this.cerrarAjustes()
     this.cerrarUso()
     this.cerrarContenido()
+    this.cerrarMetricas()
     this.cuerpoPanel.hidden = true
     this.botonTareas.setAttribute('aria-pressed', 'true')
     await this.tareas.abrir()
@@ -383,6 +420,7 @@ export class PanelChat {
     this.cerrarAjustes()
     this.cerrarUso()
     this.cerrarContenido()
+    this.cerrarMetricas()
     this.cerrarTareas()
     this.cuerpoPanel.hidden = true
     this.botonMemoria.setAttribute('aria-pressed', 'true')
@@ -434,6 +472,10 @@ export class PanelChat {
     }
     if (this.contenido.visible) {
       this.cerrarContenido()
+      return true
+    }
+    if (this.metricas.visible) {
+      this.cerrarMetricas()
       return true
     }
     if (this.tareas.visible) {

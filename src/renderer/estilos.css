@@ -2698,3 +2698,20 @@ select.memoria-campo {
 .contenido-pieza .tarea-acciones {
   flex-wrap: wrap;
 }
+
+/* Métricas: cada publicación frente a la media de la cuenta. */
+.metricas-pub {
+  cursor: pointer;
+}
+.metricas-pub .uso-modelo-nombre span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.metricas-arriba {
+  color: #34d399;
+}
+.metricas-abajo {
+  color: var(--error);
+}

@@ -883,7 +883,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(400)
     await pulsar('#tareas-boton')
     comprobar('se abren las tareas', await esperarSelector('#tareas:not([hidden]) .tareas-pestanas', 3000))
-    comprobar('sin tareas ofrece ideas para empezar', (await contar('#tareas .tareas-plantilla')) === 3)
+    comprobar('sin tareas ofrece ideas para empezar', (await contar('#tareas .tareas-plantilla')) === 4)
     await esperar(300)
     await capturar('13a-tareas-vacio')
 
@@ -961,6 +961,20 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await capturar('13g-contenido')
     await pulsar('#contenido-boton')
     await esperar(200)
+
+    // Métricas: la cuenta de prueba, su media y la publicación estrella por encima de la media
+    await pulsar('#metricas-boton')
+    comprobar('al abrirse, las métricas leen la cuenta y enseñan sus publicaciones', await esperarSelector('#metricas:not([hidden]) .metricas-pub', 5000) && (await contar('#metricas .metricas-pub')) === 6)
+    v.metricasTarjetas = await textoDe('#metricas .uso-tarjetas')
+    comprobar('seguidores, alcance medio e interacción', /1\.?200/.test(String(v.metricasTarjetas)) && /Alcance medio/.test(String(v.metricasTarjetas)), v.metricasTarjetas)
+    comprobar('la publicación estrella sale por encima de la media', (await contar('#metricas .metricas-arriba')) === 1 && (await contar('#metricas .metricas-abajo')) === 5)
+    await capturar('13h-metricas')
+    const mensajesAntes = await contar('#mensajes .msg.usuario')
+    await js(`[...document.querySelectorAll('#metricas button')].find((b) => b.textContent === 'Analizar con Claude').click()`)
+    await esperar(600)
+    comprobar('«Analizar» vuelve al chat y manda el encargo de experto', (await js<boolean>(`document.getElementById('metricas').hidden`)) && (await contar('#mensajes .msg.usuario')) === mensajesAntes + 1)
+    await esperarFin(15000)
+    await esperar(1500)
 
     // La identidad responde sola a «parte» y «protocolo …» (sin llamar al modelo)
     const respuestas = await contar('#mensajes .msg.asistente')
