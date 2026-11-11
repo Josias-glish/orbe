@@ -113,7 +113,7 @@ Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`
 posterior; el usuario la quiere con **Google** (ya no ElevenLabs). Hoy apunta a un Kokoro local en `localhost:8880` que no
 está en marcha y cae a la voz de Windows; Google Cloud Text-to-Speech no es compatible con `/audio/speech` de OpenAI
 (no verificado si hay pasarela compatible): hará falta un adaptador. Dictado: abrir el
-micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea pendiente de aprobación (no es parte del plan):
+micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea sustituida por la Etapa 5 (Composio):
 dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
 `proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
 
@@ -128,8 +128,19 @@ HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca expo
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
 4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
-5. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
-6. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
+5. **Composio** (pedido por el usuario el 11-nov-2026, para tener muchos conectores sin programarlos uno a uno):
+   Orbe como cliente MCP de `https://connect.composio.dev/mcp` (clave en la cabecera `x-consumer-api-key`, guardada en
+   el cofre como `composio.clave`; fuente: https://docs.composio.dev/docs/composio-connect.md). Composio expone 7
+   meta-herramientas (`COMPOSIO_SEARCH_TOOLS`, `…_GET_TOOL_SCHEMAS`, `…_MULTI_EXECUTE_TOOL`, `…_MANAGE_CONNECTIONS`,
+   `…_WAIT_FOR_CONNECTIONS`, `…_REMOTE_WORKBENCH`, `…_REMOTE_BASH_TOOL`), así que **no se pasan tal cual**: Orbe ofrece
+   sus propias herramientas `composio_buscar` y `composio_ejecutar`, y clasifica cada acción por su nombre en
+   `reglas.json` (`composio.leer` libre para GET/LIST/FETCH/SEARCH; el resto «preguntar»; enviar correos, publicar,
+   pagos y borrar, prohibidos como hoy). `REMOTE_WORKBENCH` y `REMOTE_BASH_TOOL` bloqueados siempre. Meta/Instagram,
+   Gmail y Claude siguen con los conectores propios (decisión del usuario); en Composio se bloquean. Conectar cada app
+   lo hace el usuario por OAuth en su navegador. Sin verificar: precios/plan gratuito y si la clave «consumer» se
+   genera en «AI Clients» del panel de Composio. Sustituye a la idea de dejar pasar conectores de claude.ai al CLI.
+6. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
+7. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
 
 Cada etapa: código + pruebas + humo + versión nueva + PR + release, y una guía para que el usuario la pruebe con sus
 cuentas reales. No conectes cuentas reales tú mismo: el usuario genera los tokens y los guarda en Orbe.
