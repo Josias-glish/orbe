@@ -123,7 +123,13 @@ v1.9.0 (**Etapa 3, Contenido**, rama `claude/etapa-3-contenido`, sale de `claude
 (`<id>.png`, `<id>-N.png`), que dicta el encargo de «Diseñar»; sin vigilante de carpeta: la pestaña abierta mira la
 entrada cada 4 s; un archivo modificado hace menos de 2 s no se toca; los que no valen se quedan con aviso; borrar mueve a
 `papelera/`. Aplazado del borrador: el diseñador automático por CLI (`contenido_guardar_diseno`, modo «exportado»).
-HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca exportar PNG en la cuenta del usuario.
+HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca exportar PNG en la cuenta del usuario. **En espera por decisión del usuario (11-nov-2026)**: diseño
+automático (CLI de Claude escribe el HTML y genera la foto con el conector MCP de Higgsfield de su cuenta de Claude;
+render por CDP a 1080×1350 exactos). Está en la rama `claude/etapa-3-disenador-auto`, sin fusionar. Verificado: el CLI
+ve el conector solo con `ENABLE_TOOL_SEARCH=true`, `ToolSearch` y sin `--strict-mcp-config` (sin eso, «Prompt is too
+long»). Pendiente si se retoma: humo tras el render por CDP y una prueba real con foto (gasta créditos). Nota: el render
+del PR actual usa `capturePage`, que con el escalado de Windows al 150 % sale desplazado; el respaldo HTML → PNG del PR
+#17 tiene ese fallo (el arreglo por CDP está en la rama en espera).
 
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
