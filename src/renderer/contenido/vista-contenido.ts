@@ -27,15 +27,16 @@ function boton(texto: string, clase: string, alPulsar: () => void): HTMLButtonEl
 }
 
 /** Estado de una pieza en palabras: lo que le falta para estar lista. */
-export function estadoPieza(p: Pick<PiezaVista, 'aprobada' | 'archivos'>): string {
+export function estadoPieza(p: Pick<PiezaVista, 'aprobada' | 'archivos' | 'disenando'>): string {
+  if (p.disenando) return 'Diseñando…'
   if (p.aprobada) return 'Aprobada'
   if (p.archivos.length === 0) return 'Falta la imagen'
   return p.archivos.length > 1 ? `Carrusel de ${p.archivos.length}: por aprobar` : 'Por aprobar'
 }
 
 /**
- * La pestaña «Contenido»: las propuestas de publicación de cada marca. «Diseñar» copia el encargo y abre Claude
- * Design; el PNG exportado a la carpeta de entrada aparece solo en su pieza. Aprobar no publica nada (Etapa 4).
+ * La pestaña «Contenido»: las propuestas de publicación de cada marca. «Diseñar» hace la imagen sola (CLI de Claude →
+ * HTML → PNG); «En Claude Design» es la alternativa manual. Aprobar no publica nada (Etapa 4).
  */
 export class VistaContenido {
   private estado: EstadoContenido | null = null
@@ -94,6 +95,7 @@ export class VistaContenido {
     const titulo = el('div', 'tarea-titulo')
     titulo.append(el('strong', undefined, p.idea || '(sin idea)'), el('span', 'tarea-insignia', `${NOMBRE[p.marca]} · ${estadoPieza(p)}`))
     c.append(titulo)
+    if (p.errorDiseno) c.append(el('p', 'memoria-error', `No he podido diseñarla: ${p.errorDiseno}`))
 
     if (p.miniaturas.length > 0) {
       const fila = el('div', 'contenido-miniaturas')
@@ -118,15 +120,17 @@ export class VistaContenido {
     const texto = campo('Texto de la imagen', p.texto, 2)
     const pie = campo('Pie de foto', p.pie, 4)
     const hashtags = campo('Hashtags', p.hashtags.join(' '), 1)
+    const imagen = campo('Foto de fondo con Higgsfield (descripción; vacío = sin foto)', p.imagen ?? '', 2)
 
     const acciones = el('div', 'tarea-acciones')
     acciones.append(
       boton('Guardar texto', 'boton-memoria', () =>
         void this.hacer(() =>
-          window.orbe.contenidoActualizar(p.id, { texto: texto.value, pie: pie.value, hashtags: hashtags.value.split(/\s+/).filter(Boolean) })
+          window.orbe.contenidoActualizar(p.id, { texto: texto.value, pie: pie.value, hashtags: hashtags.value.split(/\s+/).filter(Boolean), imagen: imagen.value.trim() })
         )
       ),
-      boton('Diseñar', 'boton-memoria', () => void window.orbe.contenidoDisenar(p.id).then(() => this.pintar(undefined, 'Encargo copiado: pégalo en Claude Design y exporta el PNG a la carpeta de la marca.'))),
+      boton(p.archivos.length > 0 ? 'Rediseñar' : 'Diseñar', 'boton-memoria', () => void this.hacer(() => window.orbe.contenidoDisenar(p.id))),
+      boton('En Claude Design', 'boton-memoria', () => void window.orbe.contenidoClaudeDesign(p.id).then(() => this.pintar(undefined, 'Encargo copiado: pégalo en Claude Design y exporta el PNG a la carpeta de la marca.'))),
       boton('Carpeta', 'boton-memoria', () => window.orbe.contenidoCarpeta(p.marca)),
       boton(p.aprobada ? 'Quitar aprobación' : 'Aprobar', p.aprobada ? 'boton-memoria' : 'boton-memoria primario', () =>
         void this.hacer(() => window.orbe.contenidoAprobar(p.id, !p.aprobada))
@@ -175,7 +179,7 @@ export class VistaContenido {
     const piezas = (this.estado?.piezas ?? []).filter((p) => !this.filtro || p.marca === this.filtro)
     if (piezas.length === 0) {
       cuerpo.append(
-        el('p', 'tareas-vacio', 'Aún no hay piezas. Pide en el chat «propón un post para morfy sobre…» o exporta un PNG de Claude Design a la carpeta de la marca.')
+        el('p', 'tareas-vacio', 'Aún no hay piezas. Pide en el chat «propón un post para morfy sobre…»: Orbe escribe el texto y diseña la imagen solo.')
       )
     } else {
       for (const p of piezas) cuerpo.append(this.tarjeta(p))

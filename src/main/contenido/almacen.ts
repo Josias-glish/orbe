@@ -102,6 +102,37 @@ export class AlmacenContenido {
     return readFileSync(join(this.raiz, 'marcas', marca, 'marca.md'), 'utf8')
   }
 
+  /** La carpeta de la marca: su ficha `marca.md` y, si la hay, la exportación de Claude Design en `design/`. */
+  carpetaMarca(marca: Cuenta): string {
+    return join(this.raiz, 'marcas', marca)
+  }
+
+  /**
+   * Pone en la pieza las imágenes de un diseño nuevo (el diseñador automático). Las que tenía se quedan en su carpeta
+   * con el prefijo «previa-», y la pieza deja de estar aprobada.
+   */
+  ponerImagenes(id: string, pngs: Buffer[]): Pieza {
+    const p = this.buscar(id)
+    pngs.forEach((png, i) => {
+      const problema = problemaPng(png)
+      if (problema) throw new Error(`La imagen ${i + 1} del diseño ${problema}.`)
+    })
+    const destino = join(this.raiz, 'piezas', p.id)
+    mkdirSync(destino, { recursive: true })
+    for (const viejo of p.archivos) {
+      if (existsSync(join(destino, viejo))) renameSync(join(destino, viejo), join(destino, `previa-${this.ahora()}-${viejo}`))
+    }
+    p.archivos = pngs.map((png, i) => {
+      const nombre = `${p.id}-${i + 1}.png`
+      writeFileSync(join(destino, nombre), png)
+      return nombre
+    })
+    p.aprobada = false
+    p.actualizada = this.ahora()
+    this.guardar()
+    return p
+  }
+
   rutaArchivo(pieza: Pieza, nombre: string): string {
     return join(this.raiz, 'piezas', pieza.id, nombre)
   }
@@ -124,7 +155,7 @@ export class AlmacenContenido {
     return p
   }
 
-  proponer(datos: { marca: Cuenta; idea: string; texto: string; pie: string; hashtags: string[] }): Pieza {
+  proponer(datos: { marca: Cuenta; idea: string; texto: string; pie: string; hashtags: string[]; imagen?: string }): Pieza {
     const ahora = this.ahora()
     let id = 'p' + ahora.toString(36)
     while (this.piezas.some((p) => p.id === id)) id += 'x'
@@ -238,7 +269,7 @@ export class AlmacenContenido {
 export function limpiarCambios(c: unknown): CambiosPieza {
   const o = (c ?? {}) as Record<string, unknown>
   const salida: CambiosPieza = {}
-  for (const k of ['idea', 'texto', 'pie'] as const) if (typeof o[k] === 'string') salida[k] = o[k].slice(0, 2200)
+  for (const k of ['idea', 'texto', 'pie', 'imagen'] as const) if (typeof o[k] === 'string') salida[k] = o[k].slice(0, 2200)
   if (Array.isArray(o.hashtags)) salida.hashtags = o.hashtags.filter((h): h is string => typeof h === 'string').slice(0, 30)
   return salida
 }

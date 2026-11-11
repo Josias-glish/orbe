@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AlmacenContenido, limpiarCambios, medidasPng, problemaPng } from '../src/main/contenido/almacen'
 import { crearHerramientasContenido } from '../src/main/agente/herramientas/contenido'
+import { Disenador, extraerFondo, extraerHtml, HERRAMIENTAS_DISENADOR, MARCA_FONDO } from '../src/main/contenido/disenador'
 
 /** Un PNG mínimo: firma + cabecera IHDR con las medidas pedidas (basta para validar medidas y peso). */
 function png(ancho: number, alto: number): Buffer {
@@ -116,14 +117,14 @@ describe('AlmacenContenido', () => {
 describe('herramientas de contenido', () => {
   it('contenido_proponer guarda la pieza, filtra hashtags y avisa a la interfaz', async () => {
     const a = nuevo()
-    let avisos = 0
-    const [ficha, proponer] = crearHerramientasContenido(a, () => avisos++)
+    const propuestas: string[] = []
+    const [ficha, proponer] = crearHerramientasContenido(a, (id) => propuestas.push(id))
     const v = proponer.validar({ marca: 'morfy', idea: 'Idea', texto: 'Titular', pie: 'Pie', hashtags: '#uno nada #dos' })
     expect(v.ok).toBe(true)
     if (!v.ok) return
     await proponer.ejecutar(v.valor, {} as never)
     expect(a.lista()[0].hashtags).toEqual(['#uno', '#dos'])
-    expect(avisos).toBe(1)
+    expect(propuestas).toEqual([a.lista()[0].id])
     expect(proponer.validar({ marca: 'otra', idea: 'x', texto: 'x', pie: 'x' }).ok).toBe(false)
     const f = ficha.validar({ marca: 'personal' })
     if (f.ok) expect((await ficha.ejecutar(f.valor, {} as never)).texto).toContain('tu marca personal')
@@ -132,5 +133,75 @@ describe('herramientas de contenido', () => {
 
   it('limpiarCambios solo deja los campos de texto conocidos', () => {
     expect(limpiarCambios({ pie: 'a', aprobada: true, archivos: ['x'], hashtags: ['#a', 3] })).toEqual({ pie: 'a', hashtags: ['#a'] })
+  })
+})
+
+describe('Disenador', () => {
+  it('extrae los documentos HTML de la respuesta, en orden', () => {
+    expect(extraerHtml('Aquí van:\n<!doctype html><html><body>1</body></html>\n<html lang="es"><body>2</body></html> fin')).toEqual([
+      '<!doctype html><html><body>1</body></html>',
+      '<html lang="es"><body>2</body></html>'
+    ])
+  })
+
+  it('diseña la pieza sola: pasa la idea al CLI, renderiza cada HTML y pone las imágenes', async () => {
+    const a = nuevo()
+    const p = a.proponer(datos)
+    let prompt = ''
+    let carpeta = ''
+    const d = new Disenador(a, async (pr, c) => ((prompt = pr), (carpeta = c), '<html>1</html><html>2</html>'), async () => png(1080, 1350), () => undefined)
+    await d.disenar(p.id)
+    expect(prompt).toContain('Idea: Lanzamiento')
+    expect(carpeta).toBe(a.carpetaMarca('morfy'))
+    expect(a.lista()[0].archivos).toEqual([`${p.id}-1.png`, `${p.id}-2.png`])
+    expect(d.enCurso.size).toBe(0)
+  })
+
+  it('si el CLI falla o el render no vale, anota el error y no toca la pieza', async () => {
+    const a = nuevo()
+    const p = a.proponer(datos)
+    const falla = new Disenador(a, async () => { throw new Error('sin sesión') }, async () => png(1080, 1350), () => undefined)
+    await falla.disenar(p.id)
+    expect(falla.errores.get(p.id)).toBe('sin sesión')
+    const torcido = new Disenador(a, async () => '<html></html>', async () => png(500, 500), () => undefined)
+    await torcido.disenar(p.id)
+    expect(torcido.errores.get(p.id)).toMatch(/mide 500×500/)
+    expect(a.lista()[0].archivos).toEqual([])
+  })
+})
+
+describe('Disenador con foto de Higgsfield', () => {
+  it('pide la foto al conector, la descarga, la pone en el HTML y la borra tras el render', async () => {
+    const a = nuevo()
+    const p = a.proponer({ ...datos, imagen: 'sunset over a studio' })
+    let pedido = ''
+    let html = ''
+    let existiaAlRender = false
+    const descargadas: string[] = []
+    const d = new Disenador(
+      a,
+      async (pr) => ((pedido = pr), `FONDO_URL: https://cdn.higgsfield.ai/x.jpg\n<html><body style="background:url(${MARCA_FONDO})"></body></html>`),
+      async (h, carpeta) => {
+        html = h
+        existiaAlRender = existsSync(join(carpeta, /url\(([^)]+)\)/.exec(h)?.[1] ?? ''))
+        return png(1080, 1350)
+      },
+      () => undefined,
+      async (url) => (descargadas.push(url), { datos: Buffer.from('JPG'), mime: 'image/jpeg' })
+    )
+    await d.disenar(p.id)
+    expect(pedido).toContain('generate_image_batch')
+    expect(pedido).toContain('sunset over a studio')
+    expect(descargadas).toEqual(['https://cdn.higgsfield.ai/x.jpg'])
+    expect(html).toContain(`.fondo-${p.id}.jpg`)
+    expect(existiaAlRender).toBe(true)
+    expect(existsSync(join(a.carpetaMarca('morfy'), `.fondo-${p.id}.jpg`))).toBe(false)
+    expect(a.lista()[0].archivos).toHaveLength(1)
+  })
+
+  it('sin descripción visual no pide foto; extraerFondo solo acepta https', () => {
+    expect(extraerFondo('FONDO_URL: http://x.com/a.jpg')).toBeNull()
+    expect(extraerFondo('hola\nFONDO_URL: https://x.com/a.jpg\n<html></html>')).toBe('https://x.com/a.jpg')
+    expect(HERRAMIENTAS_DISENADOR.filter((h) => h.startsWith('mcp__'))).toEqual(['mcp__claude_ai_Higgsfield__generate_image_batch', 'mcp__claude_ai_Higgsfield__jobs_wait'])
   })
 })

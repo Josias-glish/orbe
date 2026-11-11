@@ -101,6 +101,7 @@ const api: ApiOrbe = {
   contenidoAprobar: (id, aprobada) => ipcRenderer.invoke(CANALES.contenidoAprobar, id, aprobada),
   contenidoBorrar: (id) => ipcRenderer.invoke(CANALES.contenidoBorrar, id),
   contenidoDisenar: (id) => ipcRenderer.invoke(CANALES.contenidoDisenar, id),
+  contenidoClaudeDesign: (id) => ipcRenderer.invoke(CANALES.contenidoClaudeDesign, id),
   contenidoCarpeta: (marca) => ipcRenderer.send(CANALES.contenidoCarpeta, marca),
   alContenido: (cb) => suscribir<null>(CANALES.contenidoCambio, () => cb())
 }

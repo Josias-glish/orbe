@@ -959,6 +959,17 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     v.piezaContenido = await textoDe('#contenido .contenido-pieza .tarea-insignia')
     comprobar('aprobar marca la pieza como aprobada (sin publicar nada)', /morfy · Aprobada/.test(String(v.piezaContenido)), v.piezaContenido)
     await capturar('13g-contenido')
+    // Diseñar solo: el diseñador (de mentira en la prueba) devuelve HTML y Orbe lo convierte en PNG
+    await js(`[...document.querySelectorAll('#contenido .contenido-pieza button')].find((b) => b.textContent === 'Rediseñar').click()`)
+    comprobar('rediseñar pone una imagen nueva y quita la aprobación', await esperarSelector('#contenido .contenido-pieza .tarea-insignia', 1000) &&
+      (await js<boolean>(`new Promise((r) => { const t = Date.now(); const mirar = () => { const s = document.querySelector('#contenido .contenido-pieza .tarea-insignia')?.textContent ?? ''; if (s.includes('Por aprobar')) r(true); else if (Date.now() - t > 8000) r(false); else setTimeout(mirar, 200) }; mirar() })`)))
+    // El PNG del diseño mide 1080×1350 y está centrado (con el escalado de Windows salía desplazado y con franja blanca)
+    const piezasDir = join(app.getPath('userData'), 'contenido', 'piezas')
+    const disenada = nativeImage.createFromPath(join(piezasDir, (await js<string>(`document.querySelector('#contenido .contenido-pieza').dataset.id`)), (await js<string>(`document.querySelector('#contenido .contenido-pieza').dataset.id`)) + '-1.png'))
+    const tam = disenada.getSize()
+    const borde = disenada.crop({ x: 1075, y: 10, width: 1, height: 1 }).toBitmap()
+    comprobar('el diseño se renderiza a 1080×1350 sin franja blanca', tam.width === 1080 && tam.height === 1350 && borde[0] < 200, { tam, borde: [...borde] })
+    await capturar('13g-contenido-disenado')
     await pulsar('#contenido-boton')
     await esperar(200)
 

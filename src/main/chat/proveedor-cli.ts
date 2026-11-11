@@ -108,7 +108,7 @@ export function buscarRutaCli(
   return null
 }
 
-function resolverRutaCli(rutaConfigurada?: string): string | null {
+export function resolverRutaCli(rutaConfigurada?: string): string | null {
   if (rutaConfigurada) {
     if (/\.exe$/i.test(rutaConfigurada)) return existsSync(rutaConfigurada) ? rutaConfigurada : null
     // Si apuntan al shim (.cmd/.ps1), buscamos el .exe que hay a su lado.

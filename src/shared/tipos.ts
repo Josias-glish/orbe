@@ -85,6 +85,7 @@ export const CANALES = {
   contenidoAprobar: 'contenido:aprobar',
   contenidoBorrar: 'contenido:borrar',
   contenidoDisenar: 'contenido:disenar',
+  contenidoClaudeDesign: 'contenido:claude-design',
   contenidoCarpeta: 'contenido:carpeta',
   contenidoCambio: 'contenido:cambio'
 } as const
@@ -676,8 +677,10 @@ export interface ApiOrbe {
   contenidoActualizar(id: string, cambios: CambiosPieza): Promise<EstadoContenido>
   contenidoAprobar(id: string, aprobada: boolean): Promise<EstadoContenido>
   contenidoBorrar(id: string): Promise<EstadoContenido>
-  /** Copia el encargo de la pieza al portapapeles y abre Claude Design. */
-  contenidoDisenar(id: string): Promise<void>
+  /** Diseña la pieza sola (CLI de Claude → HTML → PNG); vuelve enseguida y avisa con `alContenido` al terminar. */
+  contenidoDisenar(id: string): Promise<EstadoContenido>
+  /** Alternativa manual: copia el encargo al portapapeles y abre Claude Design. */
+  contenidoClaudeDesign(id: string): Promise<void>
   /** Abre la carpeta de entrada de una marca (donde se exportan los PNG). */
   contenidoCarpeta(marca: MarcaContenido): void
   alContenido(cb: () => void): () => void
@@ -698,6 +701,8 @@ export interface Pieza {
   /** El pie de foto. */
   pie: string
   hashtags: string[]
+  /** Descripción visual para generar la imagen de fondo con Higgsfield (opcional). */
+  imagen?: string
   /** Nombres de las imágenes en `contenido\piezas\<id>\`, en orden (más de una = carrusel). */
   archivos: string[]
   aprobada: boolean
@@ -705,11 +710,11 @@ export interface Pieza {
   actualizada: number
 }
 
-export type CambiosPieza = Partial<Pick<Pieza, 'idea' | 'texto' | 'pie' | 'hashtags'>>
+export type CambiosPieza = Partial<Pick<Pieza, 'idea' | 'texto' | 'pie' | 'hashtags' | 'imagen'>>
 
 export interface EstadoContenido {
   /** Cada pieza con sus miniaturas (data URL), más recientes primero. */
-  piezas: Array<Pieza & { miniaturas: string[] }>
+  piezas: Array<Pieza & { miniaturas: string[]; disenando: boolean; errorDiseno?: string }>
   /** Archivos de la carpeta de entrada que no valen y por qué. */
   avisos: string[]
 }

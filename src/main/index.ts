@@ -15,6 +15,8 @@ import { crearHerramientasInstagram } from './agente/herramientas/instagram'
 import { crearHerramientasContenido } from './agente/herramientas/contenido'
 import { AlmacenContenido } from './contenido/almacen'
 import { registrarContenido, renderizarPng } from './contenido/ipc'
+import { Disenador, lanzadorCli, type LanzarDisenador } from './contenido/disenador'
+import { resolverRutaCli } from './chat/proveedor-cli'
 import { Gmail } from './conectores/gmail/cliente'
 import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
@@ -245,11 +247,27 @@ app.whenReady().then(async () => {
   // empieza siempre de cero en su carpeta temporal).
   if (modoHumo) rmSync(join(datos, 'contenido'), { recursive: true, force: true })
   const contenido = new AlmacenContenido(join(datos, 'contenido'), { renderizar: renderizarPng })
-  registrarContenido(orbe.ventana, contenido)
   const avisarContenido = (): void => {
     if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.contenidoCambio)
   }
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, ...crearHerramientasContenido(contenido, avisarContenido)])
+  // El diseñador usa el CLI de Claude (la suscripción del usuario); en la prueba de humo, uno de mentira.
+  const lanzarDisenador: LanzarDisenador =
+    modoHumo && !humoReal
+      ? async () =>
+          `<!doctype html><html><body style="margin:0;width:1080px;height:1350px;background:#1d2b53;color:#fff;font:bold 72px sans-serif;display:grid;place-items:center">Demo</body></html>`
+      : (prompt, carpeta, senal) => {
+          const ruta = resolverRutaCli(config.rutaCli || undefined)
+          if (!ruta) return Promise.reject(new Error('No encuentro el CLI de Claude (claude.exe): instálalo para que Orbe diseñe solo.'))
+          return lanzadorCli(ruta)(prompt, carpeta, senal)
+        }
+  // La foto de fondo la genera el propio CLI con el conector de Higgsfield de la cuenta de Claude del usuario.
+  const disenador = new Disenador(contenido, lanzarDisenador, renderizarPng, avisarContenido)
+  registrarContenido(orbe.ventana, contenido, disenador)
+  const alProponer = (id: string): void => {
+    avisarContenido()
+    void disenador.disenar(id)
+  }
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, ...crearHerramientasContenido(contenido, alProponer)])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
