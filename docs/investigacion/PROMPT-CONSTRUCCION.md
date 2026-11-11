@@ -17,13 +17,23 @@ CONTEXTO
 - Orbe va por la v1.9.0 (Etapas 0–3 hechas). Lo que sigue amplía el plan con lo aprobado en la investigación.
 
 PLAN (en este orden; una etapa por versión)
-4. Compañero local («dos cerebros»), según COMPANERO-Y-CONFIGURACION.md, Parte A:
+4. Compañero local («dos cerebros»), según COMPANERO-Y-CONFIGURACION.md, Partes A y C (léelas enteras):
    - Proveedor local para Ollama (API compatible con OpenAI en http://127.0.0.1:11434/v1, modelo de ORBE_LOCAL_MODELO).
-   - Bucle del Compañero en el proceso principal: reutiliza src/main/pantalla (app, título, URL, texto visible) y
-     src/main/vigia.ts (inactividad, batería); detector de secretos de src/main/memoria/secretos.ts; lista de apps
-     bloqueadas en %APPDATA%\orbe\companero.json (bancos, gestores de contraseñas, InPrivate/incógnito, Orbe).
-   - El modelo local responde en JSON {comentar, tipo, texto}; SIN herramientas y sin red (salvo el modo
-     «equilibrada»: solo el título a Wikipedia).
+   - Bucle del Compañero en el proceso principal (src/main/companero/): reutiliza src/main/pantalla (app, título, URL,
+     texto visible) y src/main/vigia.ts (inactividad, batería); detector de secretos de src/main/memoria/secretos.ts;
+     lista de apps bloqueadas en %APPDATA%\orbe\companero.json (bancos, gestores de contraseñas, InPrivate/incógnito,
+     Orbe).
+   - «Ojos» locales (A.5): solo si el texto de la ventana no basta, captura SOLO la ventana activa sin ocultar Orbe
+     (no uses ServicioCaptura, que oculta la ventana 180 ms: excluye la ventana de Orbe con
+     setContentProtection(true)), reduce a 768 px, la mantiene solo en memoria (nunca en disco, ni el OCR por archivo
+     temporal), descarta las capturas negras (DRM) y se la pasa a ORBE_OJOS_MODELO (gemma3:4b) con el prompt C.1.
+     Si los ojos dicen "sensible": true, se descarta todo. La imagen se borra antes de llamar a la voz.
+   - «Voz»: Llama 3.2 recibe SOLO texto (descripción de los ojos + metadatos + contexto) con el prompt C.2, literal,
+     en src/main/companero/prompts.ts. Salida JSON {comentar, tipo, texto, confianza} con formato estructurado de
+     Ollama; descarta confianza < 0,7, más de 25 palabras o repetidos en 24 h. Los dos modelos se cargan uno tras
+     otro con keep_alive corto; con menos de ~8 GB de RAM libre, los ojos se apagan solos.
+   - Usa los casos de C.3 como pruebas vitest (con modelos simulados) y para la prueba real conmigo.
+   - SIN herramientas y sin red (salvo el modo «equilibrada»: solo el título a Wikipedia).
    - Filtros: máx. ORBE_COMPANERO_MAX_HORA por hora, 10 min entre comentarios, horas de silencio, silencio en llamadas
      (Teams, Zoom, Meet), retroceso si ignoro 2 seguidos, sin repetir datos.
    - Modo película: detecta reproductores y webs de vídeo, saca el título del texto (no de la imagen), sin spoilers,
@@ -33,7 +43,8 @@ PLAN (en este orden; una etapa por versión)
    - Interruptor «🔒 Privado» en el panel: esa conversación va solo al modelo local.
    - Ajustes → nuevo grupo «Compañero» con las variables ORBE_COMPANERO* y ORBE_LOCAL_*.
    - Antes de programar, comprueba mi equipo (RAM con Get-CimInstance Win32_ComputerSystem, GPU, `ollama list`) y
-     dime qué variante de Llama 3.2 usar (3b o 1b). Privacidad por defecto: «estricta».
+     dime qué variante de Llama 3.2 usar (3b o 1b) y si caben los ojos (gemma3:4b o qwen2.5vl:3b). Privacidad por
+     defecto: «estricta».
 5. Publicación en Instagram: el plan original (Supabase → Meta → borrar de Supabase), docs/fase3-borradores.
 6. Funciones tipo dots (investigación §3.2, puntos 1–6):
    a) Revisor antes de actuar (auto-review con Haiku por el CLI) para toda acción que no sea «libre».
@@ -62,7 +73,8 @@ CÓMO TRABAJAR CADA ETAPA
 
 REGLAS
 - Nunca me pidas, muestres ni escribas en el chat contraseñas, tokens ni claves. Van al cofre (Ajustes → Conectores).
-- El Compañero nunca envía mi pantalla fuera del PC ni tiene herramientas. Ollama solo en 127.0.0.1; nunca
+- El Compañero nunca envía mi pantalla fuera del PC, nunca guarda capturas en disco, no oculta ni mueve ventanas,
+  no roba el foco y no tiene herramientas. Ollama solo en 127.0.0.1; nunca
   OLLAMA_HOST=0.0.0.0.
 - No publiques en Instagram, no envíes correos ni subas archivos a Supabase sin mi aprobación en ese momento.
 - Respeta las políticas de Meta y Google; nada que pueda suspender mis cuentas.
