@@ -33,7 +33,8 @@ const BASE_Y = -0.951
 const ALTO = 1.899
 const CUELLO_Y = BASE_Y + 0.372 * ALTO
 const SEGMENTOS_OREJA = 11
-const LENTE = { x: 0.186, y: -0.045, ancho: 0.27, alto: 0.19 }
+// Centro, z y giro del cristal: los imprime scripts/articular-modelo.mjs al generar la montura («Cristal: …»).
+const LENTE = { x: 0.204, y: -0.008, z: 0.365, giro: 0.368, ancho: 0.28, alto: 0.2 }
 
 const suave = (p) => p * p * (3 - 2 * p)
 const campana = (p) => Math.sin(Math.PI * Math.min(1, Math.max(0, p)))
@@ -127,7 +128,7 @@ function materialCapa(capa, texturas, mascara, compartido) {
 vReposo = position; vReposoN = normal; vUvPelo = uv; vPelo = zona.x;
 // Pelo corto: 1,1 % de la altura del conejo; en las orejas se mece más con el movimiento.
 // Junto a las gafas el pelo se queda al ras: no debe asomar sobre la montura ni los cristales.
-float gafas = max(max(abs(position.x) - 0.47, abs(position.y + 0.045) - 0.135), 0.2 - position.z);
+float gafas = max(max(abs(position.x) - 0.42, abs(position.y + 0.004) - 0.14), 0.2 - position.z);
 float largoPelo = mix(0.12, 1.0, smoothstep(0.0, 0.07, gafas));
 transformed += normal * (0.021 * uCapa * largoPelo) + uMecer * (uCapa * uCapa) * (0.5 + zona.y) * largoPelo;`)
     sh.fragmentShader = sh.fragmentShader
@@ -302,12 +303,7 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
   // Ojos de luz: una pantalla transparente pegada a cada cristal, hija del hueso de la cabeza.
   pivote.updateMatrixWorld(true)
   const posCabeza = H.cabeza.getWorldPosition(new Vector3())
-  const pos = geo.getAttribute('position')
   const lentes = [-1, 1].map((lado) => {
-    let z = 0
-    for (let i = 0; i < pos.count; i++) {
-      if (Math.abs(pos.getX(i) - lado * LENTE.x) < LENTE.ancho * 0.3 && Math.abs(pos.getY(i) - LENTE.y) < LENTE.alto * 0.3) z = Math.max(z, pos.getZ(i))
-    }
     const lienzoOjo = Object.assign(document.createElement('canvas'), { width: 192, height: 128 })
     const textura = new CanvasTexture(lienzoOjo)
     textura.colorSpace = SRGBColorSpace
@@ -315,7 +311,8 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
       new PlaneGeometry(LENTE.ancho, LENTE.alto),
       new MeshBasicMaterial({ map: textura, transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false })
     )
-    malla.position.set(lado * LENTE.x - posCabeza.x, LENTE.y - posCabeza.y, z + 0.012 - posCabeza.z)
+    malla.position.set(lado * LENTE.x - posCabeza.x, LENTE.y - posCabeza.y, LENTE.z - posCabeza.z)
+    malla.rotation.y = lado * LENTE.giro
     malla.renderOrder = 3
     H.cabeza.add(malla)
     return { ctx: lienzoOjo.getContext('2d'), textura, lienzo: lienzoOjo }
@@ -529,7 +526,7 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
   let alBajar = () => {}
   function cuadro(ahora) {
     idRaf = requestAnimationFrame(cuadro)
-    const dt = Math.min(0.05, (ahora - ultimo) / 1000)
+    const dt = Math.max(0, Math.min(0.05, (ahora - ultimo) / 1000))
     ultimo = ahora
     redimensionar()
     actualizar(dt)

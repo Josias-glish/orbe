@@ -7,6 +7,30 @@ const pista = document.querySelector('.pista')
 const teclas = [...pista.querySelectorAll('button')]
 const carga = document.querySelector('.carga')
 
+// Entradas de texto: el titular se parte en palabras y cada bloque se anima al entrar su tramo (portada.css).
+if (raiz.classList.contains('mueve')) {
+  window.orbeTexto = true
+  for (const t of document.querySelectorAll('.texto h2, .gancho')) {
+    const palabras = t.textContent.trim().split(/\s+/)
+    t.textContent = ''
+    palabras.forEach((palabra, i) => {
+      const fuera = Object.assign(document.createElement('span'), { className: 'pal' })
+      fuera.style.setProperty('--i', i)
+      fuera.append(Object.assign(document.createElement('span'), { textContent: palabra }))
+      t.append(fuera, ' ')
+    })
+  }
+  const ver = new IntersectionObserver((entradas) => {
+    for (const e of entradas) e.target.classList.toggle('dentro', e.isIntersecting)
+  }, { rootMargin: '-15% 0px -15% 0px' })
+  for (const bloque of document.querySelectorAll('.texto, .entrada')) {
+    // La entrada de la portada queda pegada al borde inferior, fuera del margen del observador: se muestra al cargar.
+    bloque.querySelectorAll(':scope > :not(h2, ul, dl), li, .ficha > div').forEach((el, n) => el.style.setProperty('--n', n))
+    if (bloque.matches('.entrada')) requestAnimationFrame(() => bloque.classList.add('dentro'))
+    else ver.observe(bloque)
+  }
+}
+
 // Encuadre del conejo en cada tramo, en fracciones de la ventana: x (0 = centro), alto, base (su pie), giro, camY.
 const POSES = {
   ancha: [
