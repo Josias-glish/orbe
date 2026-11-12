@@ -35,7 +35,7 @@ export function crearAbrirUrl(deps: DepsAbrirUrl): Herramienta {
     validar: crearValidador<EntradaAbrirUrl>(campos),
     describir: (e) => `Abriendo en el navegador: ${vista(e.url)}`,
     async ejecutar(e, ctx) {
-      const r = analizarUrlWeb(e.url, { permitirLocal: ctx.permitirLocal })
+      const r = analizarUrlWeb(e.url, { permitirLocal: ctx.permitirLocal, dominios: ctx.dominios })
       if (!r.ok) throw r.tipo === 'prohibida' ? new AccionProhibida(r.motivo) : new Error(r.motivo)
       await deps.abrir(r.url.href)
       return { texto: `Abrí ${r.url.href} en el navegador del usuario. No puedes ver la página.` }

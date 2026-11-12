@@ -22,6 +22,8 @@ export interface OpcionesAgente {
    * `cli`. Orbe no puede limitar cuántas hace; solo encenderla o apagarla.
    */
   busquedaCli?: boolean
+  /** Dominios permitidos para las herramientas web (ORBE_DOMINIOS); vacío o ausente, todos los públicos. */
+  dominios?: readonly string[]
   /** Lee `reglas.json` al empezar cada tarea (así un cambio en el archivo vale sin reiniciar). */
   reglas?: () => Record<string, Modo>
 }
@@ -52,6 +54,7 @@ export function crearEjecutor(agente: OpcionesAgente, senal: AbortSignal, m: Man
     alFuentes: (fuentes) => m.alFuentes?.(fuentes),
     confirmar: m.confirmar,
     nonce: crearNonce(),
-    permitirLocal: agente.permitirLocal
+    permitirLocal: agente.permitirLocal,
+    dominios: agente.dominios
   })
 }

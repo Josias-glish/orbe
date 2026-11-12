@@ -259,10 +259,7 @@ export class RespuestaEnCurso {
 export class ListaMensajes {
   private pegado = true
 
-  constructor(
-    private readonly contenedor: HTMLElement,
-    private readonly vacio: HTMLElement
-  ) {
+  constructor(private readonly contenedor: HTMLElement) {
     contenedor.addEventListener('scroll', () => {
       this.pegado = contenedor.scrollHeight - contenedor.scrollTop - contenedor.clientHeight < MARGEN_PEGADO
     })
@@ -282,7 +279,6 @@ export class ListaMensajes {
   }
 
   private anadir(el: HTMLElement): void {
-    this.vacio.hidden = true
     this.contenedor.append(el)
     this.desplazarAlFinal()
   }
@@ -384,7 +380,6 @@ export class ListaMensajes {
 
   limpiar(): void {
     this.contenedor.querySelectorAll('.msg, .tarjeta-error, .aviso').forEach((el) => el.remove())
-    this.vacio.hidden = false
     this.pegado = true
   }
 }

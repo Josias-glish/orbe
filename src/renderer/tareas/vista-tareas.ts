@@ -56,6 +56,13 @@ export const PLANTILLAS: ReadonlyArray<{ titulo: string; instruccion: string; pr
   }
 ]
 
+/** El primer permiso que espera una tarea de fondo: el panel lo enseña también en la tarjeta del chat (N8). */
+export interface PermisoTarea {
+  tareaId: string
+  tarea: string
+  permiso: NonNullable<EjecucionTarea['permiso']>
+}
+
 /**
  * Las tareas de fondo: lo que Orbe está haciendo ahora, lo que tiene programado y lo que ya terminó, como el perfil
  * de un agente «siempre encendido». Desde aquí se crean (ahora, una vez, cada día, ciertos días o cada cierto
@@ -72,7 +79,7 @@ export class VistaTareas {
   constructor(
     private readonly raiz: HTMLElement,
     private readonly alVolver: () => void,
-    private readonly alPendientes?: (n: number) => void
+    private readonly alPendientes?: (n: number, primero?: PermisoTarea) => void
   ) {
     window.orbe.alTareas(() => void this.cargar())
     void this.cargar()
@@ -105,7 +112,9 @@ export class VistaTareas {
   private async cargar(): Promise<void> {
     try {
       this.estado = await window.orbe.tareasEstado()
-      this.alPendientes?.(this.estado.tareas.filter((t) => t.ultima?.estado === 'esperando').length)
+      const esperando = this.estado.tareas.filter((t) => t.ultima?.estado === 'esperando')
+      const t = esperando.find((x) => x.ultima?.permiso)
+      this.alPendientes?.(esperando.length, t ? { tareaId: t.id, tarea: t.titulo, permiso: t.ultima!.permiso! } : undefined)
       if (this.visible) this.pintar()
     } catch {
       // sin estado no se pinta nada nuevo
@@ -228,6 +237,9 @@ export class VistaTareas {
       const acciones = el('div', 'tarea-acciones')
       acciones.append(
         boton('boton-memoria primario', 'Permitir', () => void this.hacer(() => window.orbe.tareasResponder(t.id, e.permiso!.confirmacionId, true))),
+        ...(e.permiso.porTarea
+          ? [boton('boton-memoria', 'En esta tarea', () => void this.hacer(() => window.orbe.tareasResponder(t.id, e.permiso!.confirmacionId, 'tarea')))]
+          : []),
         boton('boton-memoria', 'No', () => void this.hacer(() => window.orbe.tareasResponder(t.id, e.permiso!.confirmacionId, false)))
       )
       permiso.append(acciones)

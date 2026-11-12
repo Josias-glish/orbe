@@ -20,6 +20,7 @@ export function opcionesAgente(config: Config, registro: RegistroHerramientas | 
     registro,
     maxPasos: config.agente.pasos,
     permitirLocal: config.agente.permitirLocal,
+    dominios: config.agente.dominios,
     // La búsqueda de Claude solo existe con su API; ORBE_BUSQUEDA_MAX=0 la apaga.
     ...(config.proveedor === 'api' && config.agente.busquedaMax > 0 ? { busquedaNativa: { maxUsos: config.agente.busquedaMax } } : {}),
     // El CLI trae su propia búsqueda: ORBE_BUSQUEDA_MAX=0 la apaga, pero no hay forma de limitar cuántas hace.

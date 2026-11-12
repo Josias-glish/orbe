@@ -53,6 +53,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - **Solo se toca el centro del personaje**: en Windows y macOS, el resto de su cuadro (las esquinas y los lados transparentes) deja pasar los clics a lo que haya debajo, así no tapa pestañas ni botones de otras aplicaciones. Con el panel abierto, igual: solo el panel y el centro del personaje reciben el ratón.
 - **Arrastrar** el personaje desde su centro (o la cabecera del panel): moverlo. Recuerda su última posición.
 - **Ctrl + Mayús + Espacio**: abrir o cerrar el panel desde cualquier aplicación.
+- **Ctrl + Mayús + Retroceso**: **detener todo** lo que esté haciendo el agente.
 - **Ctrl + Mayús + Alt + Espacio**: **leer la pantalla**. Lee la ventana en la que estabas, abre el panel y deja lo leído listo para tu próximo mensaje.
 - El **ojo** junto al campo de texto hace lo mismo desde el panel.
 - El botón **[T]** lee el **texto de una imagen sin pantallazo** o **reconoce y resuelve una fórmula o una estructura química**: de la ventana que estabas usando, del portapapeles o de un archivo (ver «Texto de una imagen» y «Fórmulas»).
@@ -295,6 +296,12 @@ Además de conversar, Orbe puede **actuar**: buscar en internet, abrir una pági
 - **Abrir páginas:** solo `http` y `https`, sin usuario ni contraseña en la dirección y sin llegar a este equipo ni a tu red local (salvo `ORBE_PERMITIR_LOCAL=1`). Solo las abre: el agente no ve la página.
 - **Abrir aplicaciones:** por el nombre del menú Inicio (se entienden «calculadora» y «calculator»). El agente solo da un nombre; la ruta con que se abre sale de tu menú Inicio, sin argumentos. Con `%APPDATA%\orbe\aplicaciones.json` pones tus propios nombres o escondes alguna: `{ "alias": { "navegador": "Google Chrome" }, "excluir": ["Nombre"] }`.
 - **Con el CLI de Claude** las herramientas viajan por un pequeño servidor local de Orbe (solo accesible desde tu equipo y con un secreto aleatorio); el CLI no puede usar nada más.
+- **Plan, revisor y resumen:** si una tarea necesita tres acciones o más, o alguna con permiso, Orbe te enseña primero el plan numerado y espera a que lo apruebes. Cada tarjeta de permiso recuerda tu orden y avisa si antes leyó algo de fuera (una web, Composio). Al terminar sale una línea con el resumen («3 acciones · 2 hechas · 1 no permitida»).
+- **Permitir en esta tarea:** en la tarjeta puedes aprobar un tipo de acción para el resto de la tarea. Enviar, publicar, responder, subir o borrar se aprueban siempre una a una.
+- **Detener todo y vigilante:** **Ctrl + Mayús + Retroceso** (o «Detener todo» en la bandeja) corta el chat y las tareas de fondo (`ORBE_ATAJO_PAUSA` lo cambia). Orbe se pausa solo y te pregunta si repite la misma acción tres veces o hace doce en un minuto; si una web trae órdenes, desde ahí todo pide permiso.
+- **Una sola bandeja de permisos:** lo que piden las tareas de fondo aparece también en la tarjeta del chat.
+- **Webs permitidas:** con `ORBE_DOMINIOS=wikipedia.org, gob.es` el agente solo abre esas webs y sus subdominios.
+- **Conversaciones largas:** con la API de Claude, la parte antigua se resume sola para no perder el hilo.
 - Está pendiente el navegador controlado (leer páginas, hacer clic y escribir), con sus confirmaciones.
 
 ## Crear el instalador

@@ -20,7 +20,7 @@ import { VistaAjustes } from '../ajustes/vista-ajustes'
 import { VistaMemoria } from '../memoria/vista-memoria'
 import { VistaUso } from '../uso/vista-uso'
 import { VistaMetricas } from '../metricas/vista-metricas'
-import { VistaTareas } from '../tareas/vista-tareas'
+import { VistaTareas, type PermisoTarea } from '../tareas/vista-tareas'
 import type { Avatar } from '../personaje/avatar'
 import { Dictado, type EstadoDictado } from '../voz/dictado'
 import { LectorVoz, type Sintesis } from '../voz/lector'
@@ -61,6 +61,8 @@ export class PanelChat {
   private readonly botonCapturar: HTMLButtonElement
   private readonly confirmacion: ConfirmacionCaptura
   private readonly confirmacionAccion: ConfirmacionAccion
+  /** El permiso de una tarea de fondo que enseña ahora la tarjeta, si lo hay. */
+  private permisoTareaVisible: string | null = null
   private readonly botonDetenerAccion: HTMLButtonElement
   private readonly botonDetenerOrbe: HTMLButtonElement
   private readonly sugerencia: SugerenciaCaptura
@@ -105,7 +107,7 @@ export class PanelChat {
   ) {
     const porId = <T extends HTMLElement>(id: string): T => raiz.getElementById(id) as T
 
-    this.lista = new ListaMensajes(porId('mensajes'), porId('vacio'))
+    this.lista = new ListaMensajes(porId('mensajes'))
     this.botonEnviar = porId('enviar')
     this.botonLeer = porId('leer')
     this.botonMemoria = porId('memoria-boton')
@@ -134,9 +136,10 @@ export class PanelChat {
     this.botonMetricas = porId('metricas-boton')
     this.botonTareas = porId('tareas-boton')
     const insignia = porId('tareas-insignia')
-    this.tareas = new VistaTareas(porId('tareas'), () => this.cerrarTareas(), (n) => {
+    this.tareas = new VistaTareas(porId('tareas'), () => this.cerrarTareas(), (n, primero) => {
       insignia.hidden = n === 0
       insignia.textContent = String(n)
+      this.permisoDeTarea(primero)
     })
     this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
@@ -410,6 +413,21 @@ export class PanelChat {
     this.cuerpoPanel.hidden = false
     this.botonMemoria.setAttribute('aria-pressed', 'false')
     this.entrada.enfocar()
+  }
+
+  /**
+   * Bandeja única de aprobaciones (N8): lo que pide una tarea de fondo sale en la misma tarjeta que los permisos del
+   * chat, si está libre. Cerrarla sin responder no cuenta como «no»: el permiso sigue esperando en Tareas.
+   */
+  private permisoDeTarea(p: PermisoTarea | undefined): void {
+    if (this.permisoTareaVisible && this.permisoTareaVisible !== p?.permiso.confirmacionId) this.confirmacionAccion.cancelar()
+    if (!p || this.turno || this.confirmacionAccion.visible) return
+    const id = p.permiso.confirmacionId
+    this.permisoTareaVisible = id
+    void this.confirmacionAccion.pedir({ ...p.permiso, titulo: `${p.tarea}: ${p.permiso.titulo}` }).then((respuesta) => {
+      if (this.permisoTareaVisible === id) this.permisoTareaVisible = null
+      if (respuesta !== null) void window.orbe.tareasResponder(p.tareaId, id, respuesta)
+    })
   }
 
   /** Esc: si hay una confirmación de captura o el gestor de memoria abierto, los cierra y devuelve true (el panel se queda abierto). */
@@ -718,8 +736,6 @@ export class PanelChat {
     document.documentElement.dataset['identidad'] = perfil.id
     const titulo = document.querySelector('.panel-titulo')
     if (titulo) titulo.textContent = perfil.nombre
-    const vacio = document.querySelector('.vacio-titulo')
-    if (vacio && perfil.id !== 'orbe') vacio.textContent = `${perfil.nombre}, a su servicio.`
   }
 
   /** Al abrir el panel: una identidad propia da el parte de situación una vez al día, sin que se lo pidan. */
@@ -923,8 +939,8 @@ export class PanelChat {
       case 'confirmar': {
         const { confirmacion } = evento
         void this.confirmacionAccion.pedir(confirmacion).then((permitir) => {
-          // Si el turno ya terminó (o se detuvo) la respuesta no tiene a quién llegar.
-          if (this.turno?.id === turno.id) window.orbe.chatConfirmar(turno.id, confirmacion.confirmacionId, permitir)
+          // Si el turno ya terminó (o se detuvo) la respuesta no tiene a quién llegar. Cerrarla sin responder es «no».
+          if (this.turno?.id === turno.id) window.orbe.chatConfirmar(turno.id, confirmacion.confirmacionId, permitir ?? false)
         })
         break
       }

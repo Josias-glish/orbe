@@ -154,7 +154,14 @@ export interface ConfirmacionVista {
   peligrosa?: boolean
   etiquetaPermitir?: string
   etiquetaCancelar?: string
+  /** Ofrece «Permitir en esta tarea»: el mismo tipo de acción ya no se vuelve a preguntar hasta que termine (N6). */
+  porTarea?: boolean
+  /** Lo que el revisor quiere que compruebes antes de permitir (tu orden, si antes leyó contenido de fuera…). */
+  revision?: string
 }
+
+/** La respuesta a una tarjeta de permiso: sí, no, o sí para el resto de la tarea. */
+export type RespuestaPermiso = boolean | 'tarea'
 
 /** De dónde salió parte de una respuesta (una búsqueda web): se enseña como un enlace bajo el texto. */
 export interface FuenteVista {
@@ -437,7 +444,7 @@ export interface EjecucionTarea {
   /** Lo que va haciendo (la última acción), mientras está en curso. */
   paso?: string
   /** Una acción que espera tu permiso. */
-  permiso?: { confirmacionId: string; titulo: string; detalle: string; peligrosa: boolean }
+  permiso?: { confirmacionId: string; titulo: string; detalle: string; peligrosa: boolean; porTarea?: boolean }
 }
 
 /** Una tarea de fondo al estilo de los agentes «siempre encendidos»: una instrucción que Orbe hace solo cuando toca. */
@@ -581,7 +588,7 @@ export interface ApiOrbe {
   chatEnviar(peticion: PeticionChat): Promise<ResultadoEnvio>
   chatCancelar(id: string): void
   /** Responde a una confirmación del agente (Permitir o Cancelar). */
-  chatConfirmar(id: string, confirmacionId: string, permitir: boolean): void
+  chatConfirmar(id: string, confirmacionId: string, permitir: RespuestaPermiso): void
   chatNueva(): Promise<void>
   /** El marcador de potencia: el nivel actual del modelo y cuándo se aplica un cambio. */
   potenciaInfo(): Promise<InfoPotencia>
@@ -628,7 +635,7 @@ export interface ApiOrbe {
   tareasEjecutar(id: string): Promise<EstadoTareas>
   tareasCancelar(id: string): Promise<EstadoTareas>
   /** Responde a la petición de permiso de una tarea en curso. */
-  tareasResponder(id: string, confirmacionId: string, permitir: boolean): Promise<EstadoTareas>
+  tareasResponder(id: string, confirmacionId: string, permitir: RespuestaPermiso): Promise<EstadoTareas>
   alTareas(cb: () => void): () => void
   usoResumen(): Promise<ResumenUso>
   usoBorrar(): Promise<ResumenUso>

@@ -317,9 +317,14 @@ app.whenReady().then(async () => {
     contadorUso
   )
 
+  // Detener todo (N7): el atajo y la bandeja cortan la respuesta del chat y las tareas de fondo a la vez.
+  const detenerTodo = (): void => {
+    servicioChat?.cancelarActivo()
+    tareas.cancelarTodo()
+  }
   registrarAtajos(
-    { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo() },
-    { panel: config.atajoPanel, leer: config.atajoLeer }
+    { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo(), detenerTodo },
+    { panel: config.atajoPanel, leer: config.atajoLeer, pausa: config.atajoPausa }
   )
 
   // Icono de la bandeja del sistema (en la prueba de humo no se crea: no debe dejar un icono en la barra del usuario).
@@ -337,12 +342,12 @@ app.whenReady().then(async () => {
           orbe.ventana.webContents.send(CANALES.appOrden, 'nueva-conversacion')
         },
         leerPantalla: () => void pantalla.leerConAtajo(),
-        detenerAccion: () => servicioChat?.cancelarActivo(),
+        detenerAccion: detenerTodo,
         salir: () => app.quit()
       },
       () => orbe.estaVisible,
       app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-      () => servicioChat?.hayTurno ?? false
+      () => (servicioChat?.hayTurno ?? false) || tareas.ocupado
     )
   }
 

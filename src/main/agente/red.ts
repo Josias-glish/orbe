@@ -83,7 +83,7 @@ function conEsquema(texto: string): string {
  * Comprueba que una dirección es una página web que se puede abrir: http o https, sin usuario ni contraseña (el truco de
  * las páginas falsas) y, salvo permiso del usuario, que no apunta a este equipo ni a la red local.
  */
-export function analizarUrlWeb(texto: string, { permitirLocal }: { permitirLocal: boolean }): ResultadoUrl {
+export function analizarUrlWeb(texto: string, { permitirLocal, dominios = [] }: { permitirLocal: boolean; dominios?: readonly string[] }): ResultadoUrl {
   const limpio = texto.trim()
   if (limpio === '' || limpio.length > MAX_URL) return { ok: false, tipo: 'invalida', motivo: 'La dirección está vacía o es demasiado larga.' }
   let url: URL
@@ -105,5 +105,14 @@ export function analizarUrlWeb(texto: string, { permitirLocal }: { permitirLocal
   if (!permitirLocal && esHostLocal(url.hostname)) {
     return { ok: false, tipo: 'prohibida', motivo: 'Esa dirección apunta a este equipo o a la red local, y no tengo permiso para abrirla.' }
   }
+  if (dominios.length > 0 && !dominioPermitido(url.hostname, dominios)) {
+    return { ok: false, tipo: 'prohibida', motivo: `${url.hostname} no está en tu lista de webs permitidas (ORBE_DOMINIOS).` }
+  }
   return { ok: true, url }
+}
+
+/** ¿El host es uno de los dominios de la lista o un subdominio suyo? («es.wikipedia.org» vale con «wikipedia.org»). */
+export function dominioPermitido(hostname: string, dominios: readonly string[]): boolean {
+  const h = hostname.toLowerCase().replace(/\.$/, '')
+  return dominios.some((d) => h === d || h.endsWith(`.${d}`))
 }

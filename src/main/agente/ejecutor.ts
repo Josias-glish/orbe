@@ -1,4 +1,4 @@
-import type { AccionVista, FuenteVista } from '../../shared/tipos'
+import type { AccionVista, FuenteVista, RespuestaPermiso } from '../../shared/tipos'
 import { envolverExterno } from './envoltorio'
 import { normalizarFuentes } from './fuentes'
 import type { Politica } from './politica'
@@ -19,12 +19,26 @@ export interface DepsEjecutor {
   /** Una herramienta aportó fuentes (enlaces) para enseñar bajo la respuesta. */
   alFuentes?(fuentes: FuenteVista[]): void
   /** Pregunta al usuario; sin esto (p. ej. en pruebas) toda confirmación se da por negada. */
-  confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
+  confirmar?(peticion: PeticionConfirmacion): Promise<RespuestaPermiso>
   /** Marca única de la tarea para envolver el contenido externo. */
   nonce: string
   permitirLocal: boolean
+  /** Dominios permitidos para las herramientas web (vacío: todos los públicos). */
+  dominios?: readonly string[]
   nuevoId?: () => string
+  /** Reloj del vigilante (las pruebas lo fijan). */
+  ahora?: () => number
 }
+
+/** El vigilante pausa la tarea si la misma llamada se repite tantas veces… */
+export const REPETICIONES_BUCLE = 3
+/** …o si hay tantas acciones en menos de `RAFAGA_MS`. */
+export const RAFAGA = 12
+const RAFAGA_MS = 60_000
+
+/** Texto de fuera que intenta dar órdenes: desde ahí toda acción de la tarea pide permiso. */
+const SOSPECHOSO =
+  /ignora (todo |todas |las |lo )?(anterior|instrucciones|lo dicho)|olvida (tus|las) instrucciones|ignore (all |any |the )?(previous|prior|above) instructions|no se lo digas al usuario|do not tell the user|system prompt|eres ahora|you are now/i
 
 const CANCELADO = 'Cancelado por el usuario.'
 
@@ -64,8 +78,30 @@ function textoDeError(error: unknown): string {
  */
 export class EjecutorHerramientas {
   private contador = 0
+  private readonly repetidas = new Map<string, number>()
+  private recientes: number[] = []
 
   constructor(private readonly deps: DepsEjecutor) {}
+
+  /**
+   * El vigilante (N7): una llamada idéntica repetida (posible bucle) o una ráfaga de acciones pausan la tarea hasta que
+   * el usuario diga si sigue. Devuelve el motivo, o null si todo va normal.
+   */
+  private vigilante(firma: string): string | null {
+    const ahora = this.deps.ahora?.() ?? Date.now()
+    this.recientes = [...this.recientes.filter((t) => ahora - t < RAFAGA_MS), ahora]
+    const veces = (this.repetidas.get(firma) ?? 0) + 1
+    this.repetidas.set(firma, veces)
+    if (veces >= REPETICIONES_BUCLE) {
+      this.repetidas.delete(firma)
+      return `Es la ${veces}.ª vez que pido exactamente la misma acción con los mismos datos: puede que esté en un bucle.`
+    }
+    if (this.recientes.length >= RAFAGA) {
+      this.recientes = []
+      return `Llevo ${RAFAGA} acciones en menos de un minuto, más rápido de lo normal.`
+    }
+    return null
+  }
 
   private id(): string {
     return this.deps.nuevoId ? this.deps.nuevoId() : `accion-${++this.contador}`
@@ -106,15 +142,28 @@ export class EjecutorHerramientas {
     alAccion(vista({ titulo, parametros }))
 
     try {
+      const alarma = this.vigilante(`${herramienta.nombre}:${parametros}`)
+      if (alarma) {
+        const seguir = this.deps.confirmar
+          ? await conSenal(
+              this.deps.confirmar({ titulo: 'Pausé la tarea por seguridad', detalle: `${alarma} ¿Sigo?`, peligrosa: true, etiquetaPermitir: 'Seguir', etiquetaCancelar: 'Detener' }),
+              senal
+            )
+          : false
+        if (!seguir) {
+          alAccion(vista({ titulo, parametros, estado: 'denegada', resultado: 'La pausaste.' }))
+          return error('El usuario detuvo la tarea por seguridad. No sigas actuando: resume lo hecho y pregúntale cómo quiere seguir.')
+        }
+      }
       const decision = politica.decidir(herramienta, entrada, titulo)
       if (decision.tipo === 'prohibir') {
         alAccion(vista({ titulo, parametros, estado: 'denegada', resultado: recortar(decision.motivo, MAX_RESULTADO_VISTA) }))
         return error(mensajeProhibido(decision.motivo))
       }
       if (decision.tipo === 'confirmar') {
-        const permitido = this.deps.confirmar
-          ? await conSenal(this.deps.confirmar({ titulo: decision.titulo, detalle: decision.detalle, peligrosa: decision.peligrosa }), senal)
-          : false
+        const { tipo: _, ...peticion } = decision
+        const permitido = this.deps.confirmar ? await conSenal(this.deps.confirmar(peticion), senal) : false
+        if (permitido === 'tarea') politica.preaprobar(herramienta, entrada)
         if (!permitido) {
           alAccion(vista({ titulo, parametros, estado: 'denegada', resultado: 'No la permitiste.' }))
           return error('El usuario no permitió esta acción. No la repitas ni busques otra forma de hacerla; pregúntale cómo quiere seguir.')
@@ -125,13 +174,19 @@ export class EjecutorHerramientas {
         herramienta.ejecutar(entrada, {
           senal,
           permitirLocal: this.deps.permitirLocal,
-          preguntar: (peticion) => (this.deps.confirmar ? conSenal(this.deps.confirmar(peticion), senal) : Promise.resolve(false)),
+          dominios: this.deps.dominios,
+          preguntar: (peticion) =>
+            this.deps.confirmar ? conSenal(this.deps.confirmar(peticion), senal).then((r) => r !== false) : Promise.resolve(false),
           vigilar: () => politica.vigilar()
         }),
         senal
       )
       const texto = r.texto.length > MAX_RESULTADO ? `${r.texto.slice(0, MAX_RESULTADO)}\n[…resultado recortado]` : r.texto
       alAccion(vista({ titulo, parametros, estado: 'ok', resultado: recortar(r.texto, MAX_RESULTADO_VISTA) }))
+      if (r.externo) {
+        politica.leyoExterno(r.externo.origen)
+        if (SOSPECHOSO.test(r.texto)) politica.vigilar()
+      }
       const fuentes = normalizarFuentes(r.fuentes ?? [])
       if (fuentes.length > 0) this.deps.alFuentes?.(fuentes)
       return {

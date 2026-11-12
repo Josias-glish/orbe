@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { ErrorOrbe, EventoChat, PeticionChat, UsoTokens } from '../../shared/tipos'
+import type { ErrorOrbe, EstadoAccion, EventoChat, PeticionChat, RespuestaPermiso, UsoTokens } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 import { aErrorOrbe, crearError } from './errores'
@@ -22,7 +22,7 @@ export type ExtraTurno = Pick<TurnoEntrada, 'historialPrevio' | 'notaApp'>
 export class ServicioChat {
   private turnoActivo: string | null = null
   /** Confirmaciones que el agente espera del usuario en el turno activo. */
-  private readonly confirmaciones = new Map<string, (permitir: boolean) => void>()
+  private readonly confirmaciones = new Map<string, (permitir: RespuestaPermiso) => void>()
 
   constructor(
     private readonly proveedor: ProveedorChat,
@@ -58,17 +58,23 @@ export class ServicioChat {
   }
 
   private async ejecutar(id: string, turno: TurnoEntrada): Promise<void> {
+    const estados = new Map<string, EstadoAccion>()
     try {
       const resultado = await this.proveedor.enviar(turno, {
         alTexto: (delta) => this.emitir({ tipo: 'texto', id, delta }),
         alReintento: (intento, maximo) => this.emitir({ tipo: 'reintento', id, intento, maximo }),
         alAviso: (texto) => this.emitir({ tipo: 'aviso', id, texto }),
-        alAccion: (accion) => this.emitir({ tipo: 'accion', id, accion }),
+        alAccion: (accion) => {
+          estados.set(accion.accionId, accion.estado)
+          this.emitir({ tipo: 'accion', id, accion })
+        },
         alFuentes: (fuentes) => this.emitir({ tipo: 'fuentes', id, fuentes }),
         confirmar: (peticion) => this.pedirConfirmacion(id, peticion),
         alUso: (uso) => this.contador?.uso(uso),
         alLimite: (limite) => this.contador?.limite?.(limite)
       })
+      const resumen = resumenAcciones(estados.values())
+      if (resumen) this.emitir({ tipo: 'aviso', id, texto: resumen })
       this.emitir({ tipo: 'fin', id, motivo: resultado.motivo })
     } catch (e) {
       this.emitir({ tipo: 'error', id, error: aErrorOrbe(e) })
@@ -79,17 +85,17 @@ export class ServicioChat {
   }
 
   /** Le enseña la tarjeta al usuario y espera su respuesta; si el turno termina o se detiene, cuenta como «no». */
-  private pedirConfirmacion(id: string, peticion: PeticionConfirmacion): Promise<boolean> {
+  private pedirConfirmacion(id: string, peticion: PeticionConfirmacion): Promise<RespuestaPermiso> {
     if (this.turnoActivo !== id) return Promise.resolve(false)
     const confirmacionId = randomUUID()
-    return new Promise<boolean>((resolver) => {
+    return new Promise<RespuestaPermiso>((resolver) => {
       this.confirmaciones.set(confirmacionId, resolver)
       this.emitir({ tipo: 'confirmar', id, confirmacion: { ...peticion, confirmacionId } })
     })
   }
 
   /** La respuesta del usuario a una tarjeta; se ignora si no corresponde al turno activo o ya se contestó. */
-  responderConfirmacion(id: string, confirmacionId: string, permitir: boolean): void {
+  responderConfirmacion(id: string, confirmacionId: string, permitir: RespuestaPermiso): void {
     if (this.turnoActivo !== id) return
     const resolver = this.confirmaciones.get(confirmacionId)
     if (!resolver) return
@@ -132,6 +138,26 @@ export class ServicioChat {
     this.cerrarConfirmaciones()
     this.proveedor.cerrar()
   }
+}
+
+const NOMBRES: Partial<Record<EstadoAccion, [string, string]>> = {
+  ok: ['hecha', 'hechas'],
+  denegada: ['no permitida', 'no permitidas'],
+  error: ['con error', 'con error'],
+  cancelada: ['detenida', 'detenidas']
+}
+
+/** El resumen final de una tarea con varias acciones (N9): «Resumen: 4 acciones · 3 hechas · 1 no permitida». */
+export function resumenAcciones(estados: Iterable<EstadoAccion>): string | null {
+  const cuenta = new Map<EstadoAccion, number>()
+  let total = 0
+  for (const e of estados) {
+    cuenta.set(e, (cuenta.get(e) ?? 0) + 1)
+    total++
+  }
+  if (total < 2) return null
+  const partes = [...cuenta].flatMap(([e, n]) => (NOMBRES[e] ? [`${n} ${NOMBRES[e]![n === 1 ? 0 : 1]}`] : []))
+  return `Resumen: ${total} acciones · ${partes.join(' · ')}`
 }
 
 function validarPeticion(peticion: unknown): PeticionChat | null {

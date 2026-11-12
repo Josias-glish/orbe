@@ -121,7 +121,7 @@ export function registrarChat(
   })
   ipcMain.on(CANALES.chatConfirmar, (e, id: unknown, confirmacionId: unknown, permitir: unknown) => {
     if (!propia(e)) return
-    if (typeof id !== 'string' || typeof confirmacionId !== 'string' || typeof permitir !== 'boolean') return
+    if (typeof id !== 'string' || typeof confirmacionId !== 'string' || (typeof permitir !== 'boolean' && permitir !== 'tarea')) return
     servicio.responderConfirmacion(id, confirmacionId, permitir)
   })
   ipcMain.handle(CANALES.chatNueva, (e) => {

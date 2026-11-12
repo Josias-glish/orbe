@@ -20,6 +20,6 @@ export function registrarTareas(ventana: BrowserWindow, servicio: ServicioTareas
   ipcMain.handle(CANALES.tareasCancelar, (e, v: unknown) => (propia(e), servicio.cancelar(id(v))))
   ipcMain.handle(CANALES.tareasResponder, (e, v: unknown, c: unknown, permitir: unknown) => {
     propia(e)
-    return servicio.responder(id(v), id(c), permitir === true)
+    return servicio.responder(id(v), id(c), permitir === 'tarea' ? 'tarea' : permitir === true)
   })
 }

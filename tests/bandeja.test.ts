@@ -54,17 +54,17 @@ describe('plantillaBandeja', () => {
     expect(alCambiarInicio).toHaveBeenCalledWith(false)
   })
 
-  it('solo ofrece «Detener acción» (arriba del todo) cuando hay una respuesta o tarea en curso', () => {
-    expect(etiquetas(plantillaBandeja(acciones(), estado()))).not.toContain('Detener acción')
+  it('solo ofrece «Detener todo» (arriba del todo) cuando hay una respuesta o tarea en curso', () => {
+    expect(etiquetas(plantillaBandeja(acciones(), estado()))).not.toContain('Detener todo')
     const conTurno = etiquetas(plantillaBandeja(acciones(), estado({ hayTurno: true })))
-    expect(conTurno.slice(0, 3)).toEqual(['Detener acción', '---', 'Ocultar Orbe'])
+    expect(conTurno.slice(0, 3)).toEqual(['Detener todo', '---', 'Ocultar Orbe'])
   })
 
   it('cada entrada lanza su acción', () => {
     const a = acciones()
     const plantilla = plantillaBandeja(a, estado({ hayTurno: true }))
     const pulsar = (etiqueta: string): void => (plantilla.find((i) => i.label === etiqueta)!.click as () => void)()
-    pulsar('Detener acción')
+    pulsar('Detener todo')
     pulsar('Ocultar Orbe')
     pulsar('Abrir el chat')
     pulsar('Nueva conversación')

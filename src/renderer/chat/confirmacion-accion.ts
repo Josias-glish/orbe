@@ -1,4 +1,4 @@
-import type { ConfirmacionVista } from '../../shared/tipos'
+import type { ConfirmacionVista, RespuestaPermiso } from '../../shared/tipos'
 import type { ConfirmacionCaptura } from './captura-ui'
 import { crearIcono } from './contexto-ui'
 
@@ -17,7 +17,7 @@ function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, 
  * Enter no debe permitir nada por accidente); Esc la cancela.
  */
 export class ConfirmacionAccion {
-  private resolver: ((permitir: boolean) => void) | null = null
+  private resolver: ((respuesta: RespuestaPermiso | null) => void) | null = null
   private readonly etiquetaOriginal: string
 
   constructor(
@@ -31,11 +31,14 @@ export class ConfirmacionAccion {
     return this.resolver !== null
   }
 
-  /** Muestra la tarjeta y resuelve `true` si el usuario pulsa «Permitir» y `false` si cancela. */
-  pedir(c: ConfirmacionVista): Promise<boolean> {
+  /**
+   * Muestra la tarjeta y resuelve `true` (Permitir), `'tarea'` (Permitir en esta tarea), `false` (Cancelar) o `null` si
+   * se cerró sin respuesta (Esc, otra tarjeta, fin del turno): quien la abrió decide qué vale eso.
+   */
+  pedir(c: ConfirmacionVista): Promise<RespuestaPermiso | null> {
     this.cancelar()
     this.captura.cancelar()
-    return new Promise<boolean>((resolver) => {
+    return new Promise<RespuestaPermiso | null>((resolver) => {
       this.resolver = resolver
 
       const permitir = el('button', 'confirmacion-permitir', c.etiquetaPermitir ?? 'Permitir')
@@ -48,21 +51,30 @@ export class ConfirmacionAccion {
       const titulo = el('p', 'confirmacion-titulo')
       titulo.append(crearIcono('escudo', 15), document.createTextNode(` ${c.titulo}`))
       const botones = el('div', 'confirmacion-botones')
-      botones.append(permitir, cancelar)
+      botones.append(permitir)
+      if (c.porTarea) {
+        const enTarea = el('button', 'confirmacion-cancelar', 'Permitir en esta tarea')
+        enTarea.type = 'button'
+        enTarea.title = 'No te vuelvo a preguntar por este tipo de acción hasta que termine la tarea (enviar o publicar siempre se pregunta).'
+        enTarea.addEventListener('click', () => this.cerrar('tarea'))
+        botones.append(enTarea)
+      }
+      botones.append(cancelar)
 
       this.caja.classList.toggle('peligrosa', c.peligrosa === true)
       this.caja.setAttribute('aria-label', ETIQUETA_POR_DEFECTO)
-      this.caja.replaceChildren(titulo, el('p', 'confirmacion-texto', c.detalle), botones)
+      const revision = c.revision ? [el('p', 'confirmacion-revision', c.revision)] : []
+      this.caja.replaceChildren(titulo, el('p', 'confirmacion-texto', c.detalle), ...revision, botones)
       this.caja.hidden = false
     })
   }
 
   /** Cierra la tarjeta como si el usuario hubiera cancelado (con Esc, al detener la tarea o al terminar el turno). */
   cancelar(): void {
-    if (this.resolver) this.cerrar(false)
+    if (this.resolver) this.cerrar(null)
   }
 
-  private cerrar(permite: boolean): void {
+  private cerrar(permite: RespuestaPermiso | null): void {
     const resolver = this.resolver
     this.resolver = null
     this.caja.hidden = true
