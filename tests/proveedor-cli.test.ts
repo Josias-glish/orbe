@@ -192,6 +192,8 @@ describe('ProveedorCli', () => {
       expect(l.args).toContain('high')
       expect(l.env['ANTHROPIC_API_KEY']).toBeUndefined()
       expect(l.env['ANTHROPIC_AUTH_TOKEN']).toBeUndefined()
+      // Herramientas largas (ECC, permisos esperando): el CLI no las corta antes de 30 min.
+      expect(l.env['MCP_TOOL_TIMEOUT']).toBe('1800000')
       expect(l.cwd).toContain('orbe-cli-')
     } finally {
       delete process.env['ANTHROPIC_API_KEY']

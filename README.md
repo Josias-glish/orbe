@@ -232,6 +232,10 @@ Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversaci�
 
 **Memoria que se ordena sola.** Lo que lleva 90 días sin usarse pierde peso (solo viaja su resumen). Una vez al día Orbe busca recuerdos duplicados o caducados y te avisa; en el gestor eliges «Archivar» (va a `memoria\_archivo`, no se borra) o «Mantener». Las cifras que cambian se vuelven a consultar antes de usarlas.
 
+**Agentes con nombre.** En `%APPDATA%\orbegentes\` hay un archivo por agente («contenido», «correo», «investigador», «ventas»; añade los tuyos) con su rol, instrucciones, herramientas permitidas y modelo; `<nombre>.memoria.md` es su memoria y `_comun.md` lo que comparten. Con el proveedor `cli`, Atlas les encarga trabajo como subagentes del CLI de Claude, te dice a quién encargó qué y cada encargo sale en el panel. Ningún agente tiene más permisos que `reglas.json`.
+
+**ECC para tareas concretas.** Con `ORBE_ECC=1` y el plugin ECC instalado en Claude Code, los planes de campaña, SEO, estudios de mercado, textos largos, voz de marca y código se encargan a ECC en una sesión aparte (`ecc_tarea`), sin las herramientas de Orbe y pidiendo permiso salvo en modo auto.
+
 **Skills y aprendizaje.** Tus skills son texto en `%APPDATA%\orbe\skills\<nombre>\SKILL.md` (sin código; nunca de terceros). Orbe solo ve su nombre y descripción y carga el texto cuando la tarea encaja. Si lo corriges, te propone guardarlo como recuerdo o skill, y al usar una skill puede proponerte mejorarla; nada se guarda sin tu «sí» (tampoco en modo auto) y la versión anterior queda como `anterior-<fecha>.md`.
 
 **Recuerdos.** Son notas en `%APPDATA%\orbe\memoria`, un `.md` por recuerdo y con el mismo formato que la memoria de Claude Code, así que puedes leerlas y editarlas con cualquier editor. Vienen de tres sitios:

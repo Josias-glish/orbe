@@ -10,6 +10,7 @@ import { describirResultadoBusquedaCli } from './busqueda-nativa'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeCli, type InfoErrorCli } from './errores'
 import { LectorLineas, interpretarLinea, type EventoCli } from './parseador-stream'
+import { indiceAgentes } from '../agentes/perfiles'
 import { PROMPT_SISTEMA, construirPromptSistema } from './prompt-sistema'
 import type { Esfuerzo, ManejadoresTurno, ProveedorChat, ResultadoTurno } from './proveedor'
 
@@ -57,6 +58,8 @@ export interface ArgumentosAgente {
   permitidas: string[]
   /** Dejar activas la búsqueda web y la lectura de páginas (WebFetch) que trae el propio CLI. */
   busquedaCli: boolean
+  /** El JSON de `--agents` (agentes con nombre del usuario), si hay alguno. */
+  agentes?: string
 }
 
 /**
@@ -73,12 +76,15 @@ export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string
     '--verbose',
     '--model', modelo,
     '--effort', esfuerzo,
-    '--tools', agente?.busquedaCli ? 'WebSearch,WebFetch' : '',
+    '--tools', [...(agente?.agentes ? ['Agent'] : []), ...(agente?.busquedaCli ? ['WebSearch', 'WebFetch'] : [])].join(','),
     '--system-prompt', prompt,
     '--setting-sources', '',
     '--strict-mcp-config',
     ...(agente
-      ? ['--mcp-config', agente.configMcp, '--allowedTools', agente.permitidas.join(','), '--permission-mode', 'dontAsk']
+      ? [
+          '--mcp-config', agente.configMcp, '--allowedTools', agente.permitidas.join(','), '--permission-mode', 'dontAsk',
+          ...(agente.agentes ? ['--agents', agente.agentes] : [])
+        ]
       : []),
     '--no-session-persistence',
     '--disable-slash-commands'
@@ -108,7 +114,7 @@ export function buscarRutaCli(
   return null
 }
 
-function resolverRutaCli(rutaConfigurada?: string): string | null {
+export function resolverRutaCli(rutaConfigurada?: string): string | null {
   if (rutaConfigurada) {
     if (/\.exe$/i.test(rutaConfigurada)) return existsSync(rutaConfigurada) ? rutaConfigurada : null
     // Si apuntan al shim (.cmd/.ps1), buscamos el .exe que hay a su lado.
@@ -148,7 +154,7 @@ interface TurnoActivo {
   /** Llamadas a herramientas que Orbe está ejecutando ahora: mientras haya alguna, el silencio del CLI es normal. */
   herramientasEnCurso: number
   /** Las búsquedas web del propio CLI que se están contando en el chat (por identificador de la herramienta). */
-  busquedas: Map<string, { titulo: string; parametros: string; leer: boolean }>
+  busquedas: Map<string, { titulo: string; parametros: string; leer: boolean; delegar?: boolean }>
 }
 
 /**
@@ -362,6 +368,14 @@ export class ProveedorCli implements ProveedorChat {
 
   /** La búsqueda web y la lectura de páginas del CLI las ejecuta él: aquí solo se cuentan en el chat («Buscando: …»). */
   private alPedirHerramienta(turno: TurnoActivo, e: Extract<EventoCli, { k: 'herramienta_pedida' }>): void {
+    if (e.nombre === 'Agent' || e.nombre === 'Task') {
+      const quien = typeof e.entrada['subagent_type'] === 'string' ? e.entrada['subagent_type'] : 'un agente'
+      const que = typeof e.entrada['description'] === 'string' ? e.entrada['description'] : ''
+      const previa = { titulo: `Encargo a ${quien}${que ? `: ${recortar(que, 100)}` : ''}`, parametros: recortar(String(e.entrada['prompt'] ?? ''), 300), leer: false, delegar: true }
+      turno.busquedas.set(e.id, previa)
+      turno.manejadores.alAccion?.({ accionId: `busqueda-${e.id}`, herramienta: 'delegar', estado: 'en_curso', titulo: previa.titulo, parametros: previa.parametros })
+      return
+    }
     if (e.nombre === 'WebFetch') {
       const url = typeof e.entrada['url'] === 'string' ? e.entrada['url'].trim() : ''
       const previa = { titulo: `Leyendo: ${recortar(url || '…', 120)}`, parametros: recortar(JSON.stringify({ url }), 300), leer: true }
@@ -380,6 +394,19 @@ export class ProveedorCli implements ProveedorChat {
     const previa = turno.busquedas.get(e.id)
     if (!previa) return
     turno.busquedas.delete(e.id)
+    if (previa.delegar) {
+      // El CLI envuelve la respuesta del subagente con marcas internas: se quitan para el resumen.
+      const limpio = e.texto.replace(/<([a-z-]+)>[\s\S]*?<\/\1>/g, '').replace(/\[Subagent hand-back\][^\n]*/g, '').trim()
+      turno.manejadores.alAccion?.({
+        accionId: `busqueda-${e.id}`,
+        herramienta: 'delegar',
+        titulo: previa.titulo,
+        parametros: previa.parametros,
+        estado: e.error ? 'error' : 'ok',
+        resultado: recortar(limpio || (e.error ? 'El agente no pudo terminar.' : 'Hecho.'), 300)
+      })
+      return
+    }
     turno.manejadores.alAccion?.({
       accionId: `busqueda-${e.id}`,
       herramienta: previa.leer ? 'leer_web' : 'buscar_web',
@@ -405,11 +432,19 @@ export class ProveedorCli implements ProveedorChat {
     // El CLI usa la sesión de Claude; si hubiera una API key suelta en el entorno, cobraría por ahí.
     const env = { ...process.env }
     for (const variable of VARIABLES_QUE_CAMBIAN_DE_CUENTA) delete env[variable]
+    // Ni plugins del usuario (si Orbe se lanzó desde una sesión de Claude Code, heredaría sus carpetas de plugins).
+    delete env['CLAUDE_CODE_PLUGIN_DIRS']
+    // El CLI corta una herramienta MCP que pasa un rato sin responder: ecc_tarea tarda minutos y un permiso puede esperar
+    // a que vuelvas. 30 min (más que el tope de 15 de ECC); comprobado con MCP_TOOL_TIMEOUT en el CLI 2.1.322.
+    env['MCP_TOOL_TIMEOUT'] = String(30 * 60_000)
+    // Y que quepa un resultado largo (ecc_tarea devuelve hasta 60 000 caracteres).
+    env['MAX_MCP_OUTPUT_TOKENS'] = '40000'
 
     // Con herramientas, el CLI se conecta al servidor MCP local; el secreto va por entorno y no por la línea de comandos.
     const agente = this.agente
     const url = this.mcp?.url
     let paraAgente: ArgumentosAgente | undefined
+    let indice: string | undefined
     if (agente && this.mcp && url) {
       env[VARIABLE_TOKEN] = this.mcp.token
       paraAgente = {
@@ -423,6 +458,15 @@ export class ProveedorCli implements ProveedorChat {
         ],
         busquedaCli: agente.busquedaCli === true
       }
+      // Agentes con nombre (Etapa 10): subagentes nativos del CLI, cada uno solo con sus herramientas mcp__orbe__*.
+      const defs = agente.agentes?.() ?? {}
+      if (Object.keys(defs).length > 0) {
+        paraAgente.agentes = JSON.stringify(defs)
+        paraAgente.permitidas.push('Agent')
+        indice = indiceAgentes(defs)
+        // En segundo plano el CLI daría dos resultados por turno; así el subagente trabaja dentro del turno.
+        env['CLAUDE_CODE_DISABLE_BACKGROUND_TASKS'] = '1'
+      }
     }
 
     // El prompt (con la fecha y la memoria del usuario) se fija al lanzar el proceso y vale para toda la conversación.
@@ -435,7 +479,7 @@ export class ProveedorCli implements ProveedorChat {
       // Con la búsqueda del CLI las fuentes no salen en la interfaz: las cita el propio modelo.
       fuentesEnApp: agente?.busquedaCli !== true
     })
-    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.esfuerzo, prompt, paraAgente), {
+    const hijo = lanzador(argumentosCli(this.opciones.modelo, this.esfuerzo, indice ? `${prompt}\n\n${indice}` : prompt, paraAgente), {
       cwd: this.opciones.directorioTrabajo,
       env
     })

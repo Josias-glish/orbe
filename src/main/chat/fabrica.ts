@@ -5,6 +5,7 @@ import type { InfoChat } from '../../shared/tipos'
 import type { RegistroHerramientas } from '../agente/registro'
 import { leerReglas } from '../agente/reglas'
 import { agenteActivo, type OpcionesAgente } from '../agente/sesion'
+import { AlmacenAgentes } from '../agentes/perfiles'
 import { nombreLegibleModelo, type Config } from '../entorno'
 import type { ProveedorChat } from './proveedor'
 import { ProveedorApi } from './proveedor-api'
@@ -46,6 +47,11 @@ export function crearProveedor(
     const rutaReglas = join(datosApp, 'reglas.json')
     agente.reglas = () => leerReglas(rutaReglas)
     agente.auto = modoAutoActivo
+    if (config.proveedor === 'cli') {
+      const almacen = new AlmacenAgentes(join(datosApp, 'agentes'))
+      const disponibles = new Set(agente.registro.nombres)
+      agente.agentes = () => almacen.definiciones(disponibles, agente.busquedaCli === true)
+    }
   }
   const identidad = presentacionIdentidad(perfilDe(config.identidad))
   if (config.proveedor === 'api') {

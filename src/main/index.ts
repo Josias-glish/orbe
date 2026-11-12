@@ -52,6 +52,10 @@ import { AlmacenMemoria } from './memoria/almacen'
 import { crearHerramientaBuscarMemoria } from './agente/herramientas/buscar-memoria'
 import { crearHerramientasAprender } from './agente/herramientas/aprender'
 import { AlmacenSkills } from './skills/almacen'
+import { AlmacenAgentes, rutaPluginInstalado } from './agentes/perfiles'
+import { crearHerramientaEcc } from './agente/herramientas/ecc'
+import type { Herramienta } from './agente/tipos'
+import { resolverRutaCli } from './chat/proveedor-cli'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -177,6 +181,11 @@ app.whenReady().then(async () => {
     if (asegurarReglas(join(datos, 'reglas.json'))) console.warn('[orbe] He creado reglas.json con las reglas por defecto.')
   } catch {
     console.warn('[orbe] No he podido crear reglas.json: valen las reglas por defecto.')
+  }
+  try {
+    if (!modoHumo && new AlmacenAgentes(join(datos, 'agentes')).asegurarPlantillas()) console.warn('[orbe] He creado las plantillas de agentes.')
+  } catch {
+    console.warn('[orbe] No he podido crear las plantillas de agentes.')
   }
   // Base de datos local (Etapa 9): índice de búsqueda, último uso de cada recuerdo y fecha de la última consolidación.
   const base = new BaseOrbe(modoHumo ? ':memory:' : join(datos, 'data', userInfo().username.replace(/[^\w.-]/g, '_') || 'usuario', 'orbe.db'))
@@ -304,6 +313,27 @@ app.whenReady().then(async () => {
   // Skills propias (Etapa 9): solo su índice viaja en el prompt; el texto se carga con usar_skill.
   const skills = new AlmacenSkills(modoHumo ? join(app.getPath('temp'), 'orbe-humo-skills') : join(datos, 'skills'))
   const bloquePrompt = (): string | undefined => [memoria.bloquePrompt(), skills.indice()].filter(Boolean).join('\n\n') || undefined
+  // ECC solo para tareas concretas: una sesión aparte del CLI con el plugin, que Atlas abre con ecc_tarea.
+  const herramientaEcc = (): Herramienta[] => {
+    if (!config.agente.ecc || modoHumo) return []
+    const plugin = rutaPluginInstalado('ecc@ecc')
+    const rutaCli = resolverRutaCli(config.rutaCli || undefined)
+    if (!plugin || !rutaCli) {
+      console.warn('[orbe] ORBE_ECC=1, pero falta el plugin ECC o el CLI de Claude: no hay ecc_tarea.')
+      return []
+    }
+    return [
+      crearHerramientaEcc({
+        rutaCli,
+        plugin,
+        cwd: join(datos, 'cli-vacio'),
+        carpetaResultados: join(datos, 'ecc'),
+        modelo: config.modelo || 'sonnet',
+        busquedaCli: config.agente.busquedaMax > 0,
+        auto: modoAutoActivo
+      })
+    ]
+  }
   const fuentesIndice = {
     conversaciones: new AlmacenConversacion(join(datos, 'conversacion.json')),
     memoria: almacenRecuerdos,
@@ -325,6 +355,7 @@ app.whenReady().then(async () => {
     crearHerramientaCrecimiento(metricas),
     crearHerramientaBuscarMemoria((c, t) => buscarEnDatos(c, t)),
     ...crearHerramientasAprender(skills, (texto) => memoria.guardarNota(texto, false, 'Aprendido de una corrección en el chat')),
+    ...herramientaEcc(),
     ...composio,
     ...pc
   ])
