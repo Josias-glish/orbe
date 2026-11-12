@@ -170,7 +170,7 @@ describe('resolverConfig: memoria', () => {
 
 describe('resolverConfig: modo agente', () => {
   it('por defecto el agente está activo, con 15 pasos, 5 búsquedas y sin permiso para la red local', () => {
-    expect(resolverConfig({}, {}).agente).toEqual({ activo: true, pasos: 15, busquedaMax: 5, permitirLocal: false, dominios: [] })
+    expect(resolverConfig({}, {}).agente).toEqual({ activo: true, pasos: 15, busquedaMax: 5, permitirLocal: false, dominios: [], ecc: false })
   })
 
   it('ORBE_AGENTE=0 (o no, off, false) lo apaga y auto/1/sí lo deja activo', () => {

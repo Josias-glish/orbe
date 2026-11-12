@@ -107,6 +107,8 @@ export interface Config {
     permitirLocal: boolean
     /** ORBE_DOMINIOS: si hay alguno, el agente solo abre esas webs (y sus subdominios). */
     dominios: string[]
+    /** ORBE_ECC: ofrecer la herramienta `ecc_tarea` (ECC en una sesión aparte, solo para tareas concretas). Decisión del usuario, 13-nov. */
+    ecc: boolean
   }
   /**
    * Buscador para el proveedor `openai` (herramienta `buscar_web`). Con la API de Claude manda su búsqueda nativa.
@@ -254,6 +256,14 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else permitirLocal = b
   }
 
+  const eccLeido = leer('ORBE_ECC')
+  let ecc = false
+  if (eccLeido) {
+    const b = leerBooleano(eccLeido)
+    if (b === undefined) avisos.push(`ORBE_ECC="${eccLeido}" no es válido (1 o 0); queda apagado.`)
+    else ecc = b
+  }
+
   // ORBE_DOMINIOS: «wikipedia.org, gob.es» (sin esquema ni ruta); vacío, todas las webs públicas.
   const dominios = leer('ORBE_DOMINIOS')
     .split(/[,;\s]+/)
@@ -329,7 +339,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     fondosCarpeta: leer('ORBE_FONDOS'),
     memoriaMax,
     memoriaOrigenes,
-    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal, dominios },
+    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal, dominios, ecc },
     busqueda: { proveedor: busquedaProveedor, clave: busquedaClave, url: busquedaUrl },
     apariencia,
     diseno,

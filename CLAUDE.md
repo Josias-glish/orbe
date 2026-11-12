@@ -215,6 +215,12 @@ v1.19.0: `skills/almacen.ts` `AlmacenSkills` (solo lee `<nombre>/SKILL.md`, `NOM
 mejorar, `indice()` va en el prompt junto a la memoria vía `bloquePrompt` de index.ts); `herramientas/aprender.ts`
 `usar_skill` y `proponer_aprendizaje` (siempre `ctx.preguntar`, también en auto). Etapa 9 cerrada.
 
+v1.20.0: `agentes/perfiles.ts` `AlmacenAgentes` (plantillas, `definiciones` filtra por `registro.nombres`,
+`indiceAgentes` al prompt del CLI); proveedor-cli pasa `--agents`, `--tools Agent`, `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`
+(si no, dos resultados por turno) y quita `CLAUDE_CODE_PLUGIN_DIRS`; acción «delegar» por cada tool_use Agent.
+`herramientas/ecc.ts` `ecc_tarea`: `claude -p --plugin-dir <ecc> --tools Agent,Skill` aparte, sin MCP de Orbe
+(ORBE_ECC; ruta por `rutaPluginInstalado`). Comprobado: un subagente no usa herramientas fuera de su lista.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

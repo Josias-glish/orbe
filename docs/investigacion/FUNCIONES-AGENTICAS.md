@@ -39,12 +39,12 @@
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| A1 | **Agentes con nombre y rol** (p. ej. «Contenido», «Correo», «Investigador», «Ventas»): instrucciones, herramientas permitidas, modelo y memoria propios; se ejecutan como subagentes nativos del CLI de Claude | Grok Bot (Bots), Copilot (custom agents), dots (varios dots) | ✗ | 10 |
-| A2 | Datos comunes a todos los agentes (tu nombre, zona horaria, marcas) | Grok Bot | ✗ | 10 |
+| A1 | **Agentes con nombre y rol** (p. ej. «Contenido», «Correo», «Investigador», «Ventas»): instrucciones, herramientas permitidas, modelo y memoria propios; se ejecutan como subagentes nativos del CLI de Claude | Grok Bot (Bots), Copilot (custom agents), dots (varios dots) | ✔ v1.20.0 (perfiles `agentes/*.md` → `--agents`) | 10 |
+| A2 | Datos comunes a todos los agentes (tu nombre, zona horaria, marcas) | Grok Bot | ✔ v1.20.0 (`_comun.md` + zona horaria) | 10 |
 | A3 | **Rutinas por agente** con historial de ejecuciones (últimas 20) y topes | Grok Bot (Routines) | ◐ tareas con historial, sin agente | 10 |
 | A4 | **Buzón entre agentes**: un agente deja un encargo a otro, que lo atiende y responde después | Grok Bot (mensajes asíncronos) | ✗ | 10 |
-| A5 | **Subagentes en paralelo** con contexto aislado para trabajos largos: se **reutilizan los del CLI de Claude** (`--agents`) | Claude Code (subagents), Manus (Wide Research) | ✗ (solo se reciben avisos de subagentes de Claude Code) | 10 |
-| A6 | Orquestador: Atlas/Orbe reparte el trabajo entre agentes | Grok Bot, dots Space | ✗ | 10 |
+| A5 | **Subagentes en paralelo** con contexto aislado para trabajos largos: se **reutilizan los del CLI de Claude** (`--agents`) | Claude Code (subagents), Manus (Wide Research) | ✔ v1.20.0 (subagentes nativos del CLI, en primer plano) | 10 |
+| A6 | Orquestador: Atlas/Orbe reparte el trabajo entre agentes | Grok Bot, dots Space | ✔ v1.20.0 (Atlas delega y lo cuenta; ECC con `ecc_tarea`) | 10 |
 
 ## 4. Proactividad y segundo plano
 

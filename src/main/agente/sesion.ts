@@ -1,5 +1,6 @@
 import type { ManejadoresTurno } from '../chat/proveedor'
 import { crearNonce } from './envoltorio'
+import type { DefAgente } from '../agentes/perfiles'
 import { EjecutorHerramientas } from './ejecutor'
 import { Politica } from './politica'
 import type { Modo } from './reglas'
@@ -26,6 +27,8 @@ export interface OpcionesAgente {
   dominios?: readonly string[]
   /** Modo auto: solo se pide permiso para lo de seguridad. */
   auto?: () => boolean
+  /** Agentes con nombre del usuario, ya traducidos para `--agents` (solo los usa el proveedor `cli`). */
+  agentes?: () => Record<string, DefAgente>
   /** Lee `reglas.json` al empezar cada tarea (así un cambio en el archivo vale sin reiniciar). */
   reglas?: () => Record<string, Modo>
 }
