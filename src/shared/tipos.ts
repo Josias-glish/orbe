@@ -66,6 +66,7 @@ export const CANALES = {
   memoriaBorrar: 'memoria:borrar',
   memoriaImportar: 'memoria:importar',
   memoriaActivar: 'memoria:activar',
+  memoriaPropuesta: 'memoria:propuesta',
   memoriaCarpeta: 'memoria:carpeta',
   memoriaVaciar: 'memoria:vaciar',
   usoResumen: 'uso:resumen',
@@ -298,14 +299,28 @@ export interface RecuerdoVista {
   usar: boolean
   /** Se envía el texto completo; si no, solo el resumen. */
   completo: boolean
+  /** Lleva meses sin usarse: pierde peso (solo viaja su resumen). */
+  caducado?: boolean
   /** Cuánto ocupa en el prompt con su modo actual (0 si no se usa o no cabe). */
   caracteres: number
   modificado: string
 }
 
+/** Una propuesta de la consolidación: archivar un recuerdo duplicado o que lleva meses sin usarse. */
+export interface PropuestaLimpieza {
+  id: string
+  tipo: 'duplicado' | 'caducado'
+  /** El recuerdo que se archivaría. */
+  archivar: string
+  titulo: string
+  motivo: string
+}
+
 export interface EstadoMemoria {
   activa: boolean
   recuerdos: RecuerdoVista[]
+  /** Lo que la consolidación propone limpiar (nada se toca sin aceptarlo). */
+  propuestas: PropuestaLimpieza[]
   presupuesto: { usados: number; max: number; omitidos: number }
   carpeta: string
   hayConversacion: boolean
@@ -686,6 +701,8 @@ export interface ApiOrbe {
   memoriaBorrar(id: string): Promise<ResultadoMemoria>
   memoriaImportar(): Promise<{ informe: InformeImportacion; estado: EstadoMemoria }>
   memoriaActivar(activa: boolean): Promise<ResultadoMemoria>
+  /** Acepta (archiva) o descarta una propuesta de limpieza. */
+  memoriaPropuesta(id: string, aceptar: boolean): Promise<ResultadoMemoria>
   memoriaCarpeta(): void
   memoriaVaciar(): Promise<ResultadoMemoria>
 

@@ -207,6 +207,10 @@ palabra como prefijo) en `data/<usuario>/orbe.db`; `datos/fuentes.ts` `documento
 búsqueda (ponytail). Herramienta `buscar_memoria` (externo) e IPC `historial:buscar`. `Recuerdo.fuente` (meta `fuente`).
 Desviación aprobada: métricas y contenido se indexan, no se mudan a la base.
 
+v1.18.0: `memoria/consolidar.ts` (`sonDuplicados`, `caducado` 90 días, `proponerLimpieza`); `BaseOrbe` tablas `uso` y
+`meta`; `alTurno` marca uso por FTS con `cualquiera`; consolidación diaria en index.ts (meta `consolidacion`, aviso);
+`memoria:propuesta` archiva a `_archivo/` o descarta (`config.descartadas`).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

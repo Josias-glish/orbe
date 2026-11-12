@@ -176,11 +176,23 @@ app.whenReady().then(async () => {
   } catch {
     console.warn('[orbe] No he podido crear reglas.json: valen las reglas por defecto.')
   }
+  // Base de datos local (Etapa 9): índice de búsqueda, último uso de cada recuerdo y fecha de la última consolidación.
+  const base = new BaseOrbe(modoHumo ? ':memory:' : join(datos, 'data', userInfo().username.replace(/[^\w.-]/g, '_') || 'usuario', 'orbe.db'))
+  app.once('will-quit', () => base.cerrar())
+  const almacenRecuerdos = new AlmacenMemoria(join(datos, 'memoria'))
   const memoria = new ServicioMemoria({
     carpeta: join(datos, 'memoria'),
     archivoConversacion: join(datos, 'conversacion.json'),
     max: config.memoriaMax,
-    origenesClaude: modoHumo ? prepararMemoriaDeMentira(app.getPath('temp')) : config.memoriaOrigenes
+    origenesClaude: modoHumo ? prepararMemoriaDeMentira(app.getPath('temp')) : config.memoriaOrigenes,
+    ultimoUso: (id) => base.ultimoUso(id),
+    // Un recuerdo «se usa» cuando la conversación toca su tema: así lo que nunca sale pierde peso con el tiempo.
+    alTurno: (usuario) => {
+      base.reindexar(
+        almacenRecuerdos.listar().map((r) => ({ tipo: 'recuerdo', ref: r.id, titulo: r.descripcion, texto: r.cuerpo, fecha: r.modificado }))
+      )
+      base.marcarUso(base.buscar(usuario, { tipos: ['recuerdo'], cualquiera: true, limite: 10 }).map((r) => r.ref))
+    }
   })
   memoria.iniciar()
   registrarMemoria(orbe.ventana, memoria)
@@ -287,11 +299,9 @@ app.whenReady().then(async () => {
   const pc = controlPc ? crearHerramientasPc(controlPc) : []
   // Base de datos local (Etapa 9): índice de búsqueda sobre conversaciones, recuerdos, métricas y contenido. Los
   // archivos siguen siendo la fuente; el índice se rehace de ellos al buscar.
-  const base = new BaseOrbe(modoHumo ? ':memory:' : join(datos, 'data', userInfo().username.replace(/[^\w.-]/g, '_') || 'usuario', 'orbe.db'))
-  app.once('will-quit', () => base.cerrar())
   const fuentesIndice = {
     conversaciones: new AlmacenConversacion(join(datos, 'conversacion.json')),
-    memoria: new AlmacenMemoria(join(datos, 'memoria')),
+    memoria: almacenRecuerdos,
     rutaMetricas: join(datos, 'metricas.json'),
     rutaContenido: join(datos, 'contenido', 'contenido.json')
   }
@@ -339,6 +349,26 @@ app.whenReady().then(async () => {
   const contadorUso = registrarUso(orbe.ventana, registroUso, () => ({ nombre: proveedor.nombre, modelo: proveedor.modelo }))
   // Tareas de fondo (como los agentes «siempre encendidos»): instrucciones que Orbe hace solo cuando toca, cada una
   // en una conversación limpia con el mismo modelo, la memoria y las herramientas del agente.
+  // Consolidación nocturna (M6): una vez al día (o al arrancar si el PC estuvo apagado) mira si hay recuerdos
+  // duplicados o sin usar y, si los hay, avisa. Solo propone: se acepta o descarta en el gestor de memoria.
+  const consolidar = (): void => {
+    const ultima = Date.parse(base.leerMeta('consolidacion') ?? '') || 0
+    if (Date.now() - ultima < 20 * 3_600_000) return
+    base.fijarMeta('consolidacion', new Date().toISOString())
+    const n = memoria.propuestas().length
+    if (n === 0 || modoHumo || !Notification.isSupported()) return
+    const aviso = new Notification({ title: 'Orbe ordenó tu memoria', body: `Propone limpiar ${n} ${n === 1 ? 'recuerdo' : 'recuerdos'}. Revísalo en el gestor de memoria.` })
+    aviso.on('click', () => {
+      orbe.mostrar()
+      orbe.establecerExpandido(true)
+    })
+    aviso.show()
+  }
+  if (!modoHumo) {
+    setTimeout(consolidar, 60_000).unref()
+    setInterval(consolidar, 3 * 3_600_000).unref()
+  }
+
   const tareas = new ServicioTareas({
     archivo: modoHumo ? null : join(datos, 'tareas.json'),
     crearProveedor: () =>

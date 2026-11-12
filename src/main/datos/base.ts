@@ -27,9 +27,10 @@ export interface ResultadoBusqueda {
  * Lo que escribe el usuario, pasado a FTS5 sin su sintaxis: cada palabra entre comillas y como prefijo, todas
  * obligatorias. Así «cámara foto» encuentra «Cámaras de fotos» y ningún texto puede romper la consulta.
  */
-export function consultaFts(texto: string): string | null {
-  const palabras = (texto.normalize('NFC').match(/[\p{L}\p{N}]{2,}/gu) ?? []).slice(0, 12)
-  return palabras.length > 0 ? palabras.map((p) => `"${p}"*`).join(' ') : null
+export function consultaFts(texto: string, cualquiera = false): string | null {
+  // Con «cualquiera» basta una palabra; las de una o dos letras sobran (artículos, preposiciones).
+  const palabras = (texto.normalize('NFC').match(cualquiera ? /[\p{L}\p{N}]{4,}/gu : /[\p{L}\p{N}]{2,}/gu) ?? []).slice(0, cualquiera ? 30 : 12)
+  return palabras.length > 0 ? palabras.map((p) => `"${p}"*`).join(cualquiera ? ' OR ' : ' ') : null
 }
 
 /**
@@ -44,8 +45,30 @@ export class BaseOrbe {
     if (ruta !== ':memory:') mkdirSync(dirname(ruta), { recursive: true })
     this.db = new DatabaseSync(ruta)
     this.db.exec(
-      "CREATE VIRTUAL TABLE IF NOT EXISTS indice USING fts5(tipo UNINDEXED, ref UNINDEXED, titulo, texto, fecha UNINDEXED, tokenize='unicode61 remove_diacritics 2')"
+      "CREATE VIRTUAL TABLE IF NOT EXISTS indice USING fts5(tipo UNINDEXED, ref UNINDEXED, titulo, texto, fecha UNINDEXED, tokenize='unicode61 remove_diacritics 2');" +
+        'CREATE TABLE IF NOT EXISTS uso (ref TEXT PRIMARY KEY, ultimo TEXT NOT NULL);' +
+        'CREATE TABLE IF NOT EXISTS meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);'
     )
+  }
+
+  /** Anota que se usaron esos recuerdos (para la caducidad). */
+  marcarUso(refs: readonly string[], cuando = new Date()): void {
+    const poner = this.db.prepare('INSERT INTO uso (ref, ultimo) VALUES (?, ?) ON CONFLICT(ref) DO UPDATE SET ultimo = excluded.ultimo')
+    for (const r of refs) poner.run(r, cuando.toISOString())
+  }
+
+  ultimoUso(ref: string): string | null {
+    const f = this.db.prepare('SELECT ultimo FROM uso WHERE ref = ?').get(ref) as { ultimo: string } | undefined
+    return f?.ultimo ?? null
+  }
+
+  leerMeta(clave: string): string | null {
+    const f = this.db.prepare('SELECT valor FROM meta WHERE clave = ?').get(clave) as { valor: string } | undefined
+    return f?.valor ?? null
+  }
+
+  fijarMeta(clave: string, valor: string): void {
+    this.db.prepare('INSERT INTO meta (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor').run(clave, valor)
   }
 
   // ponytail: se rehace entero en cada búsqueda (cientos de documentos, milisegundos); si crece a miles, actualizar
@@ -63,8 +86,8 @@ export class BaseOrbe {
     }
   }
 
-  buscar(texto: string, opciones: { limite?: number; tipos?: readonly TipoDoc[] } = {}): ResultadoBusqueda[] {
-    const consulta = consultaFts(texto)
+  buscar(texto: string, opciones: { limite?: number; tipos?: readonly TipoDoc[]; cualquiera?: boolean } = {}): ResultadoBusqueda[] {
+    const consulta = consultaFts(texto, opciones.cualquiera)
     if (!consulta) return []
     const tipos = opciones.tipos ?? ['conversacion', 'recuerdo', 'metricas', 'contenido']
     const filas = this.db

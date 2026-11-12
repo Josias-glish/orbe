@@ -3,6 +3,7 @@ import type {
   CambiosRecuerdo,
   ConversacionArchivada,
   MensajeGuardado,
+  PropuestaLimpieza,
   EstadoMemoria,
   InformeImportacion,
   InicioMemoria,
@@ -12,6 +13,7 @@ import { AlmacenMemoria, MAX_CUERPO, MAX_DESCRIPCION, MAX_RECUERDOS, type Recuer
 import { construirBloqueMemoria } from './bloque'
 import { detectarOrdenRecordar } from './captura'
 import { AlmacenConversacion, construirHistorialPrevio, tituloDe } from './conversacion'
+import { caducado, proponerLimpieza } from './consolidar'
 import { carpetasClaudePorDefecto, importarDeClaude } from './importador'
 import { buscarSensible } from './secretos'
 
@@ -25,6 +27,10 @@ export interface OpcionesServicioMemoria {
   /** Carpetas de memoria de Claude de donde importar; null = las de Claude Code por defecto. */
   origenesClaude: string[] | null
   ahora?: () => Date
+  /** Cuándo se usó por última vez cada recuerdo (base de datos local); sin esto nada caduca. */
+  ultimoUso?: (id: string) => string | null
+  /** Un intercambio terminó: marca como usados los recuerdos que tienen que ver con lo que se habló. */
+  alTurno?: (usuario: string) => void
 }
 
 /** Resultado de interpretar un mensaje como orden de memoria: qué se le dice al usuario y qué se le cuenta al modelo. */
@@ -101,15 +107,16 @@ export class ServicioMemoria {
   /** El bloque «Memoria del usuario» para el prompt de una conversación nueva; undefined si no hay o está apagada. */
   bloquePrompt(): string | undefined {
     if (!this.activa()) return undefined
-    const texto = construirBloqueMemoria(this.almacen.listar().map(paraPrompt), this.opciones.max).texto
+    const texto = construirBloqueMemoria(this.almacen.listar().map((r) => paraPrompt(r, this.caduco(r))), this.opciones.max).texto
     return texto || undefined
   }
 
   estado(): EstadoMemoria {
     const recuerdos = this.almacen.listar()
-    const bloque = construirBloqueMemoria(recuerdos.map(paraPrompt), this.opciones.max)
+    const bloque = construirBloqueMemoria(recuerdos.map((r) => paraPrompt(r, this.caduco(r))), this.opciones.max)
     return {
       activa: this.activa(),
+      propuestas: this.propuestas(recuerdos),
       recuerdos: recuerdos.map((r) => ({
         id: r.id,
         tipo: r.tipo,
@@ -119,6 +126,7 @@ export class ServicioMemoria {
         fuente: r.fuente ?? (r.origen === 'claude' ? 'Memoria de Claude Code' : undefined),
         usar: r.usar,
         completo: r.completo,
+        ...(this.caduco(r) ? { caducado: true } : {}),
         caracteres: bloque.porRecuerdo[r.id] ?? 0,
         modificado: r.modificado
       })),
@@ -225,6 +233,37 @@ export class ServicioMemoria {
   }
 
   /** Borra un recuerdo. Si venía de Claude, se anota para que una nueva importación no lo resucite. */
+  private caduco(r: Recuerdo): boolean {
+    return !!this.opciones.ultimoUso && caducado(r, this.opciones.ultimoUso(r.id), this.ahora())
+  }
+
+  /** La consolidación: duplicados y recuerdos sin usar que se proponen archivar. */
+  propuestas(recuerdos = this.almacen.listar()): PropuestaLimpieza[] {
+    const uso = this.opciones.ultimoUso ?? (() => new Date().toISOString())
+    return proponerLimpieza(recuerdos, uso, this.ahora(), new Set(this.almacen.config().descartadas ?? []))
+  }
+
+  /** Aceptar archiva el recuerdo (a `_archivo/`, sin borrarlo); descartar hace que no se vuelva a proponer. */
+  resolverPropuesta(id: string, aceptar: boolean): ResultadoMemoria {
+    const p = this.propuestas().find((x) => x.id === id)
+    if (!p) return { ok: false, error: 'Esa propuesta ya no está.' }
+    const config = this.almacen.config()
+    if (aceptar) {
+      // Si venía de Claude, no se vuelve a importar.
+      const clave = Object.keys(config.importados).find((k) => config.importados[k].id === p.archivar)
+      if (clave) {
+        delete config.importados[clave]
+        if (!config.ignorados.includes(clave)) config.ignorados.push(clave)
+        this.almacen.guardarConfig(config)
+      }
+      this.almacen.archivar(p.archivar)
+    } else {
+      config.descartadas = [...(config.descartadas ?? []), id].slice(-500)
+      this.almacen.guardarConfig(config)
+    }
+    return { ok: true, estado: this.estado() }
+  }
+
   borrar(id: string): ResultadoMemoria {
     const r = this.almacen.obtener(id)
     if (!r) return { ok: false, error: 'Ese recuerdo ya no existe.' }
@@ -323,6 +362,11 @@ export class ServicioMemoria {
     } catch (error) {
       console.error('[orbe] No se pudo guardar la conversación:', error)
     }
+    try {
+      this.opciones.alTurno?.(usuario)
+    } catch (error) {
+      console.error('[orbe] No se pudo anotar el uso de los recuerdos:', error)
+    }
   }
 
   /** «Chat del 12 nov: «tema»»: de qué conversación salió un recuerdo pedido con «Recuerda que…». */
@@ -356,14 +400,15 @@ export class ServicioMemoria {
   }
 }
 
-function paraPrompt(r: Recuerdo): Parameters<typeof construirBloqueMemoria>[0][number] {
+/** Lo que viaja de un recuerdo; si lleva meses sin usarse, pierde peso y solo va su resumen. */
+function paraPrompt(r: Recuerdo, caducado = false): Parameters<typeof construirBloqueMemoria>[0][number] {
   return {
     id: r.id,
     tipo: r.tipo,
     descripcion: r.descripcion,
     cuerpo: r.cuerpo,
     usar: r.usar,
-    completo: r.completo,
+    completo: r.completo && !caducado,
     modificado: r.modificado
   }
 }

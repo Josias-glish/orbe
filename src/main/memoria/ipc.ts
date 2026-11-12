@@ -87,6 +87,12 @@ export function registrarMemoria(ventana: BrowserWindow, servicio: ServicioMemor
     return { ok: true, estado: servicio.estado() }
   })
 
+  ipcMain.handle(CANALES.memoriaPropuesta, (e, id: unknown, aceptar: unknown): ResultadoMemoria => {
+    exigir(e)
+    if (typeof id !== 'string' || id.length > 300 || typeof aceptar !== 'boolean') return PETICION_INVALIDA
+    return servicio.resolverPropuesta(id, aceptar)
+  })
+
   ipcMain.handle(CANALES.memoriaVaciar, (e): ResultadoMemoria => {
     exigir(e)
     return servicio.vaciar()

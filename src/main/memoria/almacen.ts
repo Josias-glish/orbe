@@ -39,6 +39,8 @@ export interface ConfigMemoria {
   importados: Record<string, RegistroImportado>
   /** Nombres de Claude que el usuario borró aquí: no se vuelven a importar. */
   ignorados: string[]
+  /** Propuestas de limpieza que el usuario descartó: no se vuelven a proponer. */
+  descartadas?: string[]
 }
 
 const CONFIG_POR_DEFECTO = (): ConfigMemoria => ({
@@ -141,6 +143,16 @@ export class AlmacenMemoria {
     return true
   }
 
+  /** Lo aparta a `_archivo/` (no se borra: se puede recuperar moviéndolo de vuelta). */
+  archivar(id: string): boolean {
+    const ruta = this.rutaDe(id)
+    if (!existsSync(ruta)) return false
+    const destino = join(this.carpeta, '_archivo')
+    mkdirSync(destino, { recursive: true })
+    renameSync(ruta, join(destino, `${id}-${Date.now()}.md`))
+    return true
+  }
+
   /** Borra todos los recuerdos y reinicia la configuración de importación (conserva si la memoria está activa). */
   vaciar(): void {
     for (const r of this.listar()) this.borrar(r.id)
@@ -166,7 +178,8 @@ export class AlmacenMemoria {
         importacionInicialHecha: leida.importacionInicialHecha === true,
         bienvenida: typeof leida.bienvenida === 'string' ? leida.bienvenida : null,
         importados: leida.importados && typeof leida.importados === 'object' ? leida.importados : {},
-        ignorados: Array.isArray(leida.ignorados) ? leida.ignorados.filter((x) => typeof x === 'string') : []
+        ignorados: Array.isArray(leida.ignorados) ? leida.ignorados.filter((x) => typeof x === 'string') : [],
+        descartadas: Array.isArray(leida.descartadas) ? leida.descartadas.filter((x) => typeof x === 'string') : []
       }
     } catch {
       return CONFIG_POR_DEFECTO()

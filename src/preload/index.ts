@@ -93,6 +93,7 @@ const api: ApiOrbe = {
   memoriaBorrar: (id) => ipcRenderer.invoke(CANALES.memoriaBorrar, id),
   memoriaImportar: () => ipcRenderer.invoke(CANALES.memoriaImportar),
   memoriaActivar: (activa) => ipcRenderer.invoke(CANALES.memoriaActivar, activa),
+  memoriaPropuesta: (id, aceptar) => ipcRenderer.invoke(CANALES.memoriaPropuesta, id, aceptar),
   memoriaCarpeta: () => ipcRenderer.send(CANALES.memoriaCarpeta),
   memoriaVaciar: () => ipcRenderer.invoke(CANALES.memoriaVaciar),
 

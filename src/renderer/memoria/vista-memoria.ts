@@ -102,6 +102,10 @@ export class VistaMemoria {
     this.aplicar(await window.orbe.memoriaActivar(activa))
   }
 
+  private async resolver(id: string, aceptar: boolean): Promise<void> {
+    this.aplicar(await window.orbe.memoriaPropuesta(id, aceptar))
+  }
+
   private async guardarNota(texto: string, forzar: boolean): Promise<void> {
     const r = await window.orbe.memoriaGuardar(texto, forzar)
     if (r.ok) this.borrador = ''
@@ -226,6 +230,22 @@ export class VistaMemoria {
       aviso.append(el('p', undefined, this.error.texto))
       if (this.error.insistir) aviso.append(boton('boton-memoria', 'Guardar de todos modos', this.error.insistir))
       cuerpo.append(aviso)
+    }
+
+    // Propuestas de la consolidación: nada se toca sin aceptarlo.
+    if (e.activa && e.propuestas.length > 0) {
+      const caja = el('div', 'memoria-propuestas')
+      caja.append(el('p', 'memoria-nota', 'Orbe propone archivar (se guardan en _archivo, no se borran):'))
+      for (const p of e.propuestas) {
+        const fila = el('div', 'memoria-propuesta')
+        fila.append(
+          el('p', undefined, `«${p.titulo}» — ${p.motivo}`),
+          boton('boton-memoria', 'Archivar', () => void this.resolver(p.id, true)),
+          boton('boton-memoria', 'Mantener', () => void this.resolver(p.id, false))
+        )
+        caja.append(fila)
+      }
+      cuerpo.append(caja)
     }
 
     // Lista de recuerdos.

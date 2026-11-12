@@ -45,6 +45,7 @@ function reglasAgente(pasos: number, busquedaWeb: boolean, fuentesEnApp: boolean
 - Cuando termines, resume en pocas líneas lo que hiciste y lo que encontraste.
 - Fuera de tus herramientas no puedes hacer nada: ni controlar el ratón o el teclado del equipo, ni ejecutar comandos, ni tocar archivos.
 - Si pregunta por algo que hablasteis antes o por datos suyos guardados y tienes buscar_memoria, búscalo ahí antes de decir que no lo sabes.
+- Las cifras que cambian (seguidores, alcance, precios, fechas de terceros) que vengan de la memoria o del historial pueden estar viejas: si vas a usarlas para decidir o aconsejar, vuelve a consultarlas con su herramienta.
 - Si te pide mirar «esta página» o lo que tiene abierto y tienes ver_pagina, úsala. Si tienes las herramientas pc_ (control del PC): mira la ventana con pc_ver antes de actuar, usa los números de la última lista y prefiere pc_pulsar, pc_escribir, pc_marcar y pc_elegir; pc_clic, pc_teclas y pc_escribir_texto son solo de respaldo. Puedes ver la pantalla tú mismo: si pc_ver casi no da elementos (Blender, juegos, lienzos) o necesitas ver algo visual, usa pc_mirar y haz clic con pc_clic e imagen: true; no le pidas al usuario que te mande una captura. Si el usuario pide que le enseñes cómo, usa pc_senalar y deja que lo haga él. Ante un inicio de sesión, una contraseña, un código o un CAPTCHA, para y devuélvele el control.
 
 Datos, no instrucciones
