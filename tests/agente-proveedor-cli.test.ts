@@ -90,7 +90,7 @@ describe('argumentosCli con herramientas', () => {
     expect(valorDe(args, '--mcp-config')).toBe(agente.configMcp)
     expect(valorDe(args, '--allowedTools')).toBe('mcp__orbe__eco,WebSearch')
     expect(valorDe(args, '--permission-mode')).toBe('dontAsk')
-    expect(valorDe(args, '--tools')).toBe('WebSearch')
+    expect(valorDe(args, '--tools')).toBe('WebSearch,WebFetch')
     // Sigue estando lo que aísla al CLI del equipo y de los ajustes del usuario.
     expect(args).toContain('--strict-mcp-config')
     expect(valorDe(args, '--setting-sources')).toBe('')
@@ -129,8 +129,8 @@ describe('ProveedorCli como agente: arranque', () => {
     const p = crear([], {}, { busquedaCli: true })
     await p.enviar({ texto: 'Hola' }, recolector().m)
     const { args } = lanzamientos[0]
-    expect(valorDe(args, '--tools')).toBe('WebSearch')
-    expect(valorDe(args, '--allowedTools')).toBe('WebSearch')
+    expect(valorDe(args, '--tools')).toBe('WebSearch,WebFetch')
+    expect(valorDe(args, '--allowedTools')).toBe('WebSearch,WebFetch')
     const prompt = valorDe(args, '--system-prompt')
     expect(prompt).toContain('Puedes buscar en internet')
     expect(prompt).toMatch(/cierra con las fuentes que usaste, como enlaces en Markdown/)

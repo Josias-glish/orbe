@@ -62,7 +62,7 @@
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web simple | 12 |
+| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web + lectura de páginas (WebFetch del CLI, v1.14.0) | 12 |
 | R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 12 |
 | R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 12 |
 
@@ -78,7 +78,7 @@
 | H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 15 |
 | H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 13 |
 | H8 | Publicación en Instagram | Plan propio | ✗ aparte por decisión del usuario | — |
-| H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ◐ solo Gmail | 7 |
+| H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ⊘ el usuario conecta Drive, Calendar y demás por Composio (12-nov); la Etapa 7 quedó en buscador ampliado | — |
 | H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ◐ solo lectura de pantalla | 8 |
 
 ## 7. Interfaz y canales
