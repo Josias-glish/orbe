@@ -1,6 +1,8 @@
 import { BrowserWindow, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import {
   CANALES,
+  type ConversacionArchivada,
+  type MensajeGuardado,
   type EventoChat,
   type EventoPantalla,
   type InfoChat,
@@ -27,6 +29,8 @@ export interface MemoriaChat {
   confirmarHistorialUsado(): void
   turnoCompletado(usuario: string, asistente: string): void
   nuevaConversacion(): void
+  historial?(): ConversacionArchivada[]
+  abrirHistorial?(id: string): MensajeGuardado[] | null
 }
 
 interface TurnoRegistrado {
@@ -129,6 +133,16 @@ export function registrarChat(
     servicio.nueva()
     memoria?.nuevaConversacion()
     turnoRegistrado = null
+  })
+  ipcMain.handle(CANALES.historialListar, (e) => (propia(e) ? (memoria?.historial?.() ?? []) : []))
+  ipcMain.handle(CANALES.historialAbrir, (e, id: unknown) => {
+    if (!propia(e) || typeof id !== 'string' || !memoria) return null
+    const mensajes = memoria.abrirHistorial?.(id) ?? null
+    if (mensajes) {
+      servicio.nueva()
+      turnoRegistrado = null
+    }
+    return mensajes
   })
   ipcMain.on(CANALES.chatPrecalentar, (e) => {
     if (propia(e)) servicio.precalentar()

@@ -1120,6 +1120,50 @@ input {
 .potencia-menu {
   width: 270px;
 }
+.historial-menu {
+  width: 290px;
+  max-height: 60vh;
+}
+.historial-buscar {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-borde);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+}
+.historial-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.historial-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.historial-item:hover,
+.historial-item:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+.historial-item-titulo {
+  font-size: 13px;
+}
+.historial-item-fecha {
+  font-size: 11px;
+  opacity: 0.6;
+}
 .potencia-cabecera {
   display: flex;
   align-items: baseline;

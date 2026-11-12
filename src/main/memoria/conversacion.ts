@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
-import type { MensajeGuardado } from '../../shared/tipos'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import type { ConversacionArchivada, MensajeGuardado } from '../../shared/tipos'
 import { neutralizarEtiquetas } from '../chat/contenido'
 
 export const MAX_MENSAJES_GUARDADOS = 40
@@ -10,6 +10,16 @@ interface ArchivoConversacion {
   version: 1
   actualizada: string
   mensajes: MensajeGuardado[]
+  /** Si salió del historial, su archivo allí (al archivarla otra vez se sobrescribe, sin duplicados). */
+  id?: string
+}
+
+const ID_VALIDO = /^[\w-]{1,40}$/
+
+/** El título de una conversación: su primera pregunta, en una línea. */
+export function tituloDe(mensajes: MensajeGuardado[]): string {
+  const t = (mensajes.find((m) => m.rol === 'usuario')?.texto ?? 'Conversación').replace(/\s+/g, ' ').trim()
+  return t.length <= 60 ? t : `${t.slice(0, 59).trimEnd()}…`
 }
 
 const esMensaje = (m: unknown): m is MensajeGuardado =>
@@ -23,18 +33,87 @@ const esMensaje = (m: unknown): m is MensajeGuardado =>
  * para poder seguir donde se dejó tras cerrar y abrir Orbe. «Nueva conversación» la borra.
  */
 export class AlmacenConversacion {
+  /** Carpeta del historial: una conversación archivada por archivo. */
+  private readonly carpeta: string
+
   constructor(
     private readonly archivo: string,
     private readonly maxMensajes = MAX_MENSAJES_GUARDADOS
-  ) {}
+  ) {
+    this.carpeta = join(dirname(archivo), 'conversaciones')
+  }
+
+  private leer(ruta: string): Partial<ArchivoConversacion> | null {
+    try {
+      return JSON.parse(readFileSync(ruta, 'utf8')) as Partial<ArchivoConversacion>
+    } catch {
+      return null
+    }
+  }
+
+  private escribir(ruta: string, datos: ArchivoConversacion): void {
+    mkdirSync(dirname(ruta), { recursive: true })
+    const temporal = `${ruta}.tmp`
+    writeFileSync(temporal, JSON.stringify(datos), 'utf8')
+    renameSync(temporal, ruta)
+  }
 
   cargar(): MensajeGuardado[] {
+    const datos = this.leer(this.archivo)
+    return Array.isArray(datos?.mensajes) ? datos.mensajes.filter(esMensaje) : []
+  }
+
+  /** Guarda la conversación en curso en el historial (si tiene algo). No la borra de aquí. */
+  archivar(ahora: Date = new Date()): void {
+    const mensajes = this.cargar()
+    if (mensajes.length === 0) return
+    const previo = this.leer(this.archivo)?.id
+    const id = previo && ID_VALIDO.test(previo) ? previo : ahora.toISOString().replace(/[:.]/g, '-')
+    this.escribir(join(this.carpeta, `${id}.json`), { version: 1, actualizada: ahora.toISOString(), mensajes, id })
+  }
+
+  /** Todas con sus mensajes (las archivadas y la de ahora, con id «actual»), para el índice de búsqueda. */
+  todas(): Array<{ id: string; actualizada: string; mensajes: MensajeGuardado[] }> {
+    const leerDe = (ruta: string, id: string): { id: string; actualizada: string; mensajes: MensajeGuardado[] } => {
+      const d = this.leer(ruta)
+      return { id, actualizada: String(d?.actualizada ?? ''), mensajes: Array.isArray(d?.mensajes) ? d.mensajes.filter(esMensaje) : [] }
+    }
+    let archivos: string[] = []
     try {
-      const datos = JSON.parse(readFileSync(this.archivo, 'utf8')) as Partial<ArchivoConversacion>
-      return Array.isArray(datos.mensajes) ? datos.mensajes.filter(esMensaje) : []
+      archivos = readdirSync(this.carpeta).filter((f) => f.endsWith('.json'))
+    } catch {
+      // sin historial todavía
+    }
+    return [leerDe(this.archivo, 'actual'), ...archivos.map((f) => leerDe(join(this.carpeta, f), f.slice(0, -5)))].filter((c) => c.mensajes.length > 0)
+  }
+
+  /** El historial, de la más reciente a la más antigua. */
+  listar(): ConversacionArchivada[] {
+    let archivos: string[] = []
+    try {
+      archivos = readdirSync(this.carpeta).filter((f) => f.endsWith('.json'))
     } catch {
       return []
     }
+    return archivos
+      .map((f) => {
+        const d = this.leer(join(this.carpeta, f))
+        const mensajes = Array.isArray(d?.mensajes) ? d.mensajes.filter(esMensaje) : []
+        return { id: f.slice(0, -5), titulo: tituloDe(mensajes), actualizada: String(d?.actualizada ?? ''), mensajes: mensajes.length }
+      })
+      .filter((c) => c.mensajes > 0)
+      .sort((a, b) => b.actualizada.localeCompare(a.actualizada))
+  }
+
+  /** Reabre una del historial como conversación en curso (la actual se archiva antes). Null si no existe. */
+  abrir(id: string, ahora: Date = new Date()): MensajeGuardado[] | null {
+    if (!ID_VALIDO.test(id)) return null
+    const d = this.leer(join(this.carpeta, `${id}.json`))
+    const mensajes = Array.isArray(d?.mensajes) ? d.mensajes.filter(esMensaje) : []
+    if (mensajes.length === 0) return null
+    this.archivar(ahora)
+    this.escribir(this.archivo, { version: 1, actualizada: ahora.toISOString(), mensajes, id })
+    return mensajes
   }
 
   hay(): boolean {
@@ -53,11 +132,8 @@ export class AlmacenConversacion {
     // Siempre empieza por un mensaje del usuario, para que la conversación tenga sentido.
     while (mensajes.length > 0 && mensajes[0].rol !== 'usuario') mensajes.shift()
 
-    const datos: ArchivoConversacion = { version: 1, actualizada: ahora.toISOString(), mensajes }
-    mkdirSync(dirname(this.archivo), { recursive: true })
-    const temporal = `${this.archivo}.tmp`
-    writeFileSync(temporal, JSON.stringify(datos), 'utf8')
-    renameSync(temporal, this.archivo)
+    const id = this.leer(this.archivo)?.id
+    this.escribir(this.archivo, { version: 1, actualizada: ahora.toISOString(), mensajes, ...(id ? { id } : {}) })
   }
 
   vaciar(): void {

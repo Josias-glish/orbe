@@ -11,6 +11,8 @@ export interface Recuerdo {
   descripcion: string
   cuerpo: string
   origen: 'claude' | 'usuario'
+  /** De dónde sale, en palabras: «Chat del 12 nov: «…»», «A mano», «Memoria de Claude Code». */
+  fuente?: string
   usar: boolean
   completo: boolean
   /** ISO 8601. */
@@ -106,6 +108,7 @@ export class AlmacenMemoria {
         descripcion: nota.descripcion,
         cuerpo: nota.cuerpo,
         origen: nota.meta['origen'] === 'claude' ? 'claude' : 'usuario',
+        ...(nota.meta['fuente'] ? { fuente: nota.meta['fuente'] } : {}),
         usar: nota.meta['usar'] !== 'false',
         completo: nota.meta['completo'] === 'true',
         modificado: nota.meta['modified'] ?? statSync(ruta).mtime.toISOString()
@@ -124,7 +127,7 @@ export class AlmacenMemoria {
       descripcion: r.descripcion,
       tipo: tipoParaArchivo(r.tipo),
       cuerpo: r.cuerpo,
-      meta: { origen: r.origen, usar: String(r.usar), completo: String(r.completo), modified: r.modificado }
+      meta: { origen: r.origen, ...(r.fuente ? { fuente: r.fuente.replace(/[\r\n]+/g, ' ') } : {}), usar: String(r.usar), completo: String(r.completo), modified: r.modificado }
     })
     const temporal = `${ruta}.tmp`
     writeFileSync(temporal, texto, 'utf8')

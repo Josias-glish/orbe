@@ -57,6 +57,9 @@ export const CANALES = {
   fondoAjustar: 'fondo:ajustar',
   fondoElegir: 'fondo:elegir',
   memoriaInicio: 'memoria:inicio',
+  historialListar: 'historial:listar',
+  historialAbrir: 'historial:abrir',
+  historialBuscar: 'historial:buscar',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
   memoriaActualizar: 'memoria:actualizar',
@@ -289,6 +292,8 @@ export interface RecuerdoVista {
   cuerpo: string
   /** Lo trajo la importación desde la memoria de Claude, o lo escribió el usuario. */
   origen: 'claude' | 'usuario'
+  /** De qué conversación o acción salió (si se sabe). */
+  fuente?: string
   /** Se incluye en lo que Orbe sabe del usuario. */
   usar: boolean
   /** Se envía el texto completo; si no, solo el resumen. */
@@ -324,6 +329,14 @@ export type AvisoMemoria = { tipo: 'guardado'; id: string; texto: string } | { t
 export interface MensajeGuardado {
   rol: 'usuario' | 'asistente'
   texto: string
+}
+
+/** Una conversación archivada del historial del chat. */
+export interface ConversacionArchivada {
+  id: string
+  titulo: string
+  actualizada: string
+  mensajes: number
 }
 
 export interface InicioMemoria {
@@ -661,6 +674,12 @@ export interface ApiOrbe {
   fondoElegir(): Promise<EstadoFondo>
 
   memoriaInicio(): Promise<InicioMemoria>
+  /** El historial del chat: conversaciones archivadas al empezar una nueva. */
+  historialListar(): Promise<ConversacionArchivada[]>
+  /** Reabre una conversación del historial (archiva la actual); devuelve sus mensajes. */
+  historialAbrir(id: string): Promise<MensajeGuardado[] | null>
+  /** Ids de las conversaciones archivadas cuyo texto contiene lo buscado (búsqueda de texto completo). */
+  historialBuscar(texto: string): Promise<string[]>
   memoriaEstado(): Promise<EstadoMemoria>
   memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
   memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>

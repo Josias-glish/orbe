@@ -26,8 +26,8 @@
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
 | M1 | Recuerdos en archivos y perfil del usuario | Hermes (`memory.md`, `user.md`), Claude (CLAUDE.md) | ✔ recuerdos `.md` | — |
-| M2 | **Búsqueda** en recuerdos y en conversaciones pasadas (SQLite FTS5) con resumen | Hermes | ✗ | 9 |
-| M3 | **Origen** de cada recuerdo (de qué conversación o acción sale) | Copilot (citas) | ✗ | 9 |
+| M2 | **Búsqueda** en recuerdos y en conversaciones pasadas (SQLite FTS5) con resumen | Hermes | ✔ v1.16.0 historial del chat · v1.17.0 índice FTS5 (`node:sqlite`) y `buscar_memoria` | 9 |
+| M3 | **Origen** de cada recuerdo (de qué conversación o acción sale) | Copilot (citas) | ✔ v1.17.0 (`fuente`) | 9 |
 | M4 | **Caducidad**: un recuerdo que no se usa en N días pierde peso o se archiva | Copilot | ✗ | 9 |
 | M5 | **Comprobar antes de fiarse**: datos que cambian (precios, cifras) se vuelven a consultar | Grok Bot | ✗ | 9 |
 | M6 | **Consolidación nocturna** («dreaming»): une duplicados, resume y propone limpiar | Copilot Memory | ✗ | 9 |

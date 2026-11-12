@@ -2,6 +2,9 @@ node_modules/
 out/
 dist/
 .env
+.env.*
+!.env.example
+data/
 *.log
 humo/
 

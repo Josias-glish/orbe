@@ -7,6 +7,7 @@ import type {
   EventoPantalla,
   InfoChat,
   LecturaPantalla,
+  MensajeGuardado,
   ResultadoEnvio
 } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
@@ -32,6 +33,7 @@ import { ConfirmacionAccion } from './confirmacion-accion'
 import { BarraContexto } from './contexto-ui'
 import { ListaMensajes, RespuestaEnCurso } from './mensajes'
 import { MenuPotencia } from './menu-potencia'
+import { MenuHistorial } from './menu-historial'
 
 interface TurnoEnCurso {
   id: string
@@ -74,6 +76,7 @@ export class PanelChat {
   private readonly lector: LectorVoz
   private readonly menuVoz: MenuVoz
   private readonly menuPotencia: MenuPotencia
+  private readonly menuHistorial: MenuHistorial
   private readonly dictado: Dictado
   /** La línea de estado muestra ahora «Grabando…» o «Transcribiendo…» (y no un error que no debe borrarse). */
   private mostrandoDictado = false
@@ -165,6 +168,7 @@ export class PanelChat {
     })
     this.menuVoz = new MenuVoz(porId('voz-boton'), porId('voz-menu'), this.lector)
     this.menuPotencia = new MenuPotencia(porId('potencia-boton'), porId('potencia-menu'))
+    this.menuHistorial = new MenuHistorial(porId('historial-boton'), porId('historial-menu'), (m) => void this.nuevaConversacion(m))
     // Si no hay voz neuronal configurada, el motor neuronal que quedara guardado se ignora y se habla con Windows.
     void window.orbe
       .vozInfo()
@@ -444,7 +448,7 @@ export class PanelChat {
   alPulsarEscape(): boolean {
     if (this.menuTextoImagen.cerrarSiAbierto()) return true
     if (this.menuVoz.cerrarSiAbierto()) return true
-    if (this.menuPotencia.cerrarSiAbierto()) return true
+    if (this.menuPotencia.cerrarSiAbierto() || this.menuHistorial.cerrarSiAbierto()) return true
     if (this.dictado.grabando) {
       this.dictado.cancelar()
       return true
@@ -882,7 +886,8 @@ export class PanelChat {
     if (this.lector.obtenerPrefs().autoenviar && !this.turno) this.entrada.enviar()
   }
 
-  async nuevaConversacion(): Promise<void> {
+  /** Empieza de cero o, con `abierta`, enseña una conversación reabierta del historial (el proceso principal ya la cargó). */
+  async nuevaConversacion(abierta?: MensajeGuardado[]): Promise<void> {
     this.cerrarMemoria()
     this.cerrarAjustes()
     this.confirmacion.cancelar()
@@ -895,12 +900,19 @@ export class PanelChat {
     turno?.respuesta.descartarSiVacia()
     this.ocultarEstado()
     this.descartarContexto()
-    try {
-      await window.orbe.chatNueva()
-    } catch {
-      // Si el proceso principal no responde, igualmente se limpia la vista.
+    if (!abierta) {
+      try {
+        await window.orbe.chatNueva()
+      } catch {
+        // Si el proceso principal no responde, igualmente se limpia la vista.
+      }
     }
     this.lista.limpiar()
+    for (const m of abierta ?? []) {
+      if (m.rol === 'usuario') this.lista.agregarUsuario(m.texto)
+      else this.lista.agregarRespuestaGuardada(m.texto)
+    }
+    if (abierta) this.lista.agregarAviso('Conversación reabierta del historial. Sigue donde la dejaste.')
     this.cambiarEstadoOrbe('reposo')
     this.actualizarBoton()
     this.entrada.enfocar()
