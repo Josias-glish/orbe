@@ -434,6 +434,9 @@ export class ProveedorCli implements ProveedorChat {
     for (const variable of VARIABLES_QUE_CAMBIAN_DE_CUENTA) delete env[variable]
     // Ni plugins del usuario (si Orbe se lanzó desde una sesión de Claude Code, heredaría sus carpetas de plugins).
     delete env['CLAUDE_CODE_PLUGIN_DIRS']
+    // El CLI corta una herramienta MCP que pasa un rato sin responder: ecc_tarea tarda minutos y un permiso puede esperar
+    // a que vuelvas. 30 min (más que el tope de 15 de ECC); comprobado con MCP_TOOL_TIMEOUT en el CLI 2.1.322.
+    env['MCP_TOOL_TIMEOUT'] = String(30 * 60_000)
 
     // Con herramientas, el CLI se conecta al servidor MCP local; el secreto va por entorno y no por la línea de comandos.
     const agente = this.agente
