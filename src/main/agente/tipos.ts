@@ -46,6 +46,8 @@ export interface ResultadoEjecucion {
   externo?: { origen: string; url?: string }
   /** De dónde salió la información: se enseña como enlaces bajo la respuesta. */
   fuentes?: Array<{ titulo: string; url: string }>
+  /** Una captura (JPEG en base64, solo en memoria) que el modelo ve junto al texto. */
+  imagen?: string
 }
 
 export interface Herramienta<T = unknown> {
@@ -91,6 +93,8 @@ export interface ResultadoLlamada {
   id: string
   contenido: string
   esError: boolean
+  /** Captura en JPEG base64 que acompaña al resultado (pc_mirar). */
+  imagen?: string
 }
 
 /** Da forma a una herramienta con parámetros tipados para guardarla en un registro común. */

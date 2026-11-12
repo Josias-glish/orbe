@@ -52,7 +52,10 @@ const RONDAS_CONSERVADAS = 3
 const UMBRAL_RECORTE = 1500
 
 function aResultado(r: ResultadoLlamada): BloqueParam {
-  return { type: 'tool_result', tool_use_id: r.id, content: r.contenido, ...(r.esError ? { is_error: true } : {}) }
+  const content: string | BloqueParam[] = r.imagen
+    ? [{ type: 'text', text: r.contenido }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: r.imagen } }]
+    : r.contenido
+  return { type: 'tool_result', tool_use_id: r.id, content, ...(r.esError ? { is_error: true } : {}) } as BloqueParam
 }
 
 /**
@@ -87,7 +90,7 @@ export function compactarResultadosAntiguos(mensajes: Mensaje[]): void {
     mensajes[i] = {
       role: 'user',
       content: contenido.map((b) =>
-        b.type === 'tool_result' && typeof b.content === 'string' && b.content.length > UMBRAL_RECORTE ? { ...b, content: OMITIDO } : b
+        b.type === 'tool_result' && (Array.isArray(b.content) || (typeof b.content === 'string' && b.content.length > UMBRAL_RECORTE)) ? { ...b, content: OMITIDO } : b
       )
     }
   }

@@ -7,6 +7,12 @@ export interface OpcionesPolitica {
   reglas?: Readonly<Record<string, Modo>>
   /** La orden original del usuario en esta tarea: decide las acciones «si_lo_pediste». */
   ordenUsuario?: string
+  /**
+   * Modo auto (decisión del usuario, 12-nov): se hace todo sin preguntar, también enviar o publicar. Siguen igual lo
+   * bloqueado (pagos, compras, contraseñas, cuentas ajenas de Instagram) y el modo vigilado (contenido de fuera con
+   * órdenes sospechosas), que vuelve a preguntar cada acción.
+   */
+  auto?: boolean
 }
 
 /**
@@ -75,6 +81,7 @@ export class Politica {
     if (base.tipo !== 'confirmar') return base
     const porTarea = base.porTarea !== false && base.peligrosa !== true && !this.vigilando && !ENVIO.test(`${accion ?? herramienta.nombre} ${titulo}`)
     if (porTarea && this.preaprobadas.has(claveDe(herramienta, entrada))) return { tipo: 'permitir' }
+    if (this.opciones.auto && !this.vigilando) return { tipo: 'permitir' }
     const revision = this.revisar()
     return { ...base, porTarea, ...(revision ? { revision } : {}) }
   }

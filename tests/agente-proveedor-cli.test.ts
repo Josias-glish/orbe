@@ -297,21 +297,22 @@ describe('ProveedorCli como agente: herramientas por MCP', () => {
     expect(r.motivo).toBe('completo')
   })
 
+  // Margen de 1,5 s: con el PC cargado, arrancar el CLI de prueba ya pasaba de 0,4 s y la prueba fallaba sola.
   it('una herramienta lenta o una tarjeta de permiso sin contestar no cuentan como un CLI colgado', async () => {
     const lentas: string[] = []
     const { herramienta } = eco({
       ejecutar: async (e) => {
-        await esperar(1200)
+        await esperar(4500)
         lentas.push(e.texto)
         return { texto: e.texto }
       }
     })
     // La herramienta tarda tres veces más que el silencio que se tolera: solo se sale adelante si ese silencio no cuenta.
-    const p = crear([herramienta], { silencioMaxMs: 400 })
+    const p = crear([herramienta], { silencioMaxMs: 1500 })
     const r = await p.enviar({ texto: 'MCP:eco:{"texto":"lenta"}' }, recolector().m)
     expect(r.motivo).toBe('completo')
     expect(lentas).toEqual(['lenta'])
-  })
+  }, 15_000)
 
   it('un CLI que de verdad se calla sigue dando error de tiempo agotado', async () => {
     const p = crear([eco().herramienta], { silencioMaxMs: 150 })

@@ -171,6 +171,31 @@ con el proveedor CLI, `--tools` es `WebSearch,WebFetch`; `WebFetch` se permite c
 dominio de `ORBE_DOMINIOS` (o entero si la lista está vacía; que cubra subdominios no está verificado). En el chat
 sale como «Leyendo: url» (`leer_web`) y su resultado es texto de fuera.
 
+v1.15.0 (Etapa 8, control del PC H10): `helper/UiaHelper.cs` gana la clase `Control` (ops `elementos`, `actuar`,
+`ventanas`, `enfocar`, `punto`, `clic`, `teclas`, `texto`, `vigilar`), se declara DPI-aware (píxeles físicos) y con
+ganchos de bajo nivel avisa `{"tipo":"usuario"}` (lo simulado va marcado como inyectado y se ignora; lo hecho en la
+ventana de Orbe no cuenta salvo Esc) → `ClienteHelper.alEvento` → `ControlPc.usuarioIntervino` → `detenerTodo`.
+Nunca escribe en campos de contraseña o código (lo comprueba el C#). `src/main/pc/control.ts`: `motivoBloqueo`,
+`CON_EFECTO`, `parsearTeclas` (sin tecla Windows), tope de 40 acciones, sesión con borde (`pc/marco.ts`, ventana
+transparente sin foco ni clics, `setContentProtection`). Herramientas en `agente/herramientas/pc.ts`; acción por app
+`pc_<proceso>.ver|control`, que sin regla propia cae en `pc.ver` (libre) / `pc.control` (preguntar) (`modoDe`).
+Solo con el helper real (no en humo).
+
+v1.15.1: `ver_pagina` (texto de la ventana/página abierta, op `contenido`, externo); `abrir_aplicacion` espera hasta
+10 s la ventana (`LanzadorApps.ventanas`). Modo auto: rayo `#auto-boton` → IPC `auto:info|fijar` (`modo-auto.ts`,
+guardado en `ajustes.json` `auto`); `Politica({auto})` permite todo salvo `prohibir` y modo vigilado; en `pc.ts`
+`confirmar` solo pregunta si `PAGO`; Enter ya no es tecla con efecto. `pc_mirar`: `pc/captura-ventana.ts`
+(desktopCapturer, recorte, JPEG ≤1280 en memoria) → `ResultadoEjecucion.imagen` → bloque de imagen MCP (CLI) o en
+`tool_result` (API; las rondas viejas se omiten); OpenAI no la recibe. `pc_clic` con `imagen: true` pasa píxeles de
+la imagen a pantalla (`ControlPc.enPantalla`). No tocar `setContentProtection` de la ventana de Orbe: la dejaba sin
+dibujar.
+
+v1.15.2: `VentanaOrbe` se recarga sola si el proceso de dibujo se cae (`render-process-gone`) o la página no carga
+(`did-fail-load`, cada 3 s): antes la ventana transparente quedaba «visible» sin verse nada. En desarrollo, lanzar
+`npm run dev` separado de la sesión (Start-Process), o Electron sobrevive al servidor de Vite y queda en blanco. v1.15.4: solo tras `render-process-gone` se
+reajusta el ratón (`interactivo = true`, `setIgnoreMouseEvents(false)`) para que la página nueva pueda volver a pedir
+«transparente al ratón»; hacerlo en cada `did-finish-load` (v1.15.3) tapaba los clics alrededor del conejo.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

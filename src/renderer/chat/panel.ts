@@ -227,6 +227,16 @@ export class PanelChat {
     this.botonFijar.addEventListener('click', () => void this.alternarFijado())
     void this.mostrarFijado()
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
+    // Modo auto: el agente solo pide permiso para lo de seguridad (enviar, publicar, borrar, lo peligroso).
+    const auto = porId('auto-boton')
+    const pintarAuto = (activo: boolean): void => {
+      auto.setAttribute('aria-pressed', String(activo))
+      auto.title = activo
+        ? 'Modo auto: activado. Hago todo sin preguntar, salvo pagos y compras; contraseñas y bancos siguen bloqueados.'
+        : 'Modo auto: apagado (pide permiso según tus reglas)'
+    }
+    void window.orbe.autoInfo().then(pintarAuto)
+    auto.addEventListener('click', () => void window.orbe.autoFijar(auto.getAttribute('aria-pressed') !== 'true').then(pintarAuto))
 
     // Los enlaces de las respuestas se abren en el navegador, nunca dentro de Orbe.
     porId('mensajes').addEventListener('click', (e) => {

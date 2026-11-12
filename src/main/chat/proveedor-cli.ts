@@ -353,7 +353,7 @@ export class ProveedorCli implements ProveedorChat {
     turno.herramientasEnCurso++
     try {
       const r = await turno.ejecutor.ejecutar({ id: `mcp-${++this.contadorLlamadas}`, nombre, entrada: argumentos ?? {} })
-      return { texto: r.contenido, esError: r.esError }
+      return { texto: r.contenido, esError: r.esError, imagen: r.imagen }
     } finally {
       turno.herramientasEnCurso--
       if (this.turno === turno) this.armarSilencio(turno)

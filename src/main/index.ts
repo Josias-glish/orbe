@@ -10,6 +10,9 @@ import { CANALES } from '../shared/tipos'
 import { existsSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
+import { crearHerramientasPc } from './agente/herramientas/pc'
+import { ControlPc } from './pc/control'
+import { crearMarco } from './pc/marco'
 import { crearHerramientasGmail } from './agente/herramientas/gmail'
 import { crearHerramientasInstagram } from './agente/herramientas/instagram'
 import { ServicioMetricas, dia } from './metricas/servicio'
@@ -39,6 +42,8 @@ import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
 import { registrarFondos } from './fondos-ipc'
 import { ejecutarHumo } from './humo'
 import { nivelInicial, registrarPotencia } from './potencia'
+import { modoAutoActivo, registrarModoAuto } from './modo-auto'
+import { crearCapturaVentana } from './pc/captura-ventana'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -257,7 +262,24 @@ app.whenReady().then(async () => {
   }
   // Composio: cientos de apps por un solo conector MCP; la clave se lee del cofre en cada llamada (vale sin reiniciar).
   const composio = crearHerramientasComposio(new ClienteComposio(() => cofre.leer<string>('composio.clave') ?? undefined))
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio])
+  // Control del PC (H10): con el helper real (nunca en la prueba de humo). Si el usuario toca el ratón o el teclado
+  // mientras Orbe actúa, el helper avisa y se detiene todo (`detenerTodo`, que se define más abajo).
+  let pararPorUsuario = (): void => {}
+  const helperPc = helper
+  const controlPc = helperPc
+    ? new ControlPc({
+        pedir: (op, p, ms) => helperPc.pedir(op, p, ms),
+        marco: crearMarco(perfilDe(config.identidad).nombre),
+        alUsuario: () => pararPorUsuario(),
+        auto: modoAutoActivo,
+        capturar: crearCapturaVentana()
+      })
+    : null
+  if (helperPc && controlPc) helperPc.alEvento = () => controlPc.usuarioIntervino()
+  // Con el helper, abrir_aplicacion espera (hasta 10 s) a que salga la ventana antes de contestar.
+  if (helperPc) sistema.lanzador = { ...sistema.lanzador, ventanas: () => helperPc.pedir<{ ventanas: Array<{ hwnd: number; titulo: string }> }>('ventanas').then((r) => r.ventanas) }
+  const pc = controlPc ? crearHerramientasPc(controlPc) : []
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio, ...pc])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
@@ -274,6 +296,10 @@ app.whenReady().then(async () => {
     proveedor,
     nivel: nivelInicial(leerAjustes().esfuerzo, config.esfuerzo),
     guardar: (nivel) => guardarAjustes({ esfuerzo: nivel })
+  })
+  // Modo auto (interruptor del chat): solo se pide permiso para lo de seguridad. Se recuerda entre sesiones.
+  registrarModoAuto(orbe.ventana, !modoHumo && leerAjustes().auto === true, (activo) => {
+    if (!modoHumo) guardarAjustes({ auto: activo })
   })
   // Consumo: tokens y dólares de cada respuesta, por día y por modelo (la prueba de humo no toca el archivo real).
   const registroUso = new RegistroUso(modoHumo ? null : join(datos, 'uso.json'))
@@ -321,7 +347,9 @@ app.whenReady().then(async () => {
   const detenerTodo = (): void => {
     servicioChat?.cancelarActivo()
     tareas.cancelarTodo()
+    void controlPc?.terminar()
   }
+  pararPorUsuario = detenerTodo
   registrarAtajos(
     { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo(), detenerTodo },
     { panel: config.atajoPanel, leer: config.atajoLeer, pausa: config.atajoPausa }

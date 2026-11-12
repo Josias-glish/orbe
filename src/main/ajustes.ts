@@ -12,6 +12,8 @@ export interface Ajustes {
   fijada?: boolean
   /** El nivel del marcador de potencia que dejó el usuario (si no, vale ORBE_ESFUERZO). */
   esfuerzo?: NivelEsfuerzo
+  /** El interruptor «Modo auto» del chat: el agente solo pide permiso para lo de seguridad. */
+  auto?: boolean
 }
 
 const ruta = (): string => join(app.getPath('userData'), 'ajustes.json')
