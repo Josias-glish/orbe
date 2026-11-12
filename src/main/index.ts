@@ -42,6 +42,8 @@ import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
 import { registrarFondos } from './fondos-ipc'
 import { ejecutarHumo } from './humo'
 import { nivelInicial, registrarPotencia } from './potencia'
+import { modoAutoActivo, registrarModoAuto } from './modo-auto'
+import { crearCapturaVentana } from './pc/captura-ventana'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -268,10 +270,14 @@ app.whenReady().then(async () => {
     ? new ControlPc({
         pedir: (op, p, ms) => helperPc.pedir(op, p, ms),
         marco: crearMarco(perfilDe(config.identidad).nombre),
-        alUsuario: () => pararPorUsuario()
+        alUsuario: () => pararPorUsuario(),
+        auto: modoAutoActivo,
+        capturar: crearCapturaVentana()
       })
     : null
   if (helperPc && controlPc) helperPc.alEvento = () => controlPc.usuarioIntervino()
+  // Con el helper, abrir_aplicacion espera (hasta 10 s) a que salga la ventana antes de contestar.
+  if (helperPc) sistema.lanzador = { ...sistema.lanzador, ventanas: () => helperPc.pedir<{ ventanas: Array<{ hwnd: number; titulo: string }> }>('ventanas').then((r) => r.ventanas) }
   const pc = controlPc ? crearHerramientasPc(controlPc) : []
   const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio, ...pc])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
@@ -290,6 +296,10 @@ app.whenReady().then(async () => {
     proveedor,
     nivel: nivelInicial(leerAjustes().esfuerzo, config.esfuerzo),
     guardar: (nivel) => guardarAjustes({ esfuerzo: nivel })
+  })
+  // Modo auto (interruptor del chat): solo se pide permiso para lo de seguridad. Se recuerda entre sesiones.
+  registrarModoAuto(orbe.ventana, !modoHumo && leerAjustes().auto === true, (activo) => {
+    if (!modoHumo) guardarAjustes({ auto: activo })
   })
   // Consumo: tokens y dólares de cada respuesta, por día y por modelo (la prueba de humo no toca el archivo real).
   const registroUso = new RegistroUso(modoHumo ? null : join(datos, 'uso.json'))

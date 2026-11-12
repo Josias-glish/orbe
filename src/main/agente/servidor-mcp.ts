@@ -17,6 +17,8 @@ export interface HerramientaMcp {
 export interface RespuestaHerramienta {
   texto: string
   esError: boolean
+  /** JPEG en base64: va al cliente como bloque de imagen MCP. */
+  imagen?: string
 }
 
 export interface ManejadorMcp {
@@ -171,7 +173,8 @@ export class ServidorMcp {
           // Un fallo de la herramienta se cuenta como resultado con error, que es lo que el modelo sabe leer.
           r = { texto: `Error: ${e instanceof Error ? e.message : String(e)}`, esError: true }
         }
-        return resultado(id, { content: [{ type: 'text', text: r.texto }], isError: r.esError })
+        const imagen = r.imagen ? [{ type: 'image', data: r.imagen, mimeType: 'image/jpeg' }] : []
+        return resultado(id, { content: [{ type: 'text', text: r.texto }, ...imagen], isError: r.esError })
       }
       default:
         // Incluye «server/discover» y otros métodos más nuevos: el cliente vuelve al protocolo de siempre.

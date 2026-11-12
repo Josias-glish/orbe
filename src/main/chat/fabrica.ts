@@ -1,3 +1,4 @@
+import { modoAutoActivo } from '../modo-auto'
 import { join } from 'node:path'
 import { perfilDe, presentacionIdentidad } from '../../shared/identidad'
 import type { InfoChat } from '../../shared/tipos'
@@ -44,6 +45,7 @@ export function crearProveedor(
   if (agente) {
     const rutaReglas = join(datosApp, 'reglas.json')
     agente.reglas = () => leerReglas(rutaReglas)
+    agente.auto = modoAutoActivo
   }
   const identidad = presentacionIdentidad(perfilDe(config.identidad))
   if (config.proveedor === 'api') {

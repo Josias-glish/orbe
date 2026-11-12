@@ -79,7 +79,7 @@
 | H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 13 |
 | H8 | Publicación en Instagram | Plan propio | ✗ aparte por decisión del usuario | — |
 | H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ⊘ el usuario conecta Drive, Calendar y demás por Composio (12-nov); la Etapa 7 quedó en buscador ampliado | — |
-| H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ✔ v1.15.0 (sin la captura con números para apps sin accesibilidad: va con la visión, Etapa 13) | 8 |
+| H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ✔ v1.15.0 · v1.15.1 `ver_pagina`, `pc_mirar` (imagen de la ventana y clic sobre ella) y modo auto | 8 |
 
 ## 7. Interfaz y canales
 

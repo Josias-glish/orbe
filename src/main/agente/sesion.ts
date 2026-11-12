@@ -24,6 +24,8 @@ export interface OpcionesAgente {
   busquedaCli?: boolean
   /** Dominios permitidos para las herramientas web (ORBE_DOMINIOS); vacío o ausente, todos los públicos. */
   dominios?: readonly string[]
+  /** Modo auto: solo se pide permiso para lo de seguridad. */
+  auto?: () => boolean
   /** Lee `reglas.json` al empezar cada tarea (así un cambio en el archivo vale sin reiniciar). */
   reglas?: () => Record<string, Modo>
 }
@@ -48,7 +50,7 @@ export const NOMBRE_BUSCAR_WEB = 'buscar_web'
 export function crearEjecutor(agente: OpcionesAgente, senal: AbortSignal, m: ManejadoresTurno, ordenUsuario?: string): EjecutorHerramientas {
   return new EjecutorHerramientas({
     registro: agente.registro,
-    politica: new Politica({ reglas: agente.reglas?.(), ordenUsuario }),
+    politica: new Politica({ reglas: agente.reglas?.(), ordenUsuario, auto: agente.auto?.() }),
     senal,
     alAccion: (accion) => m.alAccion?.(accion),
     alFuentes: (fuentes) => m.alFuentes?.(fuentes),

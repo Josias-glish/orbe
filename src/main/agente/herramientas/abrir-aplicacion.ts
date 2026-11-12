@@ -16,6 +16,25 @@ export interface LanzadorApps {
   abrirRuta(ruta: string): Promise<void>
   /** Abre una app de Microsoft Store por su identificador (en Windows, `explorer shell:AppsFolder\<id>`). */
   abrirTienda(appId: string): Promise<void>
+  /** Las ventanas abiertas (con el control del PC): sirve para esperar a que la app recién abierta aparezca. */
+  ventanas?(): Promise<Array<{ hwnd: number; titulo: string }>>
+  esperar?(ms: number): Promise<void>
+}
+
+const ESPERA_MAX_MS = 10_000
+const sinTildes = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+
+/** Espera (hasta 10 s) a que salga una ventana nueva o una con el nombre de la app. Devuelve su título, o null. */
+async function esperarVentana(nombre: string, lanzador: LanzadorApps, antes: ReadonlySet<number>): Promise<string | null> {
+  const esperar = lanzador.esperar ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
+  const clave = sinTildes(nombre)
+  for (let t = 0; t < ESPERA_MAX_MS; t += 500) {
+    await esperar(500)
+    const v = await lanzador.ventanas!().catch(() => [])
+    const nueva = v.find((x) => !antes.has(x.hwnd)) ?? v.find((x) => sinTildes(x.titulo).includes(clave))
+    if (nueva) return nueva.titulo
+  }
+  return null
 }
 
 const validarCampos = crearValidador<EntradaAbrirAplicacion>(campos)
@@ -68,9 +87,21 @@ export function crearAbrirAplicacion(catalogo: CatalogoAplicaciones, lanzador: L
               (r.sugerencias.length > 0 ? ` Parecidas: ${r.sugerencias.join(', ')}.` : '') +
               ' Si no está instalada, díselo al usuario.'
           )
-        case 'una':
+        case 'una': {
+          if (!lanzador.ventanas) {
+            await lanzar(r.entrada, lanzador)
+            return { texto: `Pedí a Windows que abriera «${r.entrada.nombre}». No puedes ver ni controlar la aplicación.` }
+          }
+          const antes = new Set((await lanzador.ventanas().catch(() => [])).map((x) => x.hwnd))
           await lanzar(r.entrada, lanzador)
-          return { texto: `Pedí a Windows que abriera «${r.entrada.nombre}». No puedes ver ni controlar la aplicación.` }
+          const titulo = await esperarVentana(r.entrada.nombre, lanzador, antes)
+          return {
+            texto: titulo
+              ? `«${r.entrada.nombre}» está abierta (ventana «${titulo}»). Mírala con pc_ver si tienes que usarla.`
+              : `Pedí a Windows que abriera «${r.entrada.nombre}», pero en 10 s no apareció su ventana: puede seguir cargando. ` +
+                'Antes de decir que no se abrió, vuelve a mirar con pc_ventanas o pregúntale al usuario.'
+          }
+        }
       }
     }
   })

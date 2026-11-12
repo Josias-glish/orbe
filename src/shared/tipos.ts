@@ -29,6 +29,8 @@ export const CANALES = {
   chatConfirmar: 'chat:confirmar',
   potenciaInfo: 'potencia:info',
   potenciaFijar: 'potencia:fijar',
+  autoInfo: 'auto:info',
+  autoFijar: 'auto:fijar',
   pantallaLeer: 'pantalla:leer',
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
@@ -593,6 +595,9 @@ export interface ApiOrbe {
   /** El marcador de potencia: el nivel actual del modelo y cuándo se aplica un cambio. */
   potenciaInfo(): Promise<InfoPotencia>
   potenciaFijar(nivel: NivelEsfuerzo): Promise<InfoPotencia>
+  /** El interruptor «Modo auto» del chat: el agente solo pide permiso para lo de seguridad. */
+  autoInfo(): Promise<boolean>
+  autoFijar(activo: boolean): Promise<boolean>
   chatPrecalentar(): void
   alEventoChat(cb: (evento: EventoChat) => void): () => void
 

@@ -192,7 +192,8 @@ export class EjecutorHerramientas {
       return {
         id: llamada.id,
         contenido: r.externo ? envolverExterno(texto, { ...r.externo, nonce: this.deps.nonce }) : texto,
-        esError: false
+        esError: false,
+        ...(r.imagen ? { imagen: r.imagen } : {})
       }
     } catch (e) {
       if (e instanceof Cancelado || senal.aborted) {

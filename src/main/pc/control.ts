@@ -15,6 +15,7 @@ export interface VentanaPc {
   aplicacion: string
   titulo: string
   url?: string | null
+  esNavegador?: boolean
   restringida?: boolean
   rect?: RectPc | null
 }
@@ -35,12 +36,25 @@ export interface MarcoPc {
   senalar(rect: RectPc, texto: string): void
 }
 
+/** Una captura de la ventana en memoria: JPEG base64 y cómo pasar de sus píxeles a la pantalla. */
+export interface CapturaPc {
+  jpeg: string
+  ancho: number
+  alto: number
+  origen: { x: number; y: number }
+  escala: number
+}
+
 export interface DepsControlPc {
   /** Una operación del helper de UI Automation (`ClienteHelper.pedir`). */
   pedir<T>(op: string, parametros?: Record<string, unknown>, tiempoMaxMs?: number): Promise<T>
   marco: MarcoPc
   /** El usuario tocó el ratón o el teclado (o pulsó Esc) mientras Orbe actuaba: hay que parar todo. */
   alUsuario(): void
+  /** Modo auto: solo se pregunta lo de pagos y compras (lo bloqueado sigue bloqueado). */
+  auto?: () => boolean
+  /** Captura en memoria de una zona de la pantalla (pc_mirar). Sin ella, el agente no puede mirar la imagen. */
+  capturar?: (r: RectPc) => Promise<CapturaPc>
   ahora?: () => number
   esperar?: (ms: number) => Promise<void>
 }
@@ -79,7 +93,7 @@ const TECLAS: Readonly<Record<string, number>> = {
 
 /** «Ctrl+Shift+S» → códigos de tecla virtual. La tecla Windows no existe aquí (Win+R abriría «Ejecutar»). */
 export function parsearTeclas(combo: string): number[] | null {
-  const partes = combo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split('+').map((p) => p.trim())
+  const partes = combo.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().split('+').map((p) => p.trim())
   if (partes.length === 0 || partes.length > 4) return null
   const vks: number[] = []
   for (const p of partes) {
@@ -91,14 +105,17 @@ export function parsearTeclas(combo: string): number[] | null {
   return vks
 }
 
-/** Teclas que pueden enviar, borrar o cerrar: se confirman siempre. */
+/** Teclas que pueden borrar o cerrar (Supr, Alt+F4): se confirman salvo en modo auto. Enter no pregunta. */
 export function teclasConEfecto(vks: readonly number[]): boolean {
-  return vks.includes(0x0d) || vks.includes(0x2e) || (vks.includes(0x12) && vks.includes(0x73))
+  return vks.includes(0x2e) || (vks.includes(0x12) && vks.includes(0x73))
 }
+
+/** Pagos y compras: se confirman incluso en modo auto. */
+export const PAGO = /\b(pagar|pago|pay|comprar|compra|buy|purchase|checkout|transferir|suscrib\w*|subscribe)\b/i
 
 /** La parte de la acción de `reglas.json` que nombra la app: «chrome» → `pc_chrome.control`. */
 export function slugApp(proceso: string): string {
-  return proceso.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, '_').replace(/^_+|_+$/g, '') || 'app'
+  return proceso.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z]+/g, '_').replace(/^_+|_+$/g, '') || 'app'
 }
 
 export const TOPE_ACCIONES = 40
@@ -111,6 +128,7 @@ const FIN_SESION_MS = 6000
 export class ControlPc {
   objetivo: VentanaPc | null = null
   elementos: ElementoPc[] = []
+  captura: CapturaPc | null = null
   private activo = false
   private acciones = 0
   private pausadoHasta = 0
@@ -121,6 +139,27 @@ export class ControlPc {
   constructor(private readonly deps: DepsControlPc) {
     this.ahora = deps.ahora ?? Date.now
     this.esperar = deps.esperar ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
+  }
+
+  /** Mira la ventana como imagen (apps sin accesibilidad: Blender, juegos, lienzos). Recuerda la escala para pc_clic. */
+  async mirar(hwnd?: number): Promise<{ ventana: VentanaPc; captura: CapturaPc }> {
+    if (!this.deps.capturar) throw new Error('Mirar la pantalla como imagen no está disponible aquí.')
+    const { ventana } = await this.ver(hwnd)
+    if (!ventana.rect) throw new Error('No sé dónde está esa ventana en la pantalla.')
+    this.captura = await this.deps.capturar(ventana.rect)
+    return { ventana, captura: this.captura }
+  }
+
+  /** Un punto de la última imagen de pc_mirar, en píxeles de pantalla. */
+  enPantalla(x: number, y: number): { x: number; y: number } {
+    const c = this.captura
+    if (!c) throw new Error('No hay ninguna imagen: mira primero con pc_mirar.')
+    if (x < 0 || y < 0 || x > c.ancho || y > c.alto) throw new Error(`Ese punto queda fuera de la imagen (${c.ancho}×${c.alto}).`)
+    return { x: Math.round(c.origen.x + x * c.escala), y: Math.round(c.origen.y + y * c.escala) }
+  }
+
+  get auto(): boolean {
+    return this.deps.auto?.() ?? false
   }
 
   pedir<T>(op: string, p: Record<string, unknown> = {}, ms?: number): Promise<T> {
@@ -148,6 +187,7 @@ export class ControlPc {
       this.elementos = []
       throw new AccionProhibida(motivo)
     }
+    if (this.objetivo?.hwnd !== r.ventana.hwnd) this.captura = null
     this.objetivo = r.ventana
     this.elementos = r.elementos ?? []
     return { ventana: r.ventana, elementos: this.elementos, parcial: !!r.parcial }
@@ -161,7 +201,7 @@ export class ControlPc {
     if (!r.ventana) throw new Error('Esa ventana ya no existe: vuelve a mirar con pc_ver.')
     const motivo = motivoBloqueo(r.ventana)
     if (motivo) throw new AccionProhibida(motivo)
-    if (++this.acciones > TOPE_ACCIONES) {
+    if (++this.acciones > TOPE_ACCIONES && !this.auto) {
       if (!(await preguntar(`Llevo ${TOPE_ACCIONES} acciones seguidas en el PC. ¿Sigo?`, 'Es el tope de seguridad: si sigues, cuento otras tantas.'))) {
         throw new Error('El usuario no quiso que siga: para y cuéntale dónde te quedaste.')
       }

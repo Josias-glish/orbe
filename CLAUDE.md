@@ -179,7 +179,16 @@ Nunca escribe en campos de contraseña o código (lo comprueba el C#). `src/main
 `CON_EFECTO`, `parsearTeclas` (sin tecla Windows), tope de 40 acciones, sesión con borde (`pc/marco.ts`, ventana
 transparente sin foco ni clics, `setContentProtection`). Herramientas en `agente/herramientas/pc.ts`; acción por app
 `pc_<proceso>.ver|control`, que sin regla propia cae en `pc.ver` (libre) / `pc.control` (preguntar) (`modoDe`).
-Solo con el helper real (no en humo). Sin captura con números para apps sin accesibilidad (Etapa 13).
+Solo con el helper real (no en humo).
+
+v1.15.1: `ver_pagina` (texto de la ventana/página abierta, op `contenido`, externo); `abrir_aplicacion` espera hasta
+10 s la ventana (`LanzadorApps.ventanas`). Modo auto: rayo `#auto-boton` → IPC `auto:info|fijar` (`modo-auto.ts`,
+guardado en `ajustes.json` `auto`); `Politica({auto})` permite todo salvo `prohibir` y modo vigilado; en `pc.ts`
+`confirmar` solo pregunta si `PAGO`; Enter ya no es tecla con efecto. `pc_mirar`: `pc/captura-ventana.ts`
+(desktopCapturer, recorte, JPEG ≤1280 en memoria) → `ResultadoEjecucion.imagen` → bloque de imagen MCP (CLI) o en
+`tool_result` (API; las rondas viejas se omiten); OpenAI no la recibe. `pc_clic` con `imagen: true` pasa píxeles de
+la imagen a pantalla (`ControlPc.enPantalla`). No tocar `setContentProtection` de la ventana de Orbe: la dejaba sin
+dibujar.
 
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·

@@ -526,6 +526,22 @@ describe('abrir_url', () => {
 })
 
 describe('abrir_aplicacion', () => {
+  it('con el control del PC, espera a que aparezca la ventana nueva (Gemini tarda en cargar)', async () => {
+    const { cat } = catalogo(MENU)
+    let vueltas = 0
+    const lanzador: LanzadorApps = {
+      abrirRuta: async () => undefined,
+      abrirTienda: async () => undefined,
+      esperar: async () => undefined,
+      ventanas: async () => (++vueltas < 5 ? [{ hwnd: 1, titulo: 'Escritorio' }] : [{ hwnd: 1, titulo: 'Escritorio' }, { hwnd: 2, titulo: 'Spotify Premium' }])
+    }
+    const h = crearAbrirAplicacion(cat, lanzador)
+    const r = await h.ejecutar({ nombre: 'Spotify' }, { senal: new AbortController().signal } as never)
+    expect(r.texto).toMatch(/está abierta \(ventana «Spotify Premium»\)/)
+    lanzador.ventanas = async () => []
+    expect((await h.ejecutar({ nombre: 'Spotify' }, { senal: new AbortController().signal } as never)).texto).toMatch(/en 10 s no apareció/)
+  })
+
   it('abre un acceso directo del menú Inicio con la ruta del catálogo y sin argumentos', async () => {
     const t = montarHerramientas(MENU)
     const r = await t.usar('abrir_aplicacion', { nombre: 'Spotify' })
