@@ -95,6 +95,13 @@ export class VentanaOrbe {
       recargar(3000)
     })
 
+    // Página nueva (también tras recargar): vuelve a recibir el ratón. Si se quedara «transparente al ratón» de la
+    // página anterior, la nueva no recibiría los movimientos para reactivarse y el orbe no respondería.
+    this.ventana.webContents.on('did-finish-load', () => {
+      this.interactivo = true
+      if (!this.ventana.isDestroyed()) this.ventana.setIgnoreMouseEvents(false)
+    })
+
     this.registrarIpc()
     this.cargar()
   }
