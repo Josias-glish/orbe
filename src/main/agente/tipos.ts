@@ -9,7 +9,7 @@ export type NivelPermiso = 'libre' | 'confirmar'
 /** Lo que la política decide sobre una llamada concreta, antes de ejecutarla. */
 export type Decision =
   | { tipo: 'permitir' }
-  | ({ tipo: 'confirmar' } & Pick<PeticionConfirmacion, 'titulo' | 'detalle' | 'peligrosa'>)
+  | ({ tipo: 'confirmar' } & Pick<PeticionConfirmacion, 'titulo' | 'detalle' | 'peligrosa' | 'etiquetaPermitir' | 'porTarea' | 'revision'>)
   /** No se puede hacer ni con permiso: el agente debe parar y pedirle al usuario que lo haga él. */
   | { tipo: 'prohibir'; motivo: string }
 
@@ -33,6 +33,8 @@ export interface ContextoHerramienta {
   vigilar(): void
   /** El usuario permitió que el agente llegue a localhost y a redes privadas (ORBE_PERMITIR_LOCAL). */
   permitirLocal: boolean
+  /** Si no está vacía, las herramientas web solo abren estos dominios y sus subdominios (ORBE_DOMINIOS). */
+  dominios?: readonly string[]
 }
 
 export interface ResultadoEjecucion {

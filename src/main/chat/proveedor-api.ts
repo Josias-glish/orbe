@@ -10,6 +10,7 @@ import {
   fuentesDeContenido,
   quitarBloquesIncompletos
 } from './busqueda-nativa'
+import { INSTRUCCION_RESUMEN, MARCA_RESUMEN, corteCompactacion, textoConversacion } from './compactar'
 import { construirBloques, type TurnoEntrada } from './contenido'
 import { ErrorChat, crearError, errorDesdeApi } from './errores'
 import { construirPromptSistema } from './prompt-sistema'
@@ -156,6 +157,7 @@ export class ProveedorApi implements ProveedorChat {
     let texto = ''
 
     try {
+      await this.compactar(manejadores, controlador.signal)
       if (agente) return await this.turnoAgente(agente, mensajeUsuario, manejadores, controlador, entrada.texto)
 
       const flujo = this.cliente.beta.messages.stream(
@@ -204,6 +206,34 @@ export class ProveedorApi implements ProveedorChat {
     } finally {
       this.turnoEnCurso = false
       this.controlador = null
+    }
+  }
+
+  /** N11: si el historial ya es muy largo, la mitad antigua se cambia por un resumen. Si algo falla, se sigue entero. */
+  private async compactar(m: ManejadoresTurno, senal: AbortSignal): Promise<void> {
+    const corte = corteCompactacion(this.historial)
+    if (corte < 0 || !this.cliente) return
+    try {
+      const r = await this.cliente.beta.messages.create(
+        {
+          model: this.opciones.modelo,
+          max_tokens: 2000,
+          system: INSTRUCCION_RESUMEN,
+          messages: [{ role: 'user', content: textoConversacion(this.historial.slice(0, corte)) }]
+        },
+        { signal: senal }
+      )
+      m.alUso?.(usoAnthropic(r.usage))
+      const resumen = r.content.map((b) => (b.type === 'text' ? b.text : '')).join('').trim()
+      if (!resumen) return
+      this.historial = [
+        { role: 'user', content: `${MARCA_RESUMEN}\n${resumen}` },
+        { role: 'assistant', content: 'Entendido: sigo con eso en cuenta.' },
+        ...this.historial.slice(corte)
+      ]
+      m.alAviso?.('Resumí la parte antigua de la conversación para no perder el hilo.')
+    } catch {
+      // Sin resumen se reenvía el historial entero, como antes.
     }
   }
 

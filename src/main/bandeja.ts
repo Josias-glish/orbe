@@ -6,7 +6,7 @@ export interface AccionesBandeja {
   mostrarPanel(): void
   nuevaConversacion(): void
   leerPantalla(): void
-  /** Corta la respuesta o la tarea del agente que esté en curso. */
+  /** Corta todo lo que esté haciendo el agente: la respuesta del chat y las tareas de fondo. */
   detenerAccion(): void
   salir(): void
 }
@@ -24,7 +24,7 @@ export interface EstadoBandeja {
 /** El menú de la bandeja, como datos (así se puede probar sin Electron). */
 export function plantillaBandeja(acciones: AccionesBandeja, estado: EstadoBandeja): MenuItemConstructorOptions[] {
   const plantilla: MenuItemConstructorOptions[] = [
-    ...(estado.hayTurno ? [{ label: 'Detener acción', click: acciones.detenerAccion } as MenuItemConstructorOptions, { type: 'separator' } as MenuItemConstructorOptions] : []),
+    ...(estado.hayTurno ? [{ label: 'Detener todo', click: acciones.detenerAccion } as MenuItemConstructorOptions, { type: 'separator' } as MenuItemConstructorOptions] : []),
     { label: estado.visible ? 'Ocultar Orbe' : 'Mostrar Orbe', click: acciones.alternarVisibilidad },
     { label: 'Abrir el chat', click: acciones.mostrarPanel },
     { label: 'Nueva conversación', click: acciones.nuevaConversacion },

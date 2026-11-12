@@ -52,7 +52,7 @@ class ProveedorControlado implements ProveedorChat {
     this.manejadores?.alAccion?.(accion)
   }
   /** Simula que el agente pide permiso al usuario. */
-  confirmar(peticion: PeticionConfirmacion): Promise<boolean> | undefined {
+  confirmar(peticion: PeticionConfirmacion): Promise<boolean | 'tarea'> | undefined {
     return this.manejadores?.confirmar?.(peticion)
   }
   terminar(): void {
@@ -400,7 +400,7 @@ describe('el agente: acciones y confirmaciones por IPC', () => {
     const t = montar()
     t.enviar({ id: 'a', texto: 'x' })
     await esperar()
-    let resuelta: boolean | null = null
+    let resuelta: boolean | 'tarea' | null = null
     void t.proveedor.confirmar({ titulo: 'T', detalle: 'D' })?.then((v) => (resuelta = v))
     const id = (t.eventosChat().find((e) => e.tipo === 'confirmar') as Extract<EventoChat, { tipo: 'confirmar' }>).confirmacion.confirmacionId
     t.emitirDesde(CANALES.chatConfirmar, false, 'a', id, true) // remitente ajeno

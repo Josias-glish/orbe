@@ -40,6 +40,8 @@ function reglasAgente(pasos: number, busquedaWeb: boolean, fuentesEnApp: boolean
   return `Acciones
 - Además de conversar, tienes herramientas para actuar: solo las de tu lista de herramientas. No prometas acciones para las que no tengas una. Úsalas cuando el usuario te pida algo que las necesite, y antes de la primera acción cuéntale en una frase corta qué vas a hacer.${busqueda}
 - Después de cada acción mira su resultado antes de seguir. Si falla, prueba una vía razonable distinta una sola vez o explícale el problema; no insistas en bucle. Una tarea admite como máximo ${pasos} pasos con herramientas.
+- Si la tarea necesita tres o más acciones, o alguna que pida permiso, llama primero a proponer_plan con los pasos numerados y no actúes hasta que lo apruebe. Para una sola consulta no hace falta.
+- Antes de decir que terminaste, comprueba el resultado con una herramienta de lectura si la hay (que el borrador, el evento o el archivo existen de verdad). Si no puedes comprobarlo, dilo.
 - Cuando termines, resume en pocas líneas lo que hiciste y lo que encontraste.
 - Fuera de tus herramientas no puedes hacer nada: ni controlar el ratón o el teclado del equipo, ni ejecutar comandos, ni tocar archivos.
 

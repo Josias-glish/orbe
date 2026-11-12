@@ -156,6 +156,16 @@ Gmail/Meta van por «preguntar». `modoDe` usa `REGLAS_POR_DEFECTO` para accione
 v1.12.1: el conejo 3D incluido pasa a ser `conejo-con-pelo.glb` (de `orbe-sitio`, 26 MB, 1,1 M triángulos,
 piel y pelo; su animación no se reproduce). El humo espera a que la figura deje de estar «cargando».
 
+v1.13.0 (Etapa 6, núcleo agéntico N3–N11): `proponer_plan` (`herramientas/plan.ts`, siempre se aprueba aparte);
+`Politica` añade `preaprobar` (respuesta `'tarea'` = «Permitir en esta tarea», `RespuestaPermiso = boolean | 'tarea'`
+por IPC; nunca si la acción o el título casan con `ENVIO`, si es peligrosa o en modo vigilado), `leyoExterno` y el
+revisor (`revision` en la tarjeta: la orden y el contenido de fuera leído). `EjecutorHerramientas` lleva el vigilante
+(misma llamada 3 veces o 12 en 60 s → tarjeta «¿Sigo?»; texto de fuera con órdenes → `vigilar()`). «Detener todo»:
+atajo `ORBE_ATAJO_PAUSA` (por defecto `CommandOrControl+Shift+Backspace`) y la bandeja; `ServicioTareas.cancelarTodo`.
+Los permisos de tareas salen en la tarjeta del chat (`panel.permisoDeTarea`; cerrarla sin responder no cuenta como no).
+`ServicioChat` emite «Resumen: …» al final si hubo 2+ acciones. `ORBE_DOMINIOS` limita `abrir_url`. `chat/compactar.ts`
+resume la mitad antigua del historial de la API por encima de 240 000 caracteres. Sin pantalla de bienvenida en el chat.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

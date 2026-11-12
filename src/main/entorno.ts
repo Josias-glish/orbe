@@ -55,6 +55,8 @@ export const MODELO_POR_DEFECTO = 'claude-sonnet-5-5'
 export const CONTEXTO_MAX_POR_DEFECTO = 8000
 export const ATAJO_PANEL_POR_DEFECTO = 'CommandOrControl+Shift+Space'
 export const ATAJO_LEER_POR_DEFECTO = 'CommandOrControl+Shift+Alt+Space'
+// Sin Ctrl+Alt: en los teclados en español es AltGr y escribiría símbolos.
+export const ATAJO_PAUSA_POR_DEFECTO = 'CommandOrControl+Shift+Backspace'
 export const MEMORIA_MAX_POR_DEFECTO = 6000
 export const URL_OPENAI_POR_DEFECTO = 'https://api.openai.com/v1'
 /** El estilo por defecto de la voz neuronal: un mayordomo digital sereno y elegante (sin imitar a nadie en concreto). */
@@ -85,6 +87,8 @@ export interface Config {
   contextoMax: number
   atajoPanel: string
   atajoLeer: string
+  /** Detiene todo lo que esté haciendo el agente (el chat y las tareas de fondo). */
+  atajoPausa: string
   /** Carpeta con las imágenes que se usan de fondo del chat; vacía si no hay. */
   fondosCarpeta: string
   /** Máximo de caracteres de recuerdos que viajan en cada conversación. */
@@ -101,6 +105,8 @@ export interface Config {
     busquedaMax: number
     /** Dejar que el agente llegue a localhost y a redes privadas (apagado por defecto). */
     permitirLocal: boolean
+    /** ORBE_DOMINIOS: si hay alguno, el agente solo abre esas webs (y sus subdominios). */
+    dominios: string[]
   }
   /**
    * Buscador para el proveedor `openai` (herramienta `buscar_web`). Con la API de Claude manda su búsqueda nativa.
@@ -248,6 +254,12 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     else permitirLocal = b
   }
 
+  // ORBE_DOMINIOS: «wikipedia.org, gob.es» (sin esquema ni ruta); vacío, todas las webs públicas.
+  const dominios = leer('ORBE_DOMINIOS')
+    .split(/[,;\s]+/)
+    .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^\*\./, '').replace(/[/:].*$/, '').replace(/\.$/, ''))
+    .filter(Boolean)
+
   // ORBE_MEMORIA_CLAUDE: carpetas separadas por «;», o «ninguna» para no importar nada.
   let memoriaOrigenes: string[] | null = null
   const origenesLeidos = leer('ORBE_MEMORIA_CLAUDE')
@@ -313,10 +325,11 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     contextoMax,
     atajoPanel: leer('ORBE_ATAJO_PANEL') || ATAJO_PANEL_POR_DEFECTO,
     atajoLeer: leer('ORBE_ATAJO_LEER') || ATAJO_LEER_POR_DEFECTO,
+    atajoPausa: leer('ORBE_ATAJO_PAUSA') || ATAJO_PAUSA_POR_DEFECTO,
     fondosCarpeta: leer('ORBE_FONDOS'),
     memoriaMax,
     memoriaOrigenes,
-    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal },
+    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal, dominios },
     busqueda: { proveedor: busquedaProveedor, clave: busquedaClave, url: busquedaUrl },
     apariencia,
     diseno,

@@ -10,15 +10,15 @@
 |---|---|---|---|---|
 | N1 | Bucle de herramientas con límite de pasos | Todos | ✔ `agente/bucle.ts`, `ORBE_AGENTE_PASOS` | — |
 | N2 | Permisos por acción en 4 niveles + bloqueado | dots (Custom Rules) | ✔ `reglas.json` | — |
-| N3 | **Modo plan**: en tareas de varios pasos, primero un plan numerado que apruebas, luego ejecuta | Claude Code (plan mode), Gemini (reasoning chains), Codex | ✗ | 6 |
-| N4 | **Revisor antes de actuar** (auto-review): compara cada acción no libre con tu orden, tus reglas y la seguridad | dots | ✗ | 6 |
-| N5 | **Auto-comprobación** al terminar: verifica que el resultado existe y es correcto (el borrador se creó, el archivo pesa lo esperado) | Copilot (ejecuta pruebas antes de la PR) | ✗ | 6 |
-| N6 | Niveles de sensibilidad: «tú lo haces» (takeover), aprobación cada vez, aprobación previa «para esta tarea» | dots | ◐ existe `tu_lo_haces`; falta la aprobación previa por tarea | 6 |
-| N7 | **Pausar todo** (botón y atajo) y **monitor de seguridad** que pausa solo si detecta algo raro (bucle, muchas acciones seguidas, contenido sospechoso) | dots | ◐ cancelar una tarea; falta pausa global y monitor | 6 |
-| N8 | **Bandeja única de aprobaciones** (permisos, borradores, publicaciones pendientes) | Copilot (todo acaba en propuesta revisable), dots | ◐ repartido entre Tareas y Contenido | 6 |
-| N9 | **Progreso visible en vivo** (paso actual, plan, qué herramienta usa) y resumen final | Grok Bot (pantallas), Manus | ◐ | 6 |
-| N10 | Lista de **dominios permitidos** para las herramientas web del agente (cortafuegos) | Copilot (firewall) | ◐ `ORBE_PERMITIR_LOCAL` solo cubre localhost | 6 |
-| N11 | Compactar conversaciones largas (resumen automático) | Claude Code | ◐ compacta resultados antiguos de herramientas | 6 |
+| N3 | **Modo plan**: en tareas de varios pasos, primero un plan numerado que apruebas, luego ejecuta | Claude Code (plan mode), Gemini (reasoning chains), Codex | ✔ v1.13.0 (`proponer_plan`) | 6 |
+| N4 | **Revisor antes de actuar** (auto-review): compara cada acción no libre con tu orden, tus reglas y la seguridad | dots | ✔ v1.13.0 (revisor determinista: tu orden y el contenido de fuera en cada tarjeta) | 6 |
+| N5 | **Auto-comprobación** al terminar: verifica que el resultado existe y es correcto (el borrador se creó, el archivo pesa lo esperado) | Copilot (ejecuta pruebas antes de la PR) | ✔ v1.13.0 (instrucción al modelo) | 6 |
+| N6 | Niveles de sensibilidad: «tú lo haces» (takeover), aprobación cada vez, aprobación previa «para esta tarea» | dots | ✔ v1.13.0 («Permitir en esta tarea», nunca para enviar/publicar/borrar) | 6 |
+| N7 | **Pausar todo** (botón y atajo) y **monitor de seguridad** que pausa solo si detecta algo raro (bucle, muchas acciones seguidas, contenido sospechoso) | dots | ✔ v1.13.0 (Ctrl+Mayús+Retroceso, «Detener todo», vigilante de bucles, ráfagas y órdenes en contenido de fuera) | 6 |
+| N8 | **Bandeja única de aprobaciones** (permisos, borradores, publicaciones pendientes) | Copilot (todo acaba en propuesta revisable), dots | ✔ v1.13.0 (los permisos de las tareas salen en la tarjeta del chat) | 6 |
+| N9 | **Progreso visible en vivo** (paso actual, plan, qué herramienta usa) y resumen final | Grok Bot (pantallas), Manus | ✔ v1.13.0 (línea «Resumen: …» al terminar) | 6 |
+| N10 | Lista de **dominios permitidos** para las herramientas web del agente (cortafuegos) | Copilot (firewall) | ✔ v1.13.0 (`ORBE_DOMINIOS`) | 6 |
+| N11 | Compactar conversaciones largas (resumen automático) | Claude Code | ✔ v1.13.0 (API de Claude; el CLI compacta solo; OpenAI pendiente) | 6 |
 | N12 | Contenido externo tratado como datos, nunca como órdenes | Lección de Comet y OpenClaw | ✔ `envoltorio.ts` | — |
 
 ## 2. Memoria y aprendizaje

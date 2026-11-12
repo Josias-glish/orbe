@@ -4,11 +4,14 @@ import { ATAJO_LEER_POR_DEFECTO, ATAJO_PANEL_POR_DEFECTO } from './entorno'
 export interface AccionesAtajos {
   alternarPanel: () => void
   leerPantalla: () => void
+  /** Detiene todo lo que esté haciendo el agente. */
+  detenerTodo?: () => void
 }
 
 export interface ConfigAtajos {
   panel: string
   leer: string
+  pausa?: string
 }
 
 export const ATAJOS_POR_DEFECTO: ConfigAtajos = { panel: ATAJO_PANEL_POR_DEFECTO, leer: ATAJO_LEER_POR_DEFECTO }
@@ -33,6 +36,10 @@ export function registrarAtajos(acciones: AccionesAtajos, config: ConfigAtajos =
   intentar(config.panel, acciones.alternarPanel)
   if (config.leer !== config.panel) intentar(config.leer, acciones.leerPantalla)
   else resultado.fallidos.push(config.leer)
+  if (config.pausa && acciones.detenerTodo) {
+    if (config.pausa !== config.panel && config.pausa !== config.leer) intentar(config.pausa, acciones.detenerTodo)
+    else resultado.fallidos.push(config.pausa)
+  }
 
   for (const f of resultado.fallidos) {
     console.warn(`[orbe] No se pudo registrar el atajo ${f}: lo usa otra aplicación o no es válido.`)

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { frases, perfilDe, type PerfilIdentidad } from '../../shared/identidad'
-import type { EjecucionTarea, EstadoTareas, TareaNueva, TareaVista } from '../../shared/tipos'
+import type { EjecucionTarea, EstadoTareas, RespuestaPermiso, TareaNueva, TareaVista } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { ProveedorChat } from '../chat/proveedor'
 import type { ContadorUso } from '../chat/servicio'
@@ -45,7 +45,7 @@ interface EnCurso {
   ejecucion: EjecucionTarea
   proveedor: ProveedorChat
   cancelada: boolean
-  permisos: Map<string, (permitir: boolean) => void>
+  permisos: Map<string, (permitir: RespuestaPermiso) => void>
   reloj: ReturnType<typeof setTimeout> | null
 }
 
@@ -197,7 +197,18 @@ export class ServicioTareas {
     return this.estado()
   }
 
-  responder(id: string, confirmacionId: string, permitir: boolean): EstadoTareas {
+  /** «Detener todo» (N7): vacía la cola y corta la tarea en curso; las programadas siguen a su hora. */
+  cancelarTodo(): void {
+    this.cola = []
+    if (this.enCurso) this.cancelar(this.enCurso.tareaId)
+  }
+
+  /** Hay una tarea haciéndose o esperando su turno. */
+  get ocupado(): boolean {
+    return this.enCurso !== null || this.cola.length > 0
+  }
+
+  responder(id: string, confirmacionId: string, permitir: RespuestaPermiso): EstadoTareas {
     const e = this.enCurso
     const resolver = e && e.tareaId === id ? e.permisos.get(confirmacionId) : undefined
     if (e && resolver) {
@@ -303,15 +314,21 @@ export class ServicioTareas {
     }
   }
 
-  private pedirPermiso(tarea: TareaVista, actual: EnCurso, p: PeticionConfirmacion): Promise<boolean> {
+  private pedirPermiso(tarea: TareaVista, actual: EnCurso, p: PeticionConfirmacion): Promise<RespuestaPermiso> {
     if (actual.cancelada) return Promise.resolve(false)
     const confirmacionId = randomUUID()
     actual.ejecucion.estado = 'esperando'
-    actual.ejecucion.permiso = { confirmacionId, titulo: p.titulo, detalle: p.detalle, peligrosa: p.peligrosa === true }
+    actual.ejecucion.permiso = {
+      confirmacionId,
+      titulo: p.titulo,
+      detalle: p.revision ? `${p.detalle}\n${p.revision}` : p.detalle,
+      peligrosa: p.peligrosa === true,
+      porTarea: p.porTarea === true
+    }
     this.publicar('esperando', `«${tarea.titulo}» te necesita`, p.titulo, 'sorprendido')
     this.d.notificar?.(this.frases.tareaPermiso(tarea.titulo), `${p.titulo}. Abre ${this.nombre} → Tareas para permitirlo o no.`)
     this.cambio()
-    return new Promise<boolean>((resolver) => {
+    return new Promise<RespuestaPermiso>((resolver) => {
       const reloj = setTimeout(() => {
         if (actual.permisos.delete(confirmacionId)) {
           delete actual.ejecucion.permiso

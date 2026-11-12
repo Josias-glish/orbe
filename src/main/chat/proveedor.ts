@@ -1,4 +1,4 @@
-import type { UsoTokens, AccionVista, FuenteVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
+import type { RespuestaPermiso, UsoTokens, AccionVista, FuenteVista, InfoPotencia, MotivoFin, NivelEsfuerzo } from '../../shared/tipos'
 import type { PeticionConfirmacion } from '../agente/tipos'
 import type { TurnoEntrada } from './contenido'
 
@@ -18,7 +18,7 @@ export interface ManejadoresTurno {
   /** El CLI informa del estado del límite del plan. */
   alLimite?(limite: { estado: string; tipo: string | null; reinicio: number | null }): void
   /** El agente pide permiso al usuario para una acción; resuelve `true` si la permite. */
-  confirmar?(peticion: PeticionConfirmacion): Promise<boolean>
+  confirmar?(peticion: PeticionConfirmacion): Promise<RespuestaPermiso>
 }
 
 export interface ResultadoTurno {

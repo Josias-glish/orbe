@@ -6,6 +6,7 @@ import type { Herramienta } from '../tipos'
 import { crearAbrirAplicacion } from './abrir-aplicacion'
 import { crearAbrirUrl } from './abrir-url'
 import { crearBuscarWeb } from './buscar-web'
+import { crearProponerPlan } from './plan'
 
 /**
  * Las herramientas del agente según la configuración: cada fase del modo agente añade las suyas aquí.
@@ -25,5 +26,7 @@ export function crearRegistro(config: Config, deps?: Pick<DepsSistema, 'abrirUrl
   }
   if (deps) herramientas.push(crearAbrirUrl(deps.abrirUrl), crearAbrirAplicacion(deps.catalogo, deps.lanzador))
   herramientas.push(...conectores)
+  // El plan solo tiene sentido si hay algo con lo que actuar.
+  if (herramientas.length > 0) herramientas.unshift(crearProponerPlan())
   return new RegistroHerramientas(herramientas)
 }

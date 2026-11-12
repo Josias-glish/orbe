@@ -350,7 +350,7 @@ describe('configuración de la búsqueda', () => {
 describe('crearRegistro', () => {
   it('con un servicio compatible con OpenAI y un buscador, ofrece buscar_web', () => {
     const registro = crearRegistro(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm', ORBE_BUSQUEDA_KEY: 'tvly-1' }))
-    expect(registro.nombres).toEqual(['buscar_web'])
+    expect(registro.nombres).toEqual(['proponer_plan', 'buscar_web'])
   })
 
   it('con el sistema real ofrece además abrir_url y abrir_aplicacion, con cualquiera de los dos proveedores', () => {
@@ -360,9 +360,9 @@ describe('crearRegistro', () => {
       lanzador: { abrirRuta: async () => {}, abrirTienda: async () => {} }
     }
     const openai = crearRegistro(config({ ORBE_PROVEEDOR: 'openai', ORBE_MODELO: 'm', ORBE_BUSQUEDA_KEY: 'tvly-1' }), sistema)
-    expect(openai.nombres).toEqual(['buscar_web', 'abrir_url', 'abrir_aplicacion'])
+    expect(openai.nombres).toEqual(['proponer_plan', 'buscar_web', 'abrir_url', 'abrir_aplicacion'])
     const api = crearRegistro(config({ ORBE_PROVEEDOR: 'api', ANTHROPIC_API_KEY: 'k' }), sistema)
-    expect(api.nombres).toEqual(['abrir_url', 'abrir_aplicacion'])
+    expect(api.nombres).toEqual(['proponer_plan', 'abrir_url', 'abrir_aplicacion'])
     // Todas son libres: los permisos los decide la política según los parámetros.
     expect(['abrir_url', 'abrir_aplicacion'].map((n) => api.buscar(n)?.nivel)).toEqual(['libre', 'libre'])
   })
