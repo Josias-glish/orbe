@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { asegurarProactivo, ID_LATIDO, leerProactivo } from '../src/main/tareas/latido'
-import { revisarActivadores } from '../src/main/tareas/activadores'
+import { archivosDe, revisarActivadores } from '../src/main/tareas/activadores'
 import type { TareaVista } from '../src/shared/tipos'
 import type { ProveedorChat, ManejadoresTurno } from '../src/main/chat/proveedor'
 import type { TurnoEntrada } from '../src/main/chat/contenido'
@@ -265,5 +265,16 @@ describe('Etapa 11b: activadores, vigilar temas y buzón', () => {
     s.disparar(id, '- De Luis')
     await esperar(() => s.estado().tareas[0]!.historial.length === 2 && s.estado().tareas[0]!.ultima?.fin !== null)
     expect(pedido).toContain('no lo repitas como novedad):\nHay 1 correo nuevo.')
+  })
+})
+
+describe('carpeta vigilada', () => {
+  it('lista los archivos y trae un trozo de los de texto', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orbe-carpeta-'))
+    writeFileSync(join(dir, 'nota.txt'), 'Hola desde la carpeta')
+    writeFileSync(join(dir, 'foto.png'), 'x')
+    const r = archivosDe(dir, true).map((n) => n.linea).sort()
+    expect(r[0]).toMatch(/^- foto\.png \(1 KB\)$/)
+    expect(r[1]).toContain('Hola desde la carpeta')
   })
 })
