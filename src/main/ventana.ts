@@ -78,10 +78,30 @@ export class VentanaOrbe {
     this.ventana.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     this.ventana.webContents.on('will-navigate', (evento) => evento.preventDefault())
 
-    this.registrarIpc()
+    // Sin página, la ventana transparente sigue «visible» pero no se ve nada: si el dibujo se cae o la página no
+    // carga (en desarrollo, el servidor de Vite caído), se vuelve a cargar sola hasta que funcione.
+    const recargar = (ms: number): void => {
+      setTimeout(() => {
+        if (!this.ventana.isDestroyed()) this.cargar()
+      }, ms)
+    }
+    this.ventana.webContents.on('render-process-gone', (_e, d) => {
+      console.error('El dibujo de Orbe se cayó; se recarga:', d.reason)
+      recargar(1000)
+    })
+    this.ventana.webContents.on('did-fail-load', (_e, codigo, descripcion, _url, principal) => {
+      if (!principal || codigo === -3) return // -3: carga anulada por otra, no es un fallo
+      console.error('La página de Orbe no cargó; se reintenta:', descripcion)
+      recargar(3000)
+    })
 
-    if (this.urlRenderer) void this.ventana.loadURL(this.urlRenderer)
-    else void this.ventana.loadFile(this.rutaHtml)
+    this.registrarIpc()
+    this.cargar()
+  }
+
+  private cargar(): void {
+    if (this.urlRenderer) void this.ventana.loadURL(this.urlRenderer).catch(() => undefined)
+    else void this.ventana.loadFile(this.rutaHtml).catch(() => undefined)
   }
 
   private areaDe(punto: { x: number; y: number }): Rect {

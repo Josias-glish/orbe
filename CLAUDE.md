@@ -190,6 +190,10 @@ guardado en `ajustes.json` `auto`); `Politica({auto})` permite todo salvo `prohi
 la imagen a pantalla (`ControlPc.enPantalla`). No tocar `setContentProtection` de la ventana de Orbe: la dejaba sin
 dibujar.
 
+v1.15.2: `VentanaOrbe` se recarga sola si el proceso de dibujo se cae (`render-process-gone`) o la página no carga
+(`did-fail-load`, cada 3 s): antes la ventana transparente quedaba «visible» sin verse nada. En desarrollo, lanzar
+`npm run dev` separado de la sesión (Start-Process), o Electron sobrevive al servidor de Vite y queda en blanco.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras
