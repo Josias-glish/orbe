@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de Privacidad · Orbe</title>
+  <meta name="description" content="Qué datos trata Orbe, cómo usa el acceso a Gmail, dónde se guardan, con quién se comparten y cómo revocar el permiso.">
+  <link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body class="legal">
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+  <header class="cabecera">
+    <a class="marca" href="./" aria-label="Orbe, inicio">Orbe</a>
+    <nav class="enlaces" aria-label="Principal">
+      <a href="privacidad.html" aria-current="page">Privacidad</a>
+      <a href="condiciones.html">Condiciones</a>
+      <a href="https://github.com/Josias-glish/orbe">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="contenido" class="documento">
+    <h1>Política de Privacidad</h1>
+    <p class="fecha">Última actualización: <time datetime="2026-11-09">9 de noviembre de 2026</time></p>
+    <p class="resumen">Orbe es un asistente de escritorio para Windows, de uso personal, hecho por un desarrollador independiente. Se instala en su ordenador. No tiene servidores propios ni cuentas, y el desarrollador no recibe ningún dato.</p>
+
+    <nav class="indice" aria-labelledby="t-indice">
+      <h2 id="t-indice">En esta página</h2>
+      <ol>
+        <li><a href="#gmail">Integración con Gmail</a></li>
+        <li><a href="#usos">Qué hace y qué no hace</a></li>
+        <li><a href="#almacenamiento">Almacenamiento</a></li>
+        <li><a href="#terceros">Con quién se comparte</a></li>
+        <li><a href="#uso-limitado">Uso limitado</a></li>
+        <li><a href="#revocar">Cómo revocar el acceso</a></li>
+        <li><a href="#sitio">Este sitio web</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="gmail">1. Integración con Gmail</h2>
+    <p>La integración con Gmail es opcional. Solo se activa si usted la conecta con el inicio de sesión de Google. Orbe solicita dos permisos:</p>
+    <ul>
+      <li><code>https://www.googleapis.com/auth/gmail.readonly</code>: leer sus correos.</li>
+      <li><code>https://www.googleapis.com/auth/gmail.compose</code>: crear borradores.</li>
+    </ul>
+
+    <h2 id="usos">2. Qué hace y qué no hace con sus correos</h2>
+    <h3>Lo que hace</h3>
+    <ul>
+      <li>Busca y lee correos cuando usted se lo pide.</li>
+      <li>Crea borradores, que usted revisa y envía usted mismo desde Gmail.</li>
+    </ul>
+    <h3>Lo que no hace</h3>
+    <ul class="no">
+      <li>No envía correos.</li>
+      <li>No borra correos.</li>
+      <li>No archiva correos.</li>
+      <li>No modifica sus correos.</li>
+    </ul>
+
+    <h2 id="almacenamiento">3. Almacenamiento</h2>
+    <p>El permiso de acceso a Gmail se guarda cifrado en su ordenador, con el cifrado de Windows (DPAPI). Orbe no tiene servidores propios: ese permiso no sale de su equipo hacia el desarrollador.</p>
+
+    <h2 id="terceros">4. Con quién se comparte</h2>
+    <p>El texto de los correos que usted pide leer se envía al proveedor de IA que haya configurado en Orbe (por defecto, Claude de Anthropic), solo para responderle. Se envía únicamente texto, sin adjuntos, con un máximo de 8000 caracteres por correo.</p>
+    <ul class="no">
+      <li>Los datos no se venden.</li>
+      <li>El desarrollador no recibe ningún dato.</li>
+    </ul>
+
+    <h2 id="uso-limitado">5. Uso limitado</h2>
+    <p>El uso que Orbe hace de la información recibida de las API de Google, y su transferencia a cualquier otra aplicación, cumple la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de Datos de Usuario de los Servicios de API de Google</a>, incluidos los requisitos de uso limitado.</p>
+
+    <h2 id="revocar">6. Cómo revocar el acceso</h2>
+    <ul>
+      <li>En Orbe: Configuración → Conectores → Gmail.</li>
+      <li>En su cuenta de Google: <a href="https://myaccount.google.com/permissions">https://myaccount.google.com/permissions</a>.</li>
+    </ul>
+
+    <h2 id="sitio">7. Este sitio web</h2>
+    <p>Este sitio no usa rastreadores ni analítica, y no carga recursos de terceros.</p>
+
+    <h2 id="contacto">8. Contacto</h2>
+    <p>Para cualquier consulta sobre esta política: <a href="mailto:josiasvillamarin4@gmail.com">josiasvillamarin4@gmail.com</a>.</p>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <a class="marca" href="./">Orbe</a>
+      <p>Asistente de escritorio para Windows, de uso personal, hecho por un desarrollador independiente.</p>
+    </div>
+    <nav class="pie-enlaces" aria-label="Legal y contacto">
+      <a href="privacidad.html">Política de Privacidad</a>
+      <a href="condiciones.html">Condiciones del Servicio</a>
+      <a href="https://github.com/Josias-glish/orbe">GitHub</a>
+      <a href="mailto:josiasvillamarin4@gmail.com">josiasvillamarin4@gmail.com</a>
+    </nav>
+    <p class="pie-fecha">Última actualización: <time datetime="2026-11-09">9 de noviembre de 2026</time></p>
+  </footer>
+</body>
+</html>

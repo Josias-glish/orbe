@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbe · Un asistente que vive en su escritorio</title>
+  <meta name="description" content="Orbe es un asistente de escritorio para Windows, de uso personal. Un conejo 3D vive en una esquina de la pantalla y abre un chat. Se instala en su ordenador: sin servidores propios ni cuentas.">
+  <meta name="theme-color" content="#0a0a0b">
+  <link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+  <link rel="preload" href="fuentes/unbounded-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fuentes/figtree-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="stylesheet" href="portada.css">
+  <script>
+    // El texto se anima al entrar; si el módulo no llega a arrancar, se muestra sin animación.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.classList.add('mueve')
+      setTimeout(() => window.orbeTexto || document.documentElement.classList.remove('mueve'), 4000)
+    }
+  </script>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
+  </script>
+  <script type="module" src="js/portada.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <header class="cabecera">
+    <a class="marca" href="./" aria-label="Orbe, inicio">Orbe</a>
+    <nav class="enlaces" aria-label="Principal">
+      <a href="privacidad.html">Privacidad</a>
+      <a href="condiciones.html">Condiciones</a>
+      <a href="https://github.com/Josias-glish/orbe">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="contenido">
+    <!-- Luz de cabina y lienzo 3D: decorativos. La descripción del personaje está en el póster. -->
+    <div class="fondo" aria-hidden="true"><div class="haces"></div><div class="penumbra"></div><div class="aura"></div></div>
+    <div class="escenario" aria-hidden="true"><canvas id="lienzo"></canvas></div>
+
+    <section class="tramo inicio" id="inicio" data-estado="reposo">
+      <h1 class="rotulo">Orbe</h1>
+      <img class="poster" src="assets/conejo-poster.webp" width="1040" height="1300" fetchpriority="high"
+           alt="Orbe: un conejo negro en 3D con auriculares blancos, gafas oscuras con dos ojos de luz blanca y una sudadera negra con capucha que lleva un orbe luminoso en el pecho.">
+      <div class="entrada">
+        <p class="gancho">Un asistente que vive en una esquina de su pantalla.</p>
+        <p class="apoyo">Es para Windows y se instala en su ordenador. Sin servidores propios y sin cuentas.</p>
+        <p class="acciones">
+          <a class="boton" href="https://github.com/Josias-glish/orbe">
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 16.5h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Descargar para Windows
+          </a>
+          <span class="gratis">Gratis, en GitHub</span>
+        </p>
+        <div class="carga" role="status" aria-live="polite" hidden>
+          <span class="carga-texto">Despertando a Orbe</span>
+          <span class="carga-barra"><span class="carga-nivel"></span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tramo" id="que-es" data-estado="escuchando" aria-labelledby="t-que-es">
+      <div class="texto">
+        <p class="capitulo"><span>01</span> Qué es</p>
+        <h2 id="t-que-es">Un conejo en la esquina. Un chat cuando usted lo llama.</h2>
+        <p>Orbe es un asistente de escritorio para Windows, de uso personal. Lo hice yo, un desarrollador independiente. El conejo vive en una esquina de la pantalla y, cuando usted lo llama, abre un chat.</p>
+        <ul class="hechos">
+          <li>Se instala en su ordenador.</li>
+          <li>No tiene servidores propios.</li>
+          <li>No le pide ninguna cuenta.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo" id="hace" data-estado="actuando" aria-labelledby="t-hace">
+      <div class="texto">
+        <p class="capitulo"><span>02</span> Lo que hace</p>
+        <h2 id="t-hace">Ve su pantalla y hace tareas por usted</h2>
+        <p>Orbe no solo conversa. Tiene un modo agente: actúa en su ordenador, y solo con los permisos que usted le da.</p>
+        <h3>Lo que ya hace</h3>
+        <ul class="leds">
+          <li>Lee lo que hay en su pantalla cuando usted se lo pide. También el texto de las imágenes.</li>
+          <li>Abre aplicaciones y páginas web.</li>
+          <li>Busca en la web.</li>
+          <li>Ejecuta tareas programadas en segundo plano y le avisa cuando termina.</li>
+          <li>Lo escucha y le responde por voz.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo a-la-derecha" id="en-desarrollo" data-estado="pensando" aria-labelledby="t-desarrollo">
+      <div class="texto">
+        <p class="capitulo"><span>03</span> En desarrollo</p>
+        <h2 id="t-desarrollo">Lo que viene</h2>
+        <p>Voy a ser claro: esto todavía no está en Orbe. Está en desarrollo.</p>
+        <h3>En desarrollo</h3>
+        <ul class="leds apagados rejilla">
+          <li>Conexión con más herramientas, por ejemplo a través de Zapier.</li>
+          <li>Más tareas automatizadas entre esas herramientas.</li>
+          <li>Piezas visuales creadas con Claude Design.</li>
+          <li>Interacción con la pantalla, no solo lectura.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo a-la-derecha" id="gmail" data-estado="leyendo" aria-labelledby="t-gmail">
+      <div class="texto">
+        <p class="capitulo"><span>04</span> Gmail</p>
+        <h2 id="t-gmail">Con Gmail, solo si usted lo conecta</h2>
+        <p>La integración es opcional. La activa usted con el inicio de sesión de Google, y Orbe pide dos permisos: <code>gmail.readonly</code> para leer y <code>gmail.compose</code> para crear borradores.</p>
+        <h3>Lo que hace</h3>
+        <ul class="leds">
+          <li>Busca y lee correos cuando usted se lo pide.</li>
+          <li>Crea borradores de respuesta.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo a-la-derecha" id="borradores" data-estado="respondiendo" aria-labelledby="t-borradores">
+      <div class="texto">
+        <p class="capitulo"><span>05</span> Borradores</p>
+        <h2 id="t-borradores">Él redacta. Usted revisa y envía.</h2>
+        <p>Los borradores se quedan en su Gmail. Usted los revisa y los envía desde allí.</p>
+        <h3>Lo que no hace</h3>
+        <ul class="leds apagados">
+          <li>No envía correos.</li>
+          <li>No borra.</li>
+          <li>No archiva.</li>
+          <li>No modifica sus correos.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo" id="privacidad" data-estado="pensando" aria-labelledby="t-privacidad">
+      <div class="texto">
+        <p class="capitulo"><span>06</span> Sus datos</p>
+        <h2 id="t-privacidad">Como desarrollador, no recibo ningún dato suyo</h2>
+        <dl class="ficha">
+          <div>
+            <dt>Dónde se guarda el permiso</dt>
+            <dd>En su ordenador, cifrado con el cifrado de Windows (DPAPI).</dd>
+          </div>
+          <div>
+            <dt>Qué sale de su ordenador</dt>
+            <dd>El texto de los correos que usted pide leer: sin adjuntos y hasta 8000 caracteres por correo. Se envía al proveedor de IA que tenga configurado en Orbe, por defecto Claude de Anthropic, y solo para responderle.</dd>
+          </div>
+          <div>
+            <dt>Cómo se revoca</dt>
+            <dd>En Orbe, en Configuración → Conectores → Gmail. O desde <a href="https://myaccount.google.com/permissions">su cuenta de Google</a>.</dd>
+          </div>
+        </dl>
+        <p class="siguiente"><a href="privacidad.html">Leer la Política de Privacidad completa</a></p>
+      </div>
+    </section>
+
+    <section class="tramo" id="descarga" data-estado="actuando" aria-labelledby="t-descarga">
+      <div class="texto">
+        <p class="capitulo"><span>07</span> Descarga</p>
+        <h2 id="t-descarga">Llévese a Orbe a su escritorio</h2>
+        <p>Es gratis, es para Windows y se ofrece tal cual, sin garantía. La descarga está en el repositorio de GitHub.</p>
+        <p class="acciones">
+          <a class="boton claro" href="https://github.com/Josias-glish/orbe">
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 16.5h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Descargar desde GitHub
+          </a>
+        </p>
+        <p class="siguiente">Antes de instalarlo, lea las <a href="condiciones.html">Condiciones del Servicio</a> y la <a href="privacidad.html">Política de Privacidad</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- La pista de estados: el scroll la recorre; cada tecla muestra ese estado en el conejo. -->
+  <div class="pista" role="group" aria-label="Estados de Orbe: pulse uno para verlo en el conejo" hidden>
+    <span class="pista-luz" aria-hidden="true"></span>
+    <button type="button" data-estado="reposo" aria-pressed="true"><span class="led"></span><span class="nombre">Reposo</span></button>
+    <button type="button" data-estado="escuchando" aria-pressed="false"><span class="led"></span><span class="nombre">Escuchando</span></button>
+    <button type="button" data-estado="leyendo" aria-pressed="false"><span class="led"></span><span class="nombre">Leyendo</span></button>
+    <button type="button" data-estado="respondiendo" aria-pressed="false"><span class="led"></span><span class="nombre">Respondiendo</span></button>
+    <button type="button" data-estado="pensando" aria-pressed="false"><span class="led"></span><span class="nombre">Pensando</span></button>
+    <button type="button" data-estado="actuando" aria-pressed="false"><span class="led"></span><span class="nombre">Actuando</span></button>
+  </div>
+
+  <footer class="pie">
+    <div>
+      <a class="marca" href="./">Orbe</a>
+      <p>Asistente de escritorio para Windows, de uso personal, hecho por un desarrollador independiente.</p>
+    </div>
+    <nav class="pie-enlaces" aria-label="Legal y contacto">
+      <a href="privacidad.html">Política de Privacidad</a>
+      <a href="condiciones.html">Condiciones del Servicio</a>
+      <a href="https://github.com/Josias-glish/orbe">GitHub</a>
+      <a href="mailto:josiasvillamarin4@gmail.com">josiasvillamarin4@gmail.com</a>
+    </nav>
+    <p class="pie-fecha">Última actualización: <time datetime="2026-11-09">9 de noviembre de 2026</time></p>
+  </footer>
+</body>
+</html>
