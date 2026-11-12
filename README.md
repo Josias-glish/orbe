@@ -171,6 +171,15 @@ La pestaña **Métricas** (icono de tendencia) enseña, por cuenta (morfy y pers
 - **Informe semanal:** en Tareas hay una plantilla «Informe de crecimiento semanal» (lunes 08:00).
 - Requiere el permiso `instagram_manage_insights` en el token; sin él, la pestaña lo dice y enseña solo lo básico («me gusta» y comentarios).
 
+## Composio (cientos de apps por un solo conector)
+Orbe se conecta como cliente MCP a [Composio Connect](https://docs.composio.dev/docs/composio-connect.md) (Google Calendar, Notion, Slack, Trello, GitHub…).
+
+1. En [dashboard.composio.dev](https://dashboard.composio.dev) → **AI Clients**, copia tu clave «consumer» y pégala en **Configuración → Conectores → Composio**. Se guarda **cifrada en el cofre** y vale sin reiniciar.
+2. Pide en el chat «conecta Google Calendar por Composio»: Orbe te da un enlace y apruebas el acceso tú, en tu navegador.
+3. Úsalo hablando normal («¿qué tengo mañana en el calendario?»).
+
+Permisos (`reglas.json`): **leer** (ver, listar, buscar) es libre (`composio.leer`); **todo lo demás** (crear, enviar, publicar, borrar) pide permiso en ese momento (`composio.escribir`, que no se puede bajar de «preguntar»). Lo que devuelve Composio llega al modelo como **datos de terceros**. Ojo: si conectas Gmail en Composio, esa vía sí puede enviar correos tras tu permiso.
+
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
 
