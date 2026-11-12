@@ -70,6 +70,8 @@ export interface Herramienta<T = unknown> {
   /** Afina el permiso según los parámetros (p. ej. un clic en «Comprar»). Sin respuesta vale `nivel`. */
   clasificar?(entrada: T): Decision | undefined
   ejecutar(entrada: T, ctx: ContextoHerramienta): Promise<ResultadoEjecucion>
+  /** Tope propio de lo que devuelve al modelo (por defecto MAX_RESULTADO); solo para resultados que el usuario pidió enteros. */
+  maxResultado?: number
 }
 
 /**

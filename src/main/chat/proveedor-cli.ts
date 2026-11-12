@@ -437,6 +437,8 @@ export class ProveedorCli implements ProveedorChat {
     // El CLI corta una herramienta MCP que pasa un rato sin responder: ecc_tarea tarda minutos y un permiso puede esperar
     // a que vuelvas. 30 min (más que el tope de 15 de ECC); comprobado con MCP_TOOL_TIMEOUT en el CLI 2.1.322.
     env['MCP_TOOL_TIMEOUT'] = String(30 * 60_000)
+    // Y que quepa un resultado largo (ecc_tarea devuelve hasta 60 000 caracteres).
+    env['MAX_MCP_OUTPUT_TOKENS'] = '40000'
 
     // Con herramientas, el CLI se conecta al servidor MCP local; el secreto va por entorno y no por la línea de comandos.
     const agente = this.agente

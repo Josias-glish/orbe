@@ -181,7 +181,8 @@ export class EjecutorHerramientas {
         }),
         senal
       )
-      const texto = r.texto.length > MAX_RESULTADO ? `${r.texto.slice(0, MAX_RESULTADO)}\n[…resultado recortado]` : r.texto
+      const tope = herramienta.maxResultado ?? MAX_RESULTADO
+      const texto = r.texto.length > tope ? `${r.texto.slice(0, tope)}\n[…resultado recortado]` : r.texto
       alAccion(vista({ titulo, parametros, estado: 'ok', resultado: recortar(r.texto, MAX_RESULTADO_VISTA) }))
       if (r.externo) {
         politica.leyoExterno(r.externo.origen)

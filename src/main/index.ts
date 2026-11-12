@@ -327,6 +327,7 @@ app.whenReady().then(async () => {
         rutaCli,
         plugin,
         cwd: join(datos, 'cli-vacio'),
+        carpetaResultados: join(datos, 'ecc'),
         modelo: config.modelo || 'sonnet',
         busquedaCli: config.agente.busquedaMax > 0,
         auto: modoAutoActivo

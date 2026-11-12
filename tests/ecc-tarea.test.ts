@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
+import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { argumentosEcc, crearHerramientaEcc } from '../src/main/agente/herramientas/ecc'
 import type { ContextoHerramienta } from '../src/main/agente/tipos'
@@ -33,11 +35,13 @@ describe('ecc_tarea', () => {
 
     process.env['CLAUDE_CODE_PLUGIN_DIRS'] = 'X'
     const { lanzar, llamadas } = cliFalso(JSON.stringify({ result: 'Plan SEO listo', is_error: false }))
-    const h = crearHerramientaEcc({ rutaCli: 'claude', plugin: 'C:/ecc', cwd: tmpdir(), modelo: 'sonnet', busquedaCli: true, auto: () => false, lanzar })
+    const h = crearHerramientaEcc({ rutaCli: 'claude', plugin: 'C:/ecc', cwd: tmpdir(), carpetaResultados: join(tmpdir(), 'orbe-ecc-res'), modelo: 'sonnet', busquedaCli: true, auto: () => false, lanzar })
     expect((await h.ejecutar({ tarea: 'auditoría SEO de morfy' }, ctx(false))).texto).toMatch(/no quiso/)
     expect(llamadas).toHaveLength(0)
     const r = await h.ejecutar({ tarea: 'auditoría SEO de morfy' }, ctx(true))
-    expect(r.texto).toBe('Plan SEO listo')
+    expect(r.texto.startsWith('Plan SEO listo\n\n[Resultado completo guardado en ')).toBe(true)
+    expect(readFileSync(r.texto.match(/guardado en (.+?\.md)/)![1]!, 'utf8')).toContain('Plan SEO listo')
+    expect(h.maxResultado).toBe(60_000)
     expect(llamadas[0]!.entrada).toBe('auditoría SEO de morfy')
     expect(llamadas[0]!.env['CLAUDE_CODE_PLUGIN_DIRS']).toBeUndefined()
     expect(llamadas[0]!.env['CLAUDE_CODE_DISABLE_BACKGROUND_TASKS']).toBe('1')
@@ -46,7 +50,7 @@ describe('ecc_tarea', () => {
 
   it('en modo auto no pregunta, y un error del CLI se nota', async () => {
     const { lanzar } = cliFalso(JSON.stringify({ result: 'límite alcanzado', is_error: true }))
-    const h = crearHerramientaEcc({ rutaCli: 'claude', plugin: 'C:/ecc', cwd: tmpdir(), modelo: 'sonnet', busquedaCli: false, auto: () => true, lanzar })
+    const h = crearHerramientaEcc({ rutaCli: 'claude', plugin: 'C:/ecc', cwd: tmpdir(), carpetaResultados: join(tmpdir(), 'orbe-ecc-res'), modelo: 'sonnet', busquedaCli: false, auto: () => true, lanzar })
     await expect(h.ejecutar({ tarea: 'x' }, ctx(false))).rejects.toThrow(/ECC falló/)
   })
 })

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { definirHerramienta, type Herramienta } from '../tipos'
 import { crearEsquema, crearValidador } from '../validacion'
 
@@ -17,6 +18,8 @@ export interface OpcionesEcc {
   plugin: string
   /** Carpeta vacía de trabajo (sin CLAUDE.md ni proyecto). */
   cwd: string
+  /** Dónde se guarda cada resultado completo (`<fecha>.md`), para que nunca se pierda nada. */
+  carpetaResultados: string
   modelo: string
   busquedaCli: boolean
   auto: () => boolean
@@ -54,6 +57,8 @@ export function crearHerramientaEcc(o: OpcionesEcc): Herramienta {
     esquema: crearEsquema(campos),
     nivel: 'libre',
     validar: crearValidador<{ tarea: string }>(campos),
+    // Un plan de campaña completo pasa de 12 000 caracteres: el usuario lo quiere entero.
+    maxResultado: 60_000,
     describir: (e) => `Encargo a ECC: ${e.tarea.slice(0, 80)}`,
     async ejecutar(e, ctx) {
       if (!o.auto()) {
@@ -87,7 +92,13 @@ export function crearHerramientaEcc(o: OpcionesEcc): Herramienta {
         throw new Error('ECC no devolvió una respuesta legible.')
       }
       if (r.is_error === true || typeof r.result !== 'string') throw new Error(`ECC falló: ${String(r.result ?? 'sin detalle').slice(0, 200)}`)
-      return { texto: r.result, externo: { origen: 'ECC (sesión aparte)' } }
+      mkdirSync(o.carpetaResultados, { recursive: true })
+      const archivo = join(o.carpetaResultados, `${new Date().toISOString().replace(/[:.]/g, '-')}.md`)
+      writeFileSync(archivo, `# Encargo\n\n${e.tarea}\n\n# Resultado de ECC\n\n${r.result}\n`, 'utf8')
+      return {
+        texto: `${r.result}\n\n[Resultado completo guardado en ${archivo}. Preséntalo entero, sin resumir ni cortar, y dile al usuario dónde está el archivo.]`,
+        externo: { origen: 'ECC (sesión aparte)' }
+      }
     }
   })
 }
