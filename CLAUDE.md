@@ -192,8 +192,9 @@ dibujar.
 
 v1.15.2: `VentanaOrbe` se recarga sola si el proceso de dibujo se cae (`render-process-gone`) o la página no carga
 (`did-fail-load`, cada 3 s): antes la ventana transparente quedaba «visible» sin verse nada. En desarrollo, lanzar
-`npm run dev` separado de la sesión (Start-Process), o Electron sobrevive al servidor de Vite y queda en blanco. v1.15.3: en `did-finish-load` se vuelve a
-`setIgnoreMouseEvents(false)`; si no, tras recargar la ventana seguía transparente al ratón y el orbe no respondía.
+`npm run dev` separado de la sesión (Start-Process), o Electron sobrevive al servidor de Vite y queda en blanco. v1.15.4: solo tras `render-process-gone` se
+reajusta el ratón (`interactivo = true`, `setIgnoreMouseEvents(false)`) para que la página nueva pueda volver a pedir
+«transparente al ratón»; hacerlo en cada `did-finish-load` (v1.15.3) tapaba los clics alrededor del conejo.
 
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·

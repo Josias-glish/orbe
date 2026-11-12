@@ -87,19 +87,16 @@ export class VentanaOrbe {
     }
     this.ventana.webContents.on('render-process-gone', (_e, d) => {
       console.error('El dibujo de Orbe se cayó; se recarga:', d.reason)
+      // La página nueva arranca pidiendo «transparente al ratón» con su propio reenvío de movimientos: si el estado se
+      // quedara en el de la página caída, esa petición no haría nada y el orbe no volvería a responder al ratón.
+      this.interactivo = true
+      if (!this.ventana.isDestroyed()) this.ventana.setIgnoreMouseEvents(false)
       recargar(1000)
     })
     this.ventana.webContents.on('did-fail-load', (_e, codigo, descripcion, _url, principal) => {
       if (!principal || codigo === -3) return // -3: carga anulada por otra, no es un fallo
       console.error('La página de Orbe no cargó; se reintenta:', descripcion)
       recargar(3000)
-    })
-
-    // Página nueva (también tras recargar): vuelve a recibir el ratón. Si se quedara «transparente al ratón» de la
-    // página anterior, la nueva no recibiría los movimientos para reactivarse y el orbe no respondería.
-    this.ventana.webContents.on('did-finish-load', () => {
-      this.interactivo = true
-      if (!this.ventana.isDestroyed()) this.ventana.setIgnoreMouseEvents(false)
     })
 
     this.registrarIpc()
