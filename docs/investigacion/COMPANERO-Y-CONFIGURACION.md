@@ -1,7 +1,10 @@
 # Compañero local y guía de configuración
 
 > Continúa [INVESTIGACION-ASISTENTES.md](INVESTIGACION-ASISTENTES.md), aprobada el 11-nov-2026.
-> Estado: **propuesta de diseño + guía de configuración**. El prompt de construcción se escribe cuando apruebes esto.
+> Estado: **aprobado** con los cambios del 12-nov-2026 de [VISION-Y-DATOS.md](VISION-Y-DATOS.md): los «ojos» son
+> **opcionales** (apagados por defecto, con consentimiento) y usan la capa de visión común; por defecto, un modelo
+> pequeño local. Ya no rige «nada sale del PC» para el resto de Orbe; para la pantalla del Compañero, la nube solo con
+> un segundo consentimiento explícito.
 > «No verificado» = no comprobado en fuente oficial o en tu equipo.
 
 ---
@@ -91,7 +94,12 @@ tras 5 min sin usarlo y lo pausará con batería baja.
 
 ### A.5 Ver sin molestar: «ojos» locales + «voz» Llama
 
-Llama 3.2 (1B/3B) no ve imágenes. Solución en dos pasos, **los dos en tu PC**:
+**Opcional.** Apagado por defecto: sin «ojos», el Compañero trabaja solo con texto. Al activarlo, Ajustes muestra qué se
+captura y dónde se procesa. Los ojos son la capa de visión común (`src/main/vision/`, perfil `pantalla`) con un modelo
+pequeño de Ollama. Usar `VISION_PROVIDER` en la nube para la pantalla exige un segundo consentimiento
+(ver [VISION-Y-DATOS.md](VISION-Y-DATOS.md)).
+
+Llama 3.2 (1B/3B) no ve imágenes. Solución en dos pasos, por defecto **los dos en tu PC**:
 
 ```
  ¿El texto de la ventana basta? (UIA: título, URL, texto visible)
@@ -193,10 +201,15 @@ ORBE_COMPANERO_MAX_HORA=4
 ORBE_COMPANERO_SILENCIO=22:00-07:00
 # 1 = también lo dice en voz alta (fuera del modo película)
 ORBE_COMPANERO_VOZ=0
-# Ojos: modelo de visión local que describe la ventana cuando el texto no basta (0 = solo texto)
-ORBE_COMPANERO_OJOS=1
+# Ojos (opcional): 0 = solo texto (por defecto) · 1 = describe la ventana cuando el texto no basta
+ORBE_COMPANERO_OJOS=0
 ORBE_OJOS_MODELO=gemma3:4b
+# 1 = permitir que los ojos usen VISION_PROVIDER en la nube (además, Orbe pide consentimiento en pantalla)
+ORBE_COMPANERO_OJOS_NUBE=0
 ```
+
+La capa de visión general (`VISION_PROVIDER`, `VISION_MODEL`, `VISION_API_KEY`) está en
+[VISION-Y-DATOS.md](VISION-Y-DATOS.md).
 
 `ORBE_PERMITIR_LOCAL` **no** hace falta: es para que las herramientas del agente lleguen a `localhost`; el Compañero
 habla con Ollama por su propio camino.
