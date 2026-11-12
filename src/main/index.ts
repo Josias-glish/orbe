@@ -7,7 +7,7 @@ import { registrarCofre } from './cofre/electron'
 import { asegurarReglas } from './agente/reglas'
 import { registrarPersonaje } from './personaje'
 import { CANALES } from '../shared/tipos'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
 import { crearHerramientasPc } from './agente/herramientas/pc'
@@ -22,7 +22,7 @@ import { crearHerramientaCrecimiento } from './agente/herramientas/metricas'
 import { ClienteComposio } from './conectores/composio/cliente'
 import { crearHerramientasComposio } from './agente/herramientas/composio'
 import { Gmail } from './conectores/gmail/cliente'
-import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
+import { crearFuenteTokenIg, Instagram, type Cuenta, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
 import { crearDepsSistema } from './agente/sistema'
 import { guardarAjustes, leerAjustes } from './ajustes'
@@ -45,7 +45,7 @@ import { nivelInicial, registrarPotencia } from './potencia'
 import { modoAutoActivo, registrarModoAuto } from './modo-auto'
 import { crearCapturaVentana } from './pc/captura-ventana'
 import { userInfo } from 'node:os'
-import { BaseOrbe, type ResultadoBusqueda, type TipoDoc } from './datos/base'
+import { BaseOrbe, leerJson, type ResultadoBusqueda, type TipoDoc } from './datos/base'
 import { documentosIndice } from './datos/fuentes'
 import { AlmacenConversacion } from './memoria/conversacion'
 import { AlmacenMemoria } from './memoria/almacen'
@@ -54,6 +54,8 @@ import { crearHerramientasAprender } from './agente/herramientas/aprender'
 import { AlmacenSkills } from './skills/almacen'
 import { AlmacenAgentes, rutaPluginInstalado } from './agentes/perfiles'
 import { asegurarProactivo, ID_LATIDO, leerProactivo } from './tareas/latido'
+import { revisarActivadores, type FuentesActivadores } from './tareas/activadores'
+import { crearHerramientaBuzon } from './agente/herramientas/buzon'
 import { crearHerramientaEcc } from './agente/herramientas/ecc'
 import type { Herramienta } from './agente/tipos'
 import { resolverRutaCli } from './chat/proveedor-cli'
@@ -273,9 +275,10 @@ app.whenReady().then(async () => {
   // Las herramientas del agente (según la configuración). Sin herramientas, el chat solo conversa.
   const sistema = crearDepsSistema(datos)
   // Gmail se ofrece si existe google-cliente.json (guía de Google); sin conectar, las herramientas dicen cómo conectarlo.
-  const gmail = existsSync(rutaClienteGoogle)
-    ? crearHerramientasGmail(new Gmail(crearFuenteDeToken(() => leerClienteGoogle(rutaClienteGoogle), () => cofre.leer('gmail.refresh'))))
-    : []
+  const clienteGmail = existsSync(rutaClienteGoogle)
+    ? new Gmail(crearFuenteDeToken(() => leerClienteGoogle(rutaClienteGoogle), () => cofre.leer('gmail.refresh')))
+    : null
+  const gmail = clienteGmail ? crearHerramientasGmail(clienteGmail) : []
   // Instagram (solo lectura) se ofrece siempre: sin token guardado, cada herramienta dice dónde guardarlo, y así
   // guardar uno en Ajustes vale sin reiniciar.
   const tokenIg = crearFuenteTokenIg((clave) => cofre.leer<TokenGuardado>(clave), (clave, valor) => cofre.guardar(clave, valor))
@@ -350,6 +353,7 @@ app.whenReady().then(async () => {
       ? [...new Set(buscarEnDatos(texto, ['conversacion'], 50).map((r) => r.ref))]
       : []
   )
+  const nombresAgentes = (): string[] => new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre)
   const registro = crearRegistro(config, sistema, [
     ...gmail,
     ...instagram,
@@ -357,6 +361,17 @@ app.whenReady().then(async () => {
     crearHerramientaBuscarMemoria((c, t) => buscarEnDatos(c, t)),
     ...crearHerramientasAprender(skills, (texto) => memoria.guardarNota(texto, false, 'Aprendido de una corrección en el chat')),
     ...herramientaEcc(),
+    ...(config.proveedor === 'cli' && !modoHumo
+      ? [
+          crearHerramientaBuzon(
+            () => nombresAgentes(),
+            (agente, encargo) => {
+              const r = tareas.guardar({ titulo: `Encargo para ${agente}`, instruccion: encargo, programa: { tipo: 'ahora' }, agente })
+              return 'error' in r ? String(r.error) : null
+            }
+          )
+        ]
+      : []),
     ...composio,
     ...pc
   ])
@@ -427,12 +442,39 @@ app.whenReady().then(async () => {
     alCambio: () => {
       if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.tareasCambio)
     },
-    agentes: () => (config.proveedor === 'cli' ? new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre) : []),
+    agentes: () => (config.proveedor === 'cli' ? nombresAgentes() : []),
     // El latido (P2) lee PROACTIVO.md en cada vuelta: si no pide nada, no se llama al modelo.
     instruccion: (t) => (t.id === ID_LATIDO ? leerProactivo(rutaProactivo) : undefined)
   })
   registrarTareas(orbe.ventana, tareas)
   tareas.iniciar()
+  if (!modoHumo) {
+    // Activadores (P3): cada 5 min miran correo, comentarios y carpetas; lo nuevo lanza la tarea con eso como contexto.
+    const rutaVistos = join(datos, 'activadores.json')
+    const vistos = (leerJson(rutaVistos) ?? {}) as Record<string, string[]>
+    const fuentes: FuentesActivadores = {
+      tareas: () => tareas.estado().tareas,
+      correos: () =>
+        clienteGmail && cofre.leer('gmail.refresh') !== undefined
+          ? clienteGmail.buscar('in:inbox newer_than:2d', 20).then((cs) => cs.map((c) => ({ id: c.id, linea: `- De ${c.de}: «${c.asunto}» — ${c.extracto}` })))
+          : null,
+      comentarios: (cuenta) => {
+        if (cofre.leer(`ig.${cuenta}`) === undefined) return null
+        const ig = new Instagram(() => tokenIg(cuenta as Cuenta), fetch, cuenta as Cuenta)
+        return ig.publicaciones(5).then(async (ps) =>
+          (await Promise.all(ps.map((p) => ig.comentarios(p.id, 20)))).flat().map((c) => ({ id: c.id, linea: `- @${c.usuario}: ${c.texto}` }))
+        )
+      },
+      leerVistos: (id) => vistos[id] ?? null,
+      guardarVistos: (id, ids) => {
+        vistos[id] = ids
+        writeFileSync(rutaVistos, JSON.stringify(vistos), 'utf8')
+      },
+      disparar: (id, contexto) => tareas.disparar(id, contexto)
+    }
+    setTimeout(() => void revisarActivadores(fuentes, true), 30_000).unref()
+    setInterval(() => void revisarActivadores(fuentes, false), 5 * 60_000).unref()
+  }
   if (!modoHumo) {
     asegurarProactivo(rutaProactivo)
     if (config.agente.proactivoMin > 0 || tareas.estado().tareas.some((t) => t.id === ID_LATIDO)) {

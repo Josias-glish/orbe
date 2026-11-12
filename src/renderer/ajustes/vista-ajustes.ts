@@ -545,7 +545,18 @@ export class VistaAjustes {
     marcaEventos.setAttribute('aria-label', 'Avisos de Claude Code y otras herramientas')
     marcaEventos.addEventListener('change', () => (b.eventos = marcaEventos.checked))
     eventos.append(marcaEventos, el('span', undefined, 'Avisos de Claude Code y otras herramientas'))
+    const sonidos = el('label', 'memoria-opcion')
+    const marcaSonidos = el('input')
+    marcaSonidos.type = 'checkbox'
+    try {
+      marcaSonidos.checked = localStorage.getItem('orbe.sonidos') !== 'no'
+    } catch {
+      marcaSonidos.checked = true
+    }
+    marcaSonidos.addEventListener('change', () => window.dispatchEvent(new CustomEvent('orbe:sonidos', { detail: marcaSonidos.checked })))
+    sonidos.append(marcaSonidos, el('span', undefined, 'Sonidos del personaje'))
     secPersonaje.push(
+      sonidos,
       eventos,
       el(
         'p',

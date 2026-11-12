@@ -37,6 +37,12 @@ export const PLANTILLAS: ReadonlyArray<{ titulo: string; instruccion: string; pr
     programa: { tipo: 'diaria', hora: '08:30' }
   },
   {
+    titulo: 'Vigilar un tema',
+    instruccion: 'Investiga las novedades sobre [tema] (noticias, lanzamientos, cambios). Resume solo lo nuevo, con enlaces a las fuentes.',
+    programa: { tipo: 'diaria', hora: '09:00' },
+    soloSiHayAlgo: true
+  },
+  {
     titulo: 'Vigilar un precio',
     instruccion: 'Mira el precio actual de [producto] en [tienda]. Avísame solo si ha bajado de [precio].',
     programa: { tipo: 'cada', minutos: 240 },
@@ -422,12 +428,36 @@ export class VistaTareas {
       ['una-vez', 'Una vez, más tarde'],
       ['diaria', 'Cada día'],
       ['semanal', 'Algunos días de la semana'],
-      ['cada', 'Cada cierto tiempo']
+      ['cada', 'Cada cierto tiempo'],
+      ['evento', 'Cuando pase algo']
     ] as const) {
       const o = el('option', undefined, texto)
       o.value = v
       tipo.append(o)
     }
+    // Activadores (P3).
+    const evento = el('select', 'memoria-campo')
+    for (const [v, texto] of [
+      ['correo', 'Llega un correo nuevo'],
+      ['instagram', 'Hay comentarios nuevos en Instagram'],
+      ['carpeta', 'Aparece un archivo en una carpeta'],
+      ['encender', 'Enciendo el PC']
+    ] as const) {
+      const o = el('option', undefined, texto)
+      o.value = v
+      evento.append(o)
+    }
+    evento.value = t.programa.tipo === 'evento' ? t.programa.evento : 'correo'
+    const carpeta = el('input', 'memoria-campo')
+    carpeta.placeholder = 'C:\\Users\\…\\Descargas'
+    carpeta.value = t.programa.tipo === 'evento' ? (t.programa.carpeta ?? '') : ''
+    const cuenta = el('select', 'memoria-campo')
+    for (const c of ['morfy', 'personal']) {
+      const o = el('option', undefined, c)
+      o.value = c
+      cuenta.append(o)
+    }
+    cuenta.value = t.programa.tipo === 'evento' && t.programa.cuenta === 'personal' ? 'personal' : 'morfy'
     tipo.value = t.programa.tipo
 
     const detalle = el('div', 'tareas-programa')
@@ -480,7 +510,13 @@ export class VistaTareas {
       if (tipo.value === 'diaria') detalle.append(etiqueta('A las', hora))
       if (tipo.value === 'semanal') detalle.append(dias, etiqueta('A las', hora))
       if (tipo.value === 'cada') detalle.append(etiqueta('Cada', minutos))
+      if (tipo.value === 'evento') {
+        detalle.append(etiqueta('Cuando', evento))
+        if (evento.value === 'carpeta') detalle.append(etiqueta('Carpeta', carpeta))
+        if (evento.value === 'instagram') detalle.append(etiqueta('Cuenta', cuenta))
+      }
     }
+    evento.addEventListener('change', () => pintarDetalle())
     tipo.addEventListener('change', pintarDetalle)
     pintarDetalle()
 
@@ -515,6 +551,14 @@ export class VistaTareas {
           return { tipo: 'semanal', hora: hora.value, dias: cajas.filter((c) => c.checked).map((c) => Number(c.value)) }
         case 'cada':
           return { tipo: 'cada', minutos: Number(minutos.value) }
+        case 'evento': {
+          const ev = evento.value as 'correo' | 'instagram' | 'carpeta' | 'encender'
+          return ev === 'carpeta'
+            ? { tipo: 'evento', evento: ev, carpeta: carpeta.value }
+            : ev === 'instagram'
+              ? { tipo: 'evento', evento: ev, cuenta: cuenta.value }
+              : { tipo: 'evento', evento: ev }
+        }
         default:
           return { tipo: 'ahora' }
       }

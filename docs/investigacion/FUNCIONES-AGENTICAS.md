@@ -42,7 +42,7 @@
 | A1 | **Agentes con nombre y rol** (p. ej. «Contenido», «Correo», «Investigador», «Ventas»): instrucciones, herramientas permitidas, modelo y memoria propios; se ejecutan como subagentes nativos del CLI de Claude | Grok Bot (Bots), Copilot (custom agents), dots (varios dots) | ✔ v1.20.0 (perfiles `agentes/*.md` → `--agents`) | 10 |
 | A2 | Datos comunes a todos los agentes (tu nombre, zona horaria, marcas) | Grok Bot | ✔ v1.20.0 (`_comun.md` + zona horaria) | 10 |
 | A3 | **Rutinas por agente** con historial de ejecuciones (últimas 20) y topes | Grok Bot (Routines) | ✔ v1.21.0 (agente por tarea, historial 20, «máximo al día») | 10 |
-| A4 | **Buzón entre agentes**: un agente deja un encargo a otro, que lo atiende y responde después | Grok Bot (mensajes asíncronos) | ✗ | 10 |
+| A4 | **Buzón entre agentes**: un agente deja un encargo a otro, que lo atiende y responde después | Grok Bot (mensajes asíncronos) | ✔ v1.22.0 (`dejar_encargo` → tarea en segundo plano del otro agente) | 10 |
 | A5 | **Subagentes en paralelo** con contexto aislado para trabajos largos: se **reutilizan los del CLI de Claude** (`--agents`) | Claude Code (subagents), Manus (Wide Research) | ✔ v1.20.0 (subagentes nativos del CLI, en primer plano) | 10 |
 | A6 | Orquestador: Atlas/Orbe reparte el trabajo entre agentes | Grok Bot, dots Space | ✔ v1.20.0 (Atlas delega y lo cuenta; ECC con `ecc_tarea`) | 10 |
 
@@ -52,8 +52,8 @@
 |---|---|---|---|---|
 | P1 | Tareas programadas con «solo si hay algo» | dots, Cowork | ✔ | — |
 | P2 | **Heartbeat**: cada N min lee `PROACTIVO.md` y decide si actúa (sin gasto si está vacío) | OpenClaw | ✔ v1.21.0 (`ORBE_PROACTIVO_MIN`, sin gasto si está vacío) | 11 |
-| P3 | **Activadores por evento** (por sondeo): correo nuevo, comentario o mensaje de Instagram, archivo nuevo en una carpeta, al encender el PC | dots (event triggers), Grok Bot | ✗ | 11 |
-| P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✗ | 11 |
+| P3 | **Activadores por evento** (por sondeo): correo nuevo, comentario o mensaje de Instagram, archivo nuevo en una carpeta, al encender el PC | dots (event triggers), Grok Bot | ✔ v1.22.0 (tareas «Cuando pase algo», sondeo cada 5 min; IG solo comentarios) | 11 |
+| P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✔ v1.22.0 (plantilla «Vigilar un tema»; no repite lo ya contado) | 11 |
 | P5 | **Ponerse al día al encender** (lo que no se pudo hacer con el portátil apagado) | Adaptación propia (sin 24/7) | ✔ v1.21.0 (recupera ≤12 h; lo demás se anota y avisa) | 11 |
 | P6 | Parte de situación diario | Atlas | ✔ | — |
 | P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 14 |

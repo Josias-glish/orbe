@@ -461,6 +461,8 @@ export type ProgramaTarea =
   /** 0 = domingo … 6 = sábado. */
   | { tipo: 'semanal'; dias: number[]; hora: string }
   | { tipo: 'cada'; minutos: number }
+  /** Activador (P3): se hace cuando pasa algo; `carpeta` para «archivo», `cuenta` para Instagram. */
+  | { tipo: 'evento'; evento: 'correo' | 'instagram' | 'carpeta' | 'encender'; carpeta?: string; cuenta?: string }
 
 export type EstadoEjecucion = 'en-curso' | 'esperando' | 'completada' | 'nada-nuevo' | 'error' | 'cancelada'
 

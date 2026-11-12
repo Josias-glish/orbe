@@ -87,6 +87,8 @@ try {
   // sin almacenamiento, encendidos hasta cerrar Orbe
 }
 const sonidos = new Sonidos(almacenSonidos)
+// El interruptor de sonidos vive en la configuración (Personaje y avisos).
+window.addEventListener('orbe:sonidos', (e) => sonidos.fijar((e as CustomEvent<boolean>).detail))
 const SONIDO_DEL_PERSONAJE: Record<string, Sonido> = { caricia: 'caricia', rueda: 'rueda', dormir: 'dormir', despertar: 'despertar' }
 document.addEventListener('orbe-personaje', (e) => {
   const s = SONIDO_DEL_PERSONAJE[(e as CustomEvent<string>).detail]
@@ -139,9 +141,7 @@ const figuraLista = montarFigura().then(() => {
     orbe,
     document.getElementById('personaje-boton') as HTMLButtonElement,
     document.getElementById('personaje-menu') as HTMLElement,
-    document.getElementById('actividad-insignia') as HTMLElement,
-    apariencia !== 'orbe',
-    sonidos
+    document.getElementById('actividad-insignia') as HTMLElement
   )
 })
 let menuPersonaje: MenuPersonaje | null = null

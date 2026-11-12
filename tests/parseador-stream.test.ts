@@ -192,3 +192,12 @@ describe('interpretarLinea: herramientas', () => {
     expect(interpretarLinea(linea({ type: 'user', parent_tool_use_id: 'x', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'x' }] } }))).toEqual([])
   })
 })
+
+describe('progreso de subagentes', () => {
+  it('task_progress con herramienta se convierte en progreso_agente', () => {
+    expect(interpretarLinea(JSON.stringify({ type: 'system', subtype: 'task_progress', tool_use_id: 't1', last_tool_name: 'mcp__orbe__gmail_buscar' }))).toEqual([
+      { k: 'progreso_agente', id: 't1', herramienta: 'mcp__orbe__gmail_buscar' }
+    ])
+    expect(interpretarLinea(JSON.stringify({ type: 'system', subtype: 'task_progress' }))).toEqual([])
+  })
+})

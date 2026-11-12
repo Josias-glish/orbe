@@ -545,6 +545,22 @@ export class ProveedorCli implements ProveedorChat {
       case 'herramienta_resultado':
         this.alResultadoHerramienta(turno, evento)
         break
+      case 'progreso_agente': {
+        // Sin tool_use_id, el último encargo en curso.
+        const id = turno.busquedas.get(evento.id)?.delegar ? evento.id : [...turno.busquedas].reverse().find(([, p]) => p.delegar)?.[0]
+        const previa = id ? turno.busquedas.get(id) : undefined
+        if (id && previa) {
+          turno.manejadores.alAccion?.({
+            accionId: `busqueda-${id}`,
+            herramienta: 'delegar',
+            estado: 'en_curso',
+            titulo: previa.titulo,
+            parametros: previa.parametros,
+            resultado: `Usando ${evento.herramienta.replace(/^mcp__orbe__/, '')}…`
+          })
+        }
+        break
+      }
       case 'error_mensaje':
         turno.errorCli = { codigo: evento.codigo, texto: evento.texto }
         break

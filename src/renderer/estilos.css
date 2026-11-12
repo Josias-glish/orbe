@@ -2754,3 +2754,19 @@ select.memoria-campo option {
 .carril > button[hidden] {
   display: none;
 }
+
+/* Agentes trabajando: el botón del carril late suave. */
+#personaje-boton.agentes-trabajando {
+  color: var(--cian);
+  animation: agentes-latido 1.6s ease-in-out infinite;
+}
+@keyframes agentes-latido {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #personaje-boton.agentes-trabajando {
+    animation: none;
+  }
+}

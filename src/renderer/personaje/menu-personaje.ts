@@ -1,9 +1,7 @@
-import { EXPRESIONES, IDS_EXPRESION, esIdExpresion, type IdExpresion } from '../../shared/expresiones'
-import type { EstadoActividad, EventoActividad, TipoActividad } from '../../shared/tipos'
+import { esIdExpresion, type IdExpresion } from '../../shared/expresiones'
+import type { AccionVista, EstadoActividad, EstadoTareas, EventoActividad, TipoActividad } from '../../shared/tipos'
 import { registrarMenu } from '../chat/menus'
-import { GESTOS, IDS_GESTO } from './gestos'
 import type { Avatar } from './avatar'
-import type { Sonidos } from './sonidos'
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(etiqueta)
@@ -28,13 +26,15 @@ const IMPORTANTES: readonly TipoActividad[] = ['esperando', 'terminado', 'error'
 const ETIQUETA_TIPO: Record<TipoActividad, string> = { inicio: 'Empezó', trabajando: 'Trabajando', esperando: 'Te necesita', terminado: 'Terminado', error: 'Error', info: 'Aviso' }
 
 /**
- * El menú del personaje (cabecera del panel): elegir una de las 20 expresiones (o dejarlo en automático) y ver la
- * actividad de las herramientas conectadas (Claude Code y otras). También pinta el globito con los avisos sin ver.
+ * El menú «Agentes» del carril: quién trabaja ahora y en qué, y los avisos de las herramientas conectadas (Claude Code
+ * y otras). También pone la cara del personaje con cada aviso y pinta el globito con los avisos sin ver.
  */
 export class MenuPersonaje {
   private readonly menus: { anunciarApertura(): void }
-  private pestana: 'expresiones' | 'actividad' = 'expresiones'
-  private fijada: IdExpresion | null = null
+  private pestana: 'agentes' | 'actividad' = 'agentes'
+  private readonly fijada: IdExpresion | null = null
+  private tareas: EstadoTareas | null = null
+  private readonly encargos = new Map<string, { quien: string; que: string; detalle: string; desde: number }>()
   private sinVer = 0
   private ultimos: EventoActividad[] = []
   private estado: EstadoActividad | null = null
@@ -43,12 +43,12 @@ export class MenuPersonaje {
     private readonly avatar: Avatar,
     private readonly boton: HTMLButtonElement,
     private readonly menu: HTMLElement,
-    private readonly insignia: HTMLElement,
-    private readonly conCara: boolean,
-    private readonly sonidos?: Sonidos
+    private readonly insignia: HTMLElement
   ) {
     this.menus = registrarMenu('personaje', () => this.cerrar())
-    if (!conCara) this.pestana = 'actividad'
+    // Encargos del chat (herramienta «delegar»): el panel los anuncia con un evento.
+    window.addEventListener('orbe:accion', (e) => this.alAccion((e as CustomEvent<AccionVista>).detail))
+    window.orbe.alTareas(() => void this.refrescarTareas())
     boton.addEventListener('click', (e) => {
       e.stopPropagation()
       if (this.menu.hidden) this.abrir()
@@ -86,12 +86,45 @@ export class MenuPersonaje {
     this.insignia.dataset['tipo'] = ultimo?.tipo ?? ''
   }
 
+  private alAccion(a: AccionVista): void {
+    if (a.herramienta !== 'delegar') return
+    if (a.estado === 'en_curso') {
+      const [quien, ...que] = a.titulo.replace(/^Encargo a /, '').split(': ')
+      this.encargos.set(a.accionId, {
+        quien: `Agente «${quien}»`,
+        que: que.join(': ') || 'Encargo del chat',
+        detalle: a.resultado ?? 'Empezando…',
+        desde: this.encargos.get(a.accionId)?.desde ?? Date.now()
+      })
+    } else this.encargos.delete(a.accionId)
+    this.pintarBotonAgentes()
+    if (!this.menu.hidden && this.pestana === 'agentes') this.pintar()
+  }
+
+  private async refrescarTareas(): Promise<void> {
+    try {
+      this.tareas = await window.orbe.tareasEstado()
+    } catch {
+      return
+    }
+    this.pintarBotonAgentes()
+    if (!this.menu.hidden && this.pestana === 'agentes') this.pintar()
+  }
+
+  /** El botón late mientras algún agente trabaja. */
+  private pintarBotonAgentes(): void {
+    const enCurso = this.encargos.size + (this.tareas?.tareas.filter((t) => t.ultima?.estado === 'en-curso').length ?? 0)
+    this.boton.classList.toggle('agentes-trabajando', enCurso > 0)
+    this.boton.title = enCurso > 0 ? `Agentes: ${enCurso} trabajando` : 'Agentes: quién trabaja y en qué'
+  }
+
   private async abrir(): Promise<void> {
     this.menus.anunciarApertura()
     this.menu.hidden = false
     this.boton.setAttribute('aria-expanded', 'true')
     if (this.pestana === 'actividad') this.marcarVistos()
     this.pintar()
+    void this.refrescarTareas()
     try {
       this.estado = await window.orbe.actividadHistorial()
       this.ultimos = this.estado.eventos
@@ -114,8 +147,10 @@ export class MenuPersonaje {
   private pintar(): void {
     const pestanas = el('div', 'ocr-modos')
     pestanas.setAttribute('role', 'tablist')
-    const opciones: Array<['expresiones' | 'actividad', string]> = this.conCara ? [['expresiones', 'Expresiones'], ['actividad', 'Actividad']] : [['actividad', 'Actividad']]
-    if (opciones.length === 1) pestanas.style.gridTemplateColumns = '1fr'
+    const opciones: Array<['agentes' | 'actividad', string]> = [
+      ['agentes', 'Trabajando ahora'],
+      ['actividad', 'Avisos']
+    ]
     for (const [id, nombre] of opciones) {
       const b = el('button', 'ocr-modo', nombre)
       b.type = 'button'
@@ -130,75 +165,32 @@ export class MenuPersonaje {
       })
       pestanas.append(b)
     }
-    this.menu.replaceChildren(pestanas, ...(this.pestana === 'expresiones' ? this.pintarExpresiones() : this.pintarActividad()))
+    this.menu.replaceChildren(pestanas, ...(this.pestana === 'agentes' ? this.pintarAgentes() : this.pintarActividad()))
   }
 
-  private pintarExpresiones(): HTMLElement[] {
-    const rejilla = el('div', 'expresiones-rejilla')
-    for (const id of IDS_EXPRESION) {
-      const ex = EXPRESIONES[id]
-      const b = el('button', 'expresion-boton', ex.emoji)
-      b.type = 'button'
-      b.title = ex.nombre
-      b.dataset['expresion'] = id
-      b.setAttribute('aria-label', ex.nombre)
-      b.setAttribute('aria-pressed', String(this.fijada === id))
-      b.addEventListener('click', (e) => {
-        e.stopPropagation()
-        // Pulsar la que ya está fijada la suelta; otra, la fija.
-        this.fijada = this.fijada === id ? null : id
-        this.avatar.expresar(this.fijada, 0)
-        this.pintar()
-      })
-      rejilla.append(b)
+  /** Quién trabaja ahora y en qué: tareas en segundo plano (con su agente) y encargos del chat. */
+  private pintarAgentes(): HTMLElement[] {
+    const lista = el('ol', 'actividad-lista')
+    const fila = (quien: string, que: string, detalle: string, desde: number | null): void => {
+      const li = el('li', 'actividad-item actividad-trabajando')
+      const cabeza = el('div', 'actividad-cabeza')
+      cabeza.append(el('span', 'actividad-tipo', 'Trabajando'), el('span', 'actividad-origen', quien))
+      if (desde) cabeza.append(el('time', 'actividad-hora', new Date(desde).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })))
+      li.append(cabeza, el('p', 'actividad-titulo', que))
+      if (detalle) li.append(el('p', 'actividad-detalle', detalle))
+      lista.append(li)
     }
-    const auto = el('button', 'boton-memoria', this.fijada ? `Automático (ahora: ${EXPRESIONES[this.fijada].nombre})` : 'Automático ✓')
-    auto.type = 'button'
-    auto.dataset['expresion'] = 'auto'
-    auto.addEventListener('click', (e) => {
-      e.stopPropagation()
-      this.fijada = null
-      this.avatar.expresar(null)
-      this.pintar()
-    })
-    const nota = el(
-      'p',
-      'memoria-nota',
-      'Pulsa una para fijarla; en automático cambia según la conversación y los avisos. Sobre el personaje: la rueda del ratón recorre las caras y si lo acaricias con el cursor, reacciona.'
-    )
-    // Gestos: un movimiento de todo el cuerpo al momento (además de los que hace solo de vez en cuando).
-    const gestos = el('div', 'gestos-fila')
-    for (const id of IDS_GESTO) {
-      const g = GESTOS[id]
-      const b = el('button', 'expresion-boton gesto-boton', g.emoji)
-      b.type = 'button'
-      b.title = g.nombre
-      b.dataset['gesto'] = id
-      b.setAttribute('aria-label', g.nombre)
-      b.addEventListener('click', (e) => {
-        e.stopPropagation()
-        this.avatar.gesto?.(id, true)
-        this.sonidos?.tocar(id === 'salto' || id === 'baile' ? 'risa' : 'abrir')
-      })
-      gestos.append(b)
+    for (const a of this.encargos.values()) fila(a.quien, a.que, a.detalle, a.desde)
+    for (const t of this.tareas?.tareas ?? []) {
+      const u = t.ultima
+      if (u && (u.estado === 'en-curso' || u.estado === 'esperando')) {
+        fila(t.agente ? `Agente «${t.agente}»` : 'Orbe', t.titulo, u.estado === 'esperando' ? 'Te necesita: responde en Tareas.' : 'Tarea en segundo plano', u.inicio)
+      }
     }
-    const partes: HTMLElement[] = [rejilla, auto, el('p', 'uso-subtitulo', 'Gestos'), gestos]
-    if (this.sonidos) {
-      const opcion = el('label', 'memoria-opcion')
-      const casilla = el('input')
-      casilla.type = 'checkbox'
-      casilla.checked = this.sonidos.encendidos
-      casilla.dataset['opcion'] = 'sonidos'
-      casilla.addEventListener('change', () => {
-        this.sonidos?.fijar(casilla.checked)
-        if (casilla.checked) this.sonidos?.tocar('risa')
-      })
-      opcion.addEventListener('click', (e) => e.stopPropagation())
-      opcion.append(casilla, el('span', undefined, 'Sonidos del personaje'))
-      partes.push(opcion)
+    if (lista.children.length === 0) {
+      return [el('p', 'memoria-nota', 'Ningún agente está trabajando ahora. Aquí verás quién hace qué en cuanto Orbe reparta trabajo o empiece una tarea.')]
     }
-    partes.push(nota)
-    return partes
+    return [lista]
   }
 
   private pintarActividad(): HTMLElement[] {

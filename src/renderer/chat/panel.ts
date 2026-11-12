@@ -998,6 +998,7 @@ export class PanelChat {
     turno.conAcciones = true
     this.ocultarEstado()
     turno.respuesta.agregarAccion(accion)
+    window.dispatchEvent(new CustomEvent('orbe:accion', { detail: accion }))
     if (accion.estado === 'en_curso') {
       this.cambiarEstadoOrbe('actuando')
     } else {

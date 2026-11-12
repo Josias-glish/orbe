@@ -27,6 +27,7 @@ function aLaHora(base: number, hora: string, diasDespues = 0): number {
 export function siguienteEjecucion(p: ProgramaTarea, despues: number, creada = despues): number | null {
   switch (p.tipo) {
     case 'ahora':
+    case 'evento':
       return null
     case 'una-vez':
       return p.en > despues ? p.en : null
@@ -96,6 +97,22 @@ export function validarTarea(entrada: unknown, ahora = Date.now()): ValidacionTa
         return { ok: false, error: `El intervalo debe estar entre ${MINUTOS_MIN} minutos y 7 días.` }
       }
       programa = { tipo: 'cada', minutos }
+      break
+    }
+    case 'evento': {
+      const evento = p.evento
+      if (evento !== 'correo' && evento !== 'instagram' && evento !== 'carpeta' && evento !== 'encender') {
+        return { ok: false, error: 'Elige qué tiene que pasar.' }
+      }
+      if (evento === 'carpeta') {
+        const carpeta = typeof p.carpeta === 'string' ? p.carpeta.trim() : ''
+        if (!/^[a-zA-Z]:[\\/]/.test(carpeta) || carpeta.length > 260) return { ok: false, error: 'Escribe la ruta completa de la carpeta (p. ej. C:\\Users\\…\\Descargas).' }
+        programa = { tipo: 'evento', evento, carpeta }
+      } else if (evento === 'instagram') {
+        programa = { tipo: 'evento', evento, cuenta: p.cuenta === 'personal' ? 'personal' : 'morfy' }
+      } else {
+        programa = { tipo: 'evento', evento }
+      }
       break
     }
     default:

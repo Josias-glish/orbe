@@ -14,5 +14,12 @@ export function describirPrograma(p: ProgramaTarea): string {
       return `${[...p.dias].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => nombres[d]).join(', ')} a las ${p.hora}`
     case 'cada':
       return p.minutos % 60 === 0 ? `Cada ${p.minutos / 60} h` : `Cada ${p.minutos} min`
+    case 'evento':
+      return {
+        correo: 'Cuando llegue un correo',
+        instagram: `Cuando haya comentarios nuevos (${p.cuenta ?? 'morfy'})`,
+        carpeta: `Cuando aparezca un archivo en ${p.carpeta ?? '?'}`,
+        encender: 'Al encender el PC'
+      }[p.evento]
   }
 }

@@ -226,6 +226,12 @@ v1.21.0: `TareaVista.agente`/`maxDia` (validados en programa.ts; tope en `revisa
 PROACTIVO.md sin comentarios); `iniciar` anota y notifica lo perdido (>12 h). `MCP_TOOL_TIMEOUT` 30 min,
 `MAX_MCP_OUTPUT_TOKENS` 40000, `Herramienta.maxResultado`; ECC guarda en `ecc/<fecha>.md`.
 
+v1.22.0: `ProgramaTarea` tipo `evento` (`tareas/activadores.ts`, vistos en `activadores.json`, `ServicioTareas.disparar`
+con contexto envuelto como dato); `promptTarea.anterior` (P4); `dejar_encargo` (`herramientas/buzon.ts`);
+`task_progress` → `progreso_agente`. El menú del personaje es ahora «Agentes» (`menu-personaje.ts`, evento DOM
+`orbe:accion` desde panel.ts); sonidos en Ajustes vía evento `orbe:sonidos`. Carril: chat, agentes, tareas,
+métricas, memoria, ajustes.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

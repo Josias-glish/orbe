@@ -18,6 +18,8 @@ export type EventoCli =
   | { k: 'herramienta_pedida'; id: string; nombre: string; entrada: Record<string, unknown> }
   /** El resultado de una herramienta, que el CLI devuelve a Claude. */
   | { k: 'herramienta_resultado'; id: string; texto: string; error: boolean }
+  /** Un subagente avanza (evento task_progress del CLI): qué herramienta usó la última vez. */
+  | { k: 'progreso_agente'; id: string; herramienta: string }
   | {
       k: 'resultado'
       error: boolean
@@ -106,6 +108,9 @@ function interpretarSistema(ev: Json): EventoCli[] {
         error: comoTexto(ev.error)
       }
     ]
+  }
+  if (ev.subtype === 'task_progress' && comoTexto(ev.last_tool_name)) {
+    return [{ k: 'progreso_agente', id: comoTexto(ev.tool_use_id), herramienta: comoTexto(ev.last_tool_name) }]
   }
   return []
 }
