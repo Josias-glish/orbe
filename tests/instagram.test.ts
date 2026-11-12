@@ -120,9 +120,9 @@ describe('token de Instagram', () => {
     const meta = metaFalso({ '/refresh_access_token': { access_token: 'nuevo', token_type: 'bearer', expires_in: 5184000 } })
     const guardados: Array<[string, TokenGuardado]> = []
     const fuente = crearFuenteTokenIg(() => guardadoHace(31), (clave, valor) => guardados.push([clave, valor]), meta.fetch, () => HOY)
-    expect(await fuente('jsdesign')).toBe('nuevo')
+    expect(await fuente('personal')).toBe('nuevo')
     expect(meta.llamadas[0]!.url.searchParams.get('grant_type')).toBe('ig_refresh_token')
-    expect(guardados).toEqual([['ig.jsdesign', { token: 'nuevo', renovado: new Date(HOY).toISOString() }]])
+    expect(guardados).toEqual([['ig.personal', { token: 'nuevo', renovado: new Date(HOY).toISOString() }]])
   })
 
   it('si la renovación falla sigue con el que hay y no toca el cofre', async () => {
@@ -168,8 +168,8 @@ describe('herramientas de Instagram', () => {
   })
 
   it('usa la cuenta pedida y entrega pies y comentarios como contenido externo', async () => {
-    expect((await perfil!.ejecutar({ cuenta: 'jsdesign' }, ctx)).texto).toContain('Seguidores: 120')
-    expect(pedidas.at(-1)).toBe('jsdesign')
+    expect((await perfil!.ejecutar({ cuenta: 'personal' }, ctx)).texto).toContain('Seguidores: 120')
+    expect(pedidas.at(-1)).toBe('personal')
     expect((await publicaciones!.ejecutar({ cuenta: 'morfy' }, ctx)).externo).toEqual({ origen: 'Instagram' })
     expect((await comentarios!.ejecutar({ cuenta: 'morfy', id: '111' }, ctx)).externo).toEqual({ origen: 'Instagram' })
   })

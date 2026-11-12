@@ -19,17 +19,9 @@ export interface DefinicionSecreto {
 
 export const SECRETOS: readonly DefinicionSecreto[] = [
   {
-    clave: 'ig.jsdesign',
-    nombre: 'Token de J&S Design',
-    ayuda: 'Meta Developers → tu app → API con inicio de sesión de Instagram → Generar identificadores de acceso (guía 01, paso 4).',
-    manual: true,
-    forma: 'token_ig',
-    servicio: 'Instagram'
-  },
-  {
     clave: 'ig.morfy',
     nombre: 'Token de morfy',
-    ayuda: 'El mismo paso que J&S Design, iniciando sesión con la cuenta de morfy.',
+    ayuda: 'Meta Developers → tu app → API con inicio de sesión de Instagram → Generar identificadores de acceso, iniciando sesión con la cuenta de morfy (guía 01, paso 4).',
     manual: true,
     forma: 'token_ig',
     servicio: 'Instagram'

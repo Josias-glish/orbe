@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, extname, join } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { basename, dirname, extname, join } from 'node:path'
 import type { EstadoFondo } from '../shared/tipos'
 
 /** Lo que Electron sabe abrir (PNG y JPEG). */
@@ -22,6 +22,8 @@ interface Guardado {
 export interface OpcionesFondos {
   /** Carpeta con las imágenes; null si no hay ninguna configurada. */
   carpeta: string | null
+  /** Donde se copian las imágenes que el usuario elige de su equipo (van antes que las de `carpeta`). */
+  carpetaPropia?: string
   /** Donde se recuerda qué fondo se eligió y cuánto se ve. */
   archivoEstado: string
   /** Donde se guardan las imágenes ya reducidas (las originales pueden ser de 4K y pesar decenas de MB). */
@@ -58,16 +60,38 @@ export const limitarVisibilidad = (v: number): number =>
 export class ServicioFondos {
   constructor(private readonly o: OpcionesFondos) {}
 
-  /** Nombres de las imágenes de la carpeta, en orden alfabético. */
-  listar(): string[] {
-    if (!this.o.carpeta) return []
-    try {
-      return readdirSync(this.o.carpeta)
-        .filter((n) => EXTENSIONES_IMAGEN.has(extname(n).toLowerCase()))
-        .sort((a, b) => a.localeCompare(b))
-    } catch {
-      return []
+  /** Cada imagen por su nombre y su ruta; con el mismo nombre en las dos carpetas manda la propia. */
+  private rutas(): Map<string, string> {
+    const m = new Map<string, string>()
+    for (const c of [this.o.carpetaPropia, this.o.carpeta]) {
+      if (!c) continue
+      try {
+        for (const n of readdirSync(c)) if (EXTENSIONES_IMAGEN.has(extname(n).toLowerCase()) && !m.has(n)) m.set(n, join(c, n))
+      } catch {
+        // carpeta inexistente: nada que listar
+      }
     }
+    return m
+  }
+
+  /** Nombres de las imágenes, en orden alfabético. */
+  listar(): string[] {
+    return [...this.rutas().keys()].sort((a, b) => a.localeCompare(b))
+  }
+
+  /**
+   * Copia una imagen del equipo a la carpeta propia y la pone de fondo. Nunca pisa un archivo: si el nombre
+   * ya existe, la copia lleva la hora delante.
+   */
+  async elegir(origen: string): Promise<EstadoFondo> {
+    if (!this.o.carpetaPropia) throw new Error('No hay carpeta para fondos propios')
+    if (!EXTENSIONES_IMAGEN.has(extname(origen).toLowerCase())) throw new Error('Solo PNG o JPEG')
+    mkdirSync(this.o.carpetaPropia, { recursive: true })
+    let nombre = basename(origen)
+    if (existsSync(join(this.o.carpetaPropia, nombre))) nombre = `${Date.now()}-${nombre}`
+    copyFileSync(origen, join(this.o.carpetaPropia, nombre))
+    this.guardar({ ...this.leer(), activo: true, archivo: nombre })
+    return this.estado()
   }
 
   private leer(): Guardado {
@@ -101,8 +125,8 @@ export class ServicioFondos {
 
   /** La imagen reducida como data URL, de la caché si ya se hizo. Null si no se puede abrir. */
   private async cargar(nombre: string): Promise<string | null> {
-    if (!this.o.carpeta) return null
-    const ruta = join(this.o.carpeta, nombre)
+    const ruta = this.rutas().get(nombre)
+    if (!ruta) return null
     let huella: string
     try {
       const s = statSync(ruta)

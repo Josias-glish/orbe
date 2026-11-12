@@ -40,7 +40,7 @@ export class FondoChat {
     try {
       this.aplicar(await window.orbe.fondoEstado())
     } catch {
-      this.boton.hidden = true
+      // Sin respuesta del proceso principal no hay fondo.
     }
   }
 
@@ -69,7 +69,6 @@ export class FondoChat {
     const imagen = nuevo.imagen ?? (nuevo.activo && previo?.nombre === nuevo.nombre ? this.imagenPuesta : null)
     this.estado = { ...nuevo, imagen }
 
-    this.boton.hidden = !nuevo.disponible
     const visible = nuevo.disponible && nuevo.activo && imagen !== null
     this.panel.classList.toggle('con-fondo', visible)
     if (visible && imagen !== this.imagenPuesta) {
@@ -123,8 +122,13 @@ export class FondoChat {
     rango.addEventListener('change', () => void this.cambiar(window.orbe.fondoAjustar({ visibilidad: Number(rango.value) / 100 })))
     visibilidad.append(el('span', undefined, 'Visibilidad'), rango)
 
-    const detalle = el('p', 'memoria-nota', e.nombre ? `${e.nombre} · ${e.total} ${e.total === 1 ? 'imagen' : 'imágenes'}` : '')
+    const elegir = el('button', 'boton-memoria primario', 'Elegir imagen…')
+    elegir.type = 'button'
+    elegir.addEventListener('click', () => void this.cambiar(window.orbe.fondoElegir()))
+
+    const detalle = el('p', 'memoria-nota', e.nombre ? `${e.nombre} · ${e.total} ${e.total === 1 ? 'imagen' : 'imágenes'}` : 'Aún no hay imágenes: elige una de tu equipo.')
     detalle.title = e.nombre ?? ''
-    this.menu.replaceChildren(otro, opcion, visibilidad, detalle)
+    if (!e.disponible) this.menu.replaceChildren(elegir, detalle)
+    else this.menu.replaceChildren(elegir, otro, opcion, visibilidad, detalle)
   }
 }

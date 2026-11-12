@@ -79,9 +79,9 @@ describe('ControladorCofre (lo que hay detrás de los canales)', () => {
     const control = new ControladorCofre(cofre, undefined, () => new Date('2026-11-09T12:00:00Z'))
     expect((await control.guardar('inventada.clave', 'loquesea123')).ok).toBe(false)
     expect((await control.guardar('gmail.refresh', 'loquesea123')).ok).toBe(false) // lo guarda solo el conector de Gmail
-    const r = await control.guardar('ig.jsdesign', '  IGQVJtokenlargo123  ')
+    const r = await control.guardar('ig.personal', '  IGQVJtokenlargo123  ')
     expect(r.ok).toBe(true)
-    expect(cofre.leer('ig.jsdesign')).toEqual({ token: 'IGQVJtokenlargo123', renovado: '2026-11-09T12:00:00.000Z' })
+    expect(cofre.leer('ig.personal')).toEqual({ token: 'IGQVJtokenlargo123', renovado: '2026-11-09T12:00:00.000Z' })
     expect(JSON.stringify(r)).not.toContain('IGQVJ')
   })
 

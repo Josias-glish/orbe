@@ -3,7 +3,7 @@ import type { ClaveParte, LecturaPantalla, ParteContexto } from '../../shared/ti
 const NS = 'http://www.w3.org/2000/svg'
 
 /** Trazos (estilo Lucide, dibujados a mano) de cada icono. */
-const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca' | 'camara' | 'rayo' | 'escudo' | 'parar', string[]> = {
+const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca' | 'camara' | 'rayo' | 'escudo' | 'parar' | 'chip' | 'conejo' | 'micro' | 'altavoz' | 'sombrero' | 'candado' | 'consumo', string[]> = {
   ventana: ['M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 9h18'],
   seleccion: ['M9 4h6', 'M9 20h6', 'M12 4v16'],
   contenido: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6'],
@@ -17,7 +17,15 @@ const ICONOS: Record<ClaveParte | 'ojo' | 'cerrar' | 'libro' | 'volver' | 'marca
   camara: ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
   rayo: ['M13 2 3 14h9l-1 8 10-12h-9z'],
   escudo: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
-  parar: ['M7 7h10v10H7z']
+  parar: ['M7 7h10v10H7z'],
+  // Iconos de Configuración: mismo trazo (1,9), puntas redondas y esquinas de radio 2–4, dibujados para Orbe.
+  chip: ['M8 4h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z', 'M10 10h4v4h-4z', 'M12 2v2', 'M12 20v2', 'M2 12h2', 'M20 12h2'],
+  conejo: ['M9.5 10C8 7 8 3.2 9.3 2.6s2.6 3.2 2.2 7.2', 'M14.5 10c1.5-3 1.5-6.8.2-7.4s-2.6 3.2-2.2 7.2', 'M12 21a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11z', 'M10 15h.01', 'M14 15h.01'],
+  micro: ['M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z', 'M19 11a7 7 0 0 1-14 0', 'M12 18v3'],
+  altavoz: ['M11 5 6 9H3v6h3l5 4z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M18.5 5.5a9 9 0 0 1 0 13'],
+  sombrero: ['M3 18h18', 'M6 18V9a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v9', 'M6 13h12'],
+  candado: ['M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z', 'M8 11V7a4 4 0 0 1 8 0v4'],
+  consumo: ['M4 20v-8', 'M10 20V4', 'M16 20v-11', 'M22 20H2']
 }
 
 export function crearIcono(nombre: keyof typeof ICONOS, tamano = 14): SVGElement {

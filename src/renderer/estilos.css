@@ -2681,20 +2681,24 @@ select.memoria-campo {
   --panel-borde: rgba(251, 191, 36, 0.24);
 }
 
-/* Contenido: miniaturas de las imágenes de cada pieza (1080×1350 → 4:5). */
-.contenido-miniaturas {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
+/* Métricas: cada publicación frente a la media de la cuenta. */
+.metricas-pub {
+  cursor: pointer;
 }
-.contenido-miniaturas img {
-  flex: none;
-  width: 72px;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--linea);
+.metricas-pub .uso-modelo-nombre span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.contenido-pieza .tarea-acciones {
-  flex-wrap: wrap;
+.metricas-arriba {
+  color: #34d399;
+}
+.metricas-abajo {
+  color: var(--error);
+}
+
+/* Lo que pasó a Configuración sigue en la barra (lo usan los menús), pero oculto de verdad. */
+.carril > button[hidden] {
+  display: none;
 }

@@ -113,7 +113,7 @@ Instagram contra Meta real (solo con pruebas) y cuándo caduca su token `EAA…`
 posterior; el usuario la quiere con **Google** (ya no ElevenLabs). Hoy apunta a un Kokoro local en `localhost:8880` que no
 está en marcha y cae a la voz de Windows; Google Cloud Text-to-Speech no es compatible con `/audio/speech` de OpenAI
 (no verificado si hay pasarela compatible): hará falta un adaptador. Dictado: abrir el
-micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea pendiente de aprobación (no es parte del plan):
+micrófono tarda ~4 s en su PC; hay estado `preparando` para que un segundo clic no duplique la grabación. Idea sustituida por la Etapa 5 (Composio):
 dejar pasar al CLI una lista cerrada de conectores de claude.ai (Zapier, Calendar…) clasificados en `reglas.json`; hoy
 `proveedor-cli.ts` los bloquea con `--strict-mcp-config`. Sitio web: https://orbe-olive.vercel.app/ (rama `claude/sitio-web`).
 
@@ -123,13 +123,46 @@ v1.9.0 (**Etapa 3, Contenido**, rama `claude/etapa-3-contenido`, sale de `claude
 (`<id>.png`, `<id>-N.png`), que dicta el encargo de «Diseñar»; sin vigilante de carpeta: la pestaña abierta mira la
 entrada cada 4 s; un archivo modificado hace menos de 2 s no se toca; los que no valen se quedan con aviso; borrar mueve a
 `papelera/`. Aplazado del borrador: el diseñador automático por CLI (`contenido_guardar_diseno`, modo «exportado»).
-HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca exportar PNG en la cuenta del usuario.
+HTML → PNG siempre a 1080×1350. Sin verificar: que Claude Design ofrezca exportar PNG en la cuenta del usuario. **En espera por decisión del usuario (11-nov-2026)**: diseño
+automático (CLI de Claude escribe el HTML y genera la foto con el conector MCP de Higgsfield de su cuenta de Claude;
+render por CDP a 1080×1350 exactos). Está en la rama `claude/etapa-3-disenador-auto`, sin fusionar. Verificado: el CLI
+ve el conector solo con `ENABLE_TOOL_SEARCH=true`, `ToolSearch` y sin `--strict-mcp-config` (sin eso, «Prompt is too
+long»). Pendiente si se retoma: humo tras el render por CDP y una prueba real con foto (gasta créditos). Nota: el render
+del PR actual usa `capturePage`, que con el escalado de Windows al 150 % sale desplazado; el respaldo HTML → PNG del PR
+#17 tiene ese fallo (el arreglo por CDP está en la rama en espera).
+
+v1.10.0 (**Etapa 4, Métricas y crecimiento**, rama `claude/etapa-4-metricas`, sale de `claude/etapa-3-contenido`): por
+decisión del usuario (11-nov-2026) la **Publicación queda aparte** y esta etapa ocupa su lugar. Pestaña «Métricas»,
+`metricas/servicio.ts` (12 publicaciones, medias, tasa = interacciones/alcance, o /seguidores sin alcance), historial
+diario en `metricas.json` (foto automática cada 6 h si no hay una de hoy y la cuenta tiene token), herramienta
+`ig_crecimiento` (`ig.leer`), «Analizar con Claude» manda un encargo al chat (no hay llamada aparte al modelo) y
+plantilla de tarea semanal. En la prueba de humo, Instagram es `metricas/demo.ts`. Prueba real pendiente del permiso
+`instagram_manage_insights`.
+
+v1.11.0 (**Etapa 8, interfaz**, rama `claude/etapa-8-interfaz`, sale de `claude/etapa-4-metricas`): fuera J&S Design
+(`CUENTAS` = morfy y personal; el token `ig.jsdesign` sigue en el cofre sin borrar, solo deja de mostrarse) y fuera la
+pestaña Contenido (código borrado; `%APPDATA%\orbe\contenido` intacto). Uso, Memoria, Voz y Fondo salen de la barra
+lateral: sus botones siguen en `#carril` con `hidden` (los menús y atajos los usan) y se abren desde la lista de
+Configuración (`APARTES` en `vista-ajustes.ts`). Iconos SVG propios en `crearIcono` en lugar de emojis. Fondo:
+«Elegir imagen…» (`fondoElegir`, diálogo del sistema; `ServicioFondos.elegir` copia a `datos/fondos`, `carpetaPropia`).
 
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
-4. **Publicación**: aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
-5. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
-6. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
+4. **Publicación** (aparte por decisión del usuario; no se hace hasta que lo pida): aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
+5. **Composio** (pedido por el usuario el 11-nov-2026, para tener muchos conectores sin programarlos uno a uno):
+   Orbe como cliente MCP de `https://connect.composio.dev/mcp` (clave en la cabecera `x-consumer-api-key`, guardada en
+   el cofre como `composio.clave`; fuente: https://docs.composio.dev/docs/composio-connect.md). Composio expone 7
+   meta-herramientas (`COMPOSIO_SEARCH_TOOLS`, `…_GET_TOOL_SCHEMAS`, `…_MULTI_EXECUTE_TOOL`, `…_MANAGE_CONNECTIONS`,
+   `…_WAIT_FOR_CONNECTIONS`, `…_REMOTE_WORKBENCH`, `…_REMOTE_BASH_TOOL`), así que **no se pasan tal cual**: Orbe ofrece
+   sus propias herramientas `composio_buscar` y `composio_ejecutar`, y clasifica cada acción por su nombre en
+   `reglas.json` (`composio.leer` libre para GET/LIST/FETCH/SEARCH; el resto «preguntar»; enviar correos, publicar,
+   pagos y borrar, prohibidos como hoy). `REMOTE_WORKBENCH` y `REMOTE_BASH_TOOL` bloqueados siempre. Meta/Instagram,
+   Gmail y Claude siguen con los conectores propios (decisión del usuario); en Composio se bloquean. Conectar cada app
+   lo hace el usuario por OAuth en su navegador. Sin verificar: precios/plan gratuito y si la clave «consumer» se
+   genera en «AI Clients» del panel de Composio. Sustituye a la idea de dejar pasar conectores de claude.ai al CLI.
+6. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
+7. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
+8. Hecha en v1.11.0 (ver arriba).
 
 Cada etapa: código + pruebas + humo + versión nueva + PR + release, y una guía para que el usuario la pruebe con sus
 cuentas reales. No conectes cuentas reales tú mismo: el usuario genera los tokens y los guarda en Orbe.
