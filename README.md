@@ -158,27 +158,18 @@ Lo que dice un correo llega al modelo como **datos de terceros**, nunca como ins
 Orbe puede consultar el perfil, las publicaciones, las métricas y los comentarios de **tus** cuentas profesionales; **no publica, no responde, no sigue ni da «me gusta»** (no existe ninguna herramienta que lo haga; publicar llegará más adelante y siempre con tu aprobación).
 
 1. Sigue [`docs/fase3-borradores/01-guia-meta.md`](docs/fase3-borradores/01-guia-meta.md): app en Meta Developers en modo desarrollo y tus cuentas con rol en ella. Valen las dos variantes de la API de Instagram: **inicio de sesión unificado** (token `EAA…` de usuario del sistema; permisos `instagram_basic`, `instagram_manage_insights`, `instagram_manage_comments`) e **inicio de sesión de Instagram** (permisos `instagram_business_*`). Orbe distingue el token y habla con el servidor que toca.
-2. Genera el token de cada cuenta y pégalo en **Configuración → Conectores → Instagram** (J&S Design, morfy o marca personal), cada uno en su fila. Se guarda **cifrado en el cofre** y no hace falta reiniciar. El de inicio de sesión de Instagram lo renueva Orbe cada 30 días (dura 60); el `EAA…` caduca cuando hayas elegido al crearlo en Meta.
-3. Pide cosas como «¿cómo rindieron mis últimos 5 posts de morfy?» o «¿qué comentan en la última publicación de J&S Design?». Leer es libre (`ig.leer` en `reglas.json`).
+2. Genera el token de cada cuenta y pégalo en **Configuración → Conectores → Instagram** (morfy o marca personal), cada uno en su fila. Se guarda **cifrado en el cofre** y no hace falta reiniciar. El de inicio de sesión de Instagram lo renueva Orbe cada 30 días (dura 60); el `EAA…` caduca cuando hayas elegido al crearlo en Meta.
+3. Pide cosas como «¿cómo rindieron mis últimos 5 posts de morfy?» o «¿qué comentan en la última publicación de mi marca personal?». Leer es libre (`ig.leer` en `reglas.json`).
 
 Los pies de foto y los comentarios llegan al modelo como **datos de terceros**. Meta puede tardar hasta 48 h en tener las métricas de una publicación nueva.
 
 ## Métricas y crecimiento (solo lectura)
-La pestaña **Métricas** (icono de tendencia) enseña, por cuenta (J&S Design, morfy, personal): seguidores y cuánto han cambiado en 7 y 30 días, alcance medio, tasa de interacción (interacciones sobre alcance) y las últimas 12 publicaciones, cada una frente a la media de la cuenta (en verde si está por encima, en rojo si está por debajo). Pulsar una publicación la abre en Instagram.
+La pestaña **Métricas** (icono de tendencia) enseña, por cuenta (morfy y personal): seguidores y cuánto han cambiado en 7 y 30 días, alcance medio, tasa de interacción (interacciones sobre alcance) y las últimas 12 publicaciones, cada una frente a la media de la cuenta (en verde si está por encima, en rojo si está por debajo). Pulsar una publicación la abre en Instagram.
 
 - **Historial propio:** Instagram solo da datos recientes, así que Orbe guarda una foto diaria (seguidores y alcance medio) de cada cuenta conectada en `%APPDATA%\orbe\metricas.json`. La gráfica «Seguidores por día» aparece a partir del segundo día.
-- **Analizar con Claude:** manda al chat un encargo de experto en crecimiento de cuentas y marcas personales: diagnóstico con cifras, qué funcionó y por qué, qué dejar de hacer, tres acciones para la semana y dos ideas listas (que puede guardar en Contenido si se lo pides). Usa la herramienta `ig_crecimiento` (libre, `ig.leer`).
+- **Analizar con Claude:** manda al chat un encargo de experto en crecimiento de cuentas y marcas personales: diagnóstico con cifras, qué funcionó y por qué, qué dejar de hacer, tres acciones para la semana y dos ideas listas. Usa la herramienta `ig_crecimiento` (libre, `ig.leer`).
 - **Informe semanal:** en Tareas hay una plantilla «Informe de crecimiento semanal» (lunes 08:00).
 - Requiere el permiso `instagram_manage_insights` en el token; sin él, la pestaña lo dice y enseña solo lo básico («me gusta» y comentarios).
-
-## Contenido (propuestas para Instagram, todo en tu PC)
-La pestaña **Contenido** (icono de capas en la barra lateral) reúne las publicaciones que preparas para J&S Design, morfy y tu marca personal. **Nada sale del equipo**: aprobar solo marca la pieza como lista; publicar llegará en la siguiente versión, con tu aprobación.
-
-1. Rellena una vez la ficha de cada marca: `%APPDATA%\orbe\contenido\marcas\<marca>\marca.md` (público, tono, temas, hashtags). Orbe la crea vacía al arrancar.
-2. Pide en el chat «propón un post para morfy sobre…». Claude lee la ficha (`contenido_ficha_marca`) y guarda idea, texto de la imagen, pie y hashtags (`contenido_proponer`); las dos herramientas son libres porque solo leen y guardan en local.
-3. Pulsa **Diseñar**: el encargo se copia al portapapeles y se abre Claude Design. Pégalo en el proyecto de tu marca y exporta el PNG a `%APPDATA%\orbe\contenido\entrada\<marca>\` con el nombre que indica el encargo (`<id>.png`; carrusel: `<id>-1.png`, `<id>-2.png`…). El botón **Carpeta** abre esa carpeta.
-4. Con la pestaña abierta, Orbe recoge el PNG en unos segundos: comprueba que mide 1080×1350, 1080×1080 o 1080×1920 y pesa menos de 8 MB, y lo une a su pieza. Un PNG con otro nombre crea una pieza nueva; uno que no vale se queda en la carpeta con el motivo en rojo. Si llega un **HTML**, Orbe lo convierte en PNG de 1080×1350 en una ventana oculta sin internet ni JavaScript.
-5. Revisa, corrige el texto (**Guardar texto**) y **Aprobar**. Cambiar el texto o añadir una imagen quita la aprobación. **Borrar** pide confirmación y mueve las imágenes a `contenido\papelera\`.
 
 ## Cómo habla con Claude
 Orbe usa un proveedor u otro según `ORBE_PROVEEDOR` (por defecto `auto`):
@@ -195,7 +186,9 @@ El CLI se lanza sin `ANTHROPIC_API_KEY` en su entorno, para que no te cobre por 
 Variables del `.env`: `ORBE_PROVEEDOR`, `ORBE_MODELO` (por defecto `claude-sonnet-5-5`), `ORBE_ESFUERZO` (`low`…`max`, por defecto `medium`), `ANTHROPIC_API_KEY`, `CLAUDE_CLI_PATH`, `ORBE_CONTEXTO_MAX` (caracteres de pantalla que se envían, 500–60000, por defecto 8000), `ORBE_ATAJO_PANEL` y `ORBE_ATAJO_LEER` (los atajos globales, en formato de [aceleradores de Electron](https://www.electronjs.org/docs/latest/api/accelerator)), `ORBE_FONDOS` (carpeta con imágenes para el fondo del chat), `ORBE_MEMORIA_MAX` (caracteres de recuerdos que viajan en cada conversación, 1000–12000, por defecto 6000) y `ORBE_MEMORIA_CLAUDE` (de dónde importar la memoria de Claude; carpetas separadas por «;» o «ninguna»). En el modo API, Orbe pide además a Anthropic que, si un clasificador de seguridad rechaza una petición legítima, la reintente en el servidor con el modelo de respaldo recomendado (`fallbacks: "default"`).
 
 ## Configuración
-El botón de los controles deslizantes de la cabecera guarda los cambios en el archivo `.env` (el del proyecto, o `%APPDATA%\orbe\.env` en la versión instalada), conserva tus comentarios y reinicia Orbe para aplicarlos. Tiene preajustes para **Google AI Studio (Gemini)**, Groq, NVIDIA, OpenRouter, OpenAI, Ollama y LM Studio. Las claves se escriben ocultas, solo las ve el proceso principal y la pantalla nunca las vuelve a mostrar (solo si hay una guardada); se pueden mantener, cambiar o quitar.
+La barra lateral solo tiene **Chat, Tareas, Métricas, Personaje y Configuración**. **Consumo, Memoria, Voz y dictado y Fondo del chat** se abren desde la lista de Configuración. Los iconos son SVG propios de Orbe, todos con el mismo trazo; no se usan emojis.
+
+El botón de los controles deslizantes guarda los cambios en el archivo `.env` (el del proyecto, o `%APPDATA%\orbe\.env` en la versión instalada), conserva tus comentarios y reinicia Orbe para aplicarlos. Tiene preajustes para **Google AI Studio (Gemini)**, Groq, NVIDIA, OpenRouter, OpenAI, Ollama y LM Studio. Las claves se escriben ocultas, solo las ve el proceso principal y la pantalla nunca las vuelve a mostrar (solo si hay una guardada); se pueden mantener, cambiar o quitar.
 
 ### Google AI Studio (Gemini)
 Gemini se usa con su API compatible con OpenAI, con plan gratuito:
@@ -214,7 +207,9 @@ O a mano en el `.env`: `ORBE_PROVEEDOR=openai`, `ORBE_OPENAI_URL=https://generat
 Las preferencias de voz se guardan en la ventana de Orbe, no en el `.env`.
 
 ## Fondo del chat
-Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable, Orbe usa los fondos **incluidos en la instalación** (carpeta `resources/fondos`); si tampoco hay, no hay fondo ni botón.
+Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable, Orbe usa los fondos **incluidos en la instalación** (carpeta `resources/fondos`); si tampoco hay, no hay fondo hasta que elijas uno.
+
+**Elegir imagen…** (Configuración → Fondo del chat) abre el diálogo de Windows para elegir un PNG o JPEG de tu equipo. Orbe la **copia** a `%APPDATA%\orbeondos` (nunca pisa un archivo: si el nombre ya existe, la copia lleva la hora delante) y la pone de fondo. **Otro fondo** cambia al azar y la casilla lo apaga.
 
 Los fondos que vienen en `resources/fondos/` (26 imágenes de Solo Leveling reducidas, unos 5 MB) se incluyen en el instalador. Son imágenes con derechos de autor de sus titulares, incluidas aquí para uso personal: si quieres otras, `npm run fondos -- "C:\ruta\a\tus\imagenes"` las reduce y las copia a esa carpeta, y el siguiente `npm run dist` las mete en el `.exe`. Con `ORBE_FONDOS` se usa tu propia carpeta en su lugar.
 
@@ -345,7 +340,6 @@ src/main/conectores/gmail  Gmail: OAuth de escritorio (loopback + PKCE) y client
 src/main/conectores/instagram  Instagram: cliente de solo lectura (perfil, publicaciones, métricas, comentarios) y renovación del token
 src/main/cofre     cofre cifrado de secretos (safeStorage/DPAPI): almacén, validación e IPC sin canal de lectura
 src/main/metricas   métricas: lectura por cuenta, medias, historial diario (metricas.json) e IPC
-src/main/contenido  contenido: piezas (contenido.json), recogida y validación de PNG, HTML → PNG sin red, IPC
 src/main/agente/reglas.ts  reglas de permisos de los conectores (reglas.json) y sus mínimos fijos
 src/renderer/personaje personaje: 3D (three.js, ojos de luz, detalle de pelo y tejido), dibujado (SVG), Rive, director de expresiones, sonidos, menú
 src/main/memoria   memoria: almacén de notas, importador de Claude, filtro de secretos, bloque del prompt, conversación guardada, IPC

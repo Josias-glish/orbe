@@ -2,7 +2,7 @@ import { CUENTAS, NOMBRE_CUENTA, type Cuenta, type Instagram, type Publicacion }
 import { definirHerramienta, type Herramienta } from '../tipos'
 import { crearEsquema, crearValidador, type Campos } from '../validacion'
 
-const CUENTA = { tipo: 'opcion', descripcion: 'Cuenta de Instagram del usuario: jsdesign (J&S Design), morfy o personal (su marca personal).', valores: CUENTAS } as const
+const CUENTA = { tipo: 'opcion', descripcion: 'Cuenta de Instagram del usuario: morfy o personal (su marca personal).', valores: CUENTAS } as const
 
 const camposCuenta = { cuenta: CUENTA } as const satisfies Campos
 const camposPublicaciones = {

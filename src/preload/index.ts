@@ -79,6 +79,7 @@ const api: ApiOrbe = {
   fondoEstado: () => ipcRenderer.invoke(CANALES.fondoEstado),
   fondoSiguiente: () => ipcRenderer.invoke(CANALES.fondoSiguiente),
   fondoAjustar: (cambios) => ipcRenderer.invoke(CANALES.fondoAjustar, cambios),
+  fondoElegir: () => ipcRenderer.invoke(CANALES.fondoElegir),
 
   memoriaInicio: () => ipcRenderer.invoke(CANALES.memoriaInicio),
   memoriaEstado: () => ipcRenderer.invoke(CANALES.memoriaEstado),
@@ -96,13 +97,6 @@ const api: ApiOrbe = {
   gmailConectar: () => ipcRenderer.invoke(CANALES.gmailConectar),
   gmailCancelar: () => ipcRenderer.send(CANALES.gmailCancelar),
 
-  contenidoEstado: () => ipcRenderer.invoke(CANALES.contenidoEstado),
-  contenidoActualizar: (id, cambios) => ipcRenderer.invoke(CANALES.contenidoActualizar, id, cambios),
-  contenidoAprobar: (id, aprobada) => ipcRenderer.invoke(CANALES.contenidoAprobar, id, aprobada),
-  contenidoBorrar: (id) => ipcRenderer.invoke(CANALES.contenidoBorrar, id),
-  contenidoDisenar: (id) => ipcRenderer.invoke(CANALES.contenidoDisenar, id),
-  contenidoCarpeta: (marca) => ipcRenderer.send(CANALES.contenidoCarpeta, marca),
-  alContenido: (cb) => suscribir<null>(CANALES.contenidoCambio, () => cb()),
   metricasLeer: (cuenta, actualizar) => ipcRenderer.invoke(CANALES.metricasLeer, cuenta, actualizar)
 }
 

@@ -3,7 +3,7 @@ import type { ServicioMetricas } from '../../metricas/servicio'
 import { definirHerramienta, type Herramienta } from '../tipos'
 import { crearEsquema, crearValidador, type Campos } from '../validacion'
 
-const campos = { cuenta: { tipo: 'opcion', descripcion: 'Cuenta: jsdesign (J&S Design), morfy o personal.', valores: CUENTAS } } as const satisfies Campos
+const campos = { cuenta: { tipo: 'opcion', descripcion: 'Cuenta: morfy o personal (su marca personal).', valores: CUENTAS } } as const satisfies Campos
 
 /**
  * `ig_crecimiento`: la evolución guardada en el equipo (seguidores por día y alcance medio) más la comparación de cada

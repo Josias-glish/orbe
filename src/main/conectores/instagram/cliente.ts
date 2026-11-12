@@ -24,9 +24,9 @@ const DIAS_PARA_RENOVAR = 30
 const PIE_MAX = 300
 
 /** Los nombres internos de las cuentas: el token de cada una se guarda en el cofre como `ig.<cuenta>`. */
-export const CUENTAS = ['jsdesign', 'morfy', 'personal'] as const
+export const CUENTAS = ['morfy', 'personal'] as const
 export type Cuenta = (typeof CUENTAS)[number]
-export const NOMBRE_CUENTA: Readonly<Record<Cuenta, string>> = { jsdesign: 'J&S Design', morfy: 'morfy', personal: 'tu marca personal' }
+export const NOMBRE_CUENTA: Readonly<Record<Cuenta, string>> = { morfy: 'morfy', personal: 'tu marca personal' }
 
 /** Como guarda el cofre un token de Instagram (`forma: 'token_ig'`). */
 export interface TokenGuardado {

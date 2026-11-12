@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { CANALES, type EstadoFondo } from '../shared/tipos'
 import type { ServicioFondos } from './fondos'
 
@@ -16,6 +16,17 @@ export function registrarFondos(ventana: BrowserWindow, servicio: ServicioFondos
   ipcMain.handle(CANALES.fondoSiguiente, async (e): Promise<EstadoFondo> => {
     exigir(e)
     return servicio.siguiente()
+  })
+
+  // La ruta la elige el usuario en el diálogo del sistema; la interfaz nunca manda una ruta.
+  ipcMain.handle(CANALES.fondoElegir, async (e): Promise<EstadoFondo> => {
+    exigir(e)
+    const r = await dialog.showOpenDialog(ventana, {
+      title: 'Elegir fondo del chat',
+      properties: ['openFile'],
+      filters: [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg'] }]
+    })
+    return r.canceled || !r.filePaths[0] ? servicio.estado() : servicio.elegir(r.filePaths[0])
   })
 
   ipcMain.handle(CANALES.fondoAjustar, async (e, cambios: unknown): Promise<EstadoFondo> => {

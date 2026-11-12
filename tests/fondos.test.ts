@@ -18,7 +18,8 @@ type Manejador = (evento: unknown, ...args: unknown[]) => unknown
 const electron = vi.hoisted(() => ({ manejadores: new Map<string, (...args: unknown[]) => unknown>() }))
 vi.mock('electron', () => ({
   ipcMain: { handle: (canal: string, fn: (...args: unknown[]) => unknown) => electron.manejadores.set(canal, fn), on: () => undefined },
-  BrowserWindow: class {}
+  BrowserWindow: class {},
+  dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) }
 }))
 const { registrarFondos } = await import('../src/main/fondos-ipc')
 
@@ -240,5 +241,21 @@ describe('IPC de fondos', () => {
     expect(await t.invocar<EstadoFondo>(CANALES.fondoAjustar, true, { visibilidad: Number.POSITIVE_INFINITY })).toMatchObject({ visibilidad: VISIBILIDAD_POR_DEFECTO })
     expect(await t.invocar<EstadoFondo>(CANALES.fondoAjustar, true, null)).toMatchObject({ disponible: true })
     expect(await t.invocar<EstadoFondo>(CANALES.fondoAjustar, true, { visibilidad: 0.8, activo: false })).toMatchObject({ visibilidad: 0.8, activo: false })
+  })
+})
+
+describe('ServicioFondos: imagen propia', () => {
+  it('copia la imagen elegida sin pisar nada y la pone de fondo', async () => {
+    const { base, opciones } = montar(['a.png'])
+    const propia = join(base, 'propia')
+    const s = new ServicioFondos({ ...opciones, carpetaPropia: propia })
+    const origen = join(base, 'mia.png')
+    writeFileSync(origen, 'mi foto')
+    expect(await s.elegir(origen)).toMatchObject({ disponible: true, activo: true, nombre: 'mia.png', total: 2 })
+    const otra = await s.elegir(origen) // mismo nombre: copia aparte, no pisa
+    expect(otra.nombre).toMatch(/^\d+-mia\.png$/)
+    expect(readdirSync(propia).sort()).toEqual([otra.nombre, 'mia.png'].sort())
+    expect(readFileSync(join(propia, 'mia.png'), 'utf8')).toBe('mi foto')
+    await expect(s.elegir(join(base, 'nota.txt'))).rejects.toThrow(/PNG o JPEG/)
   })
 })

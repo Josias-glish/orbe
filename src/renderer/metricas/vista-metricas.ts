@@ -1,12 +1,11 @@
-import type { InformeMetricas, MarcaContenido, PublicacionMetricas } from '../../shared/tipos'
+import type { InformeMetricas, CuentaIg, PublicacionMetricas } from '../../shared/tipos'
 import { crearIcono } from '../chat/contexto-ui'
 
-const CUENTAS: Array<[MarcaContenido, string]> = [
-  ['jsdesign', 'J&S Design'],
+const CUENTAS: Array<[CuentaIg, string]> = [
   ['morfy', 'morfy'],
   ['personal', 'Personal']
 ]
-const NOMBRE = Object.fromEntries(CUENTAS) as Record<MarcaContenido, string>
+const NOMBRE = Object.fromEntries(CUENTAS) as Record<CuentaIg, string>
 const miles = new Intl.NumberFormat('es-ES')
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
@@ -33,17 +32,16 @@ export function frenteAMedia(valor: number | undefined, media: number | null): {
 }
 
 /** El encargo que va al chat al pulsar «Analizar»: Claude como experto en crecimiento, con sus herramientas de lectura. */
-export function encargoAnalisis(cuenta: MarcaContenido): string {
+export function encargoAnalisis(cuenta: CuentaIg): string {
   return [
     `Analiza mi cuenta de Instagram de ${NOMBRE[cuenta]} como experto en crecimiento de cuentas y marcas personales.`,
-    `Usa ig_crecimiento, ig_metricas y contenido_ficha_marca (cuenta y marca «${cuenta}»).`,
+    `Usa ig_crecimiento e ig_metricas (cuenta «${cuenta}»).`,
     'Dame, sin relleno y sin inventar cifras:',
     '1. Diagnóstico en 3 líneas, con números (crecimiento, alcance y tasa de interacción frente a la media).',
     '2. Qué funcionó y por qué: tema, gancho de los primeros segundos o la primera línea, formato y hora.',
     '3. Qué dejar de hacer.',
     '4. Tres acciones concretas para esta semana (qué publicar, en qué formato, cuántas veces y a qué horas).',
-    '5. Dos ideas de publicación listas para producir, con gancho y texto de la imagen.',
-    'Si te digo «guárdalas», guárdalas en Contenido con contenido_proponer.'
+    '5. Dos ideas de publicación listas para producir, con gancho y texto de la imagen.'
   ].join('\n')
 }
 
@@ -52,7 +50,7 @@ export function encargoAnalisis(cuenta: MarcaContenido): string {
  * guardada día a día y cada publicación reciente frente a la media. «Analizar» manda el encargo al chat.
  */
 export class VistaMetricas {
-  private cuenta: MarcaContenido = 'jsdesign'
+  private cuenta: CuentaIg = 'morfy'
   private informe: InformeMetricas | null = null
   private error = ''
   private cargando = false

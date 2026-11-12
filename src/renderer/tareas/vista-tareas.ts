@@ -45,7 +45,7 @@ export const PLANTILLAS: ReadonlyArray<{ titulo: string; instruccion: string; pr
   {
     titulo: 'Informe de crecimiento semanal',
     instruccion:
-      'Como experto en crecimiento de cuentas y marcas personales, revisa con ig_crecimiento mis cuentas de Instagram (jsdesign, morfy y personal; salta las que no estén conectadas). ' +
+      'Como experto en crecimiento de cuentas y marcas personales, revisa con ig_crecimiento mis cuentas de Instagram (morfy y personal; salta las que no estén conectadas). ' +
       'Para cada una: crecimiento de la semana con cifras, la mejor y la peor publicación y por qué, y las 3 acciones prioritarias para esta semana.',
     programa: { tipo: 'semanal', dias: [1], hora: '08:00' }
   },

@@ -12,9 +12,6 @@ import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
 import { crearHerramientasGmail } from './agente/herramientas/gmail'
 import { crearHerramientasInstagram } from './agente/herramientas/instagram'
-import { crearHerramientasContenido } from './agente/herramientas/contenido'
-import { AlmacenContenido } from './contenido/almacen'
-import { registrarContenido, renderizarPng } from './contenido/ipc'
 import { ServicioMetricas, dia } from './metricas/servicio'
 import { programarFotoDiaria, registrarMetricas } from './metricas/ipc'
 import { instagramDemo } from './metricas/demo'
@@ -184,6 +181,7 @@ app.whenReady().then(async () => {
           app.isPackaged ? join(process.resourcesPath, 'fondos') : join(app.getAppPath(), 'resources', 'fondos'),
           carpetaTieneImagenes
         ),
+    carpetaPropia: join(datos, 'fondos'),
     archivoEstado: join(datos, 'fondo.json'),
     carpetaCache: join(datos, 'fondos-cache'),
     procesar: modoHumo ? procesarDeMentira : procesarConElectron
@@ -245,14 +243,6 @@ app.whenReady().then(async () => {
   // guardar uno en Ajustes vale sin reiniciar.
   const tokenIg = crearFuenteTokenIg((clave) => cofre.leer<TokenGuardado>(clave), (clave, valor) => cofre.guardar(clave, valor))
   const instagram = crearHerramientasInstagram((cuenta) => new Instagram(() => tokenIg(cuenta), fetch, cuenta))
-  // Contenido: propuestas para Instagram y los PNG exportados de Claude Design, todo en local (la prueba de humo
-  // empieza siempre de cero en su carpeta temporal).
-  if (modoHumo) rmSync(join(datos, 'contenido'), { recursive: true, force: true })
-  const contenido = new AlmacenContenido(join(datos, 'contenido'), { renderizar: renderizarPng })
-  registrarContenido(orbe.ventana, contenido)
-  const avisarContenido = (): void => {
-    if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.contenidoCambio)
-  }
   // Métricas: perfil y publicaciones con sus cifras, comparadas con la media, más un historial diario en metricas.json.
   const metricas = new ServicioMetricas(
     modoHumo ? null : join(datos, 'metricas.json'),
@@ -263,12 +253,7 @@ app.whenReady().then(async () => {
     const pararFotos = programarFotoDiaria(metricas, (c) => cofre.leer(`ig.${c}`) !== undefined, () => dia(new Date()))
     app.once('will-quit', pararFotos)
   }
-  const registro = crearRegistro(config, sistema, [
-    ...gmail,
-    ...instagram,
-    crearHerramientaCrecimiento(metricas),
-    ...crearHerramientasContenido(contenido, avisarContenido)
-  ])
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas)])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

@@ -53,6 +53,7 @@ export const CANALES = {
   fondoEstado: 'fondo:estado',
   fondoSiguiente: 'fondo:siguiente',
   fondoAjustar: 'fondo:ajustar',
+  fondoElegir: 'fondo:elegir',
   memoriaInicio: 'memoria:inicio',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
@@ -80,13 +81,6 @@ export const CANALES = {
   gmailConectar: 'gmail:conectar',
   gmailCancelar: 'gmail:cancelar',
   // Contenido: piezas para Instagram que se preparan en local (nada sale del equipo en esta etapa).
-  contenidoEstado: 'contenido:estado',
-  contenidoActualizar: 'contenido:actualizar',
-  contenidoAprobar: 'contenido:aprobar',
-  contenidoBorrar: 'contenido:borrar',
-  contenidoDisenar: 'contenido:disenar',
-  contenidoCarpeta: 'contenido:carpeta',
-  contenidoCambio: 'contenido:cambio',
   // Métricas de Instagram (solo lectura).
   metricasLeer: 'metricas:leer'
 } as const
@@ -651,6 +645,8 @@ export interface ApiOrbe {
   fondoEstado(): Promise<EstadoFondo>
   fondoSiguiente(): Promise<EstadoFondo>
   fondoAjustar(cambios: { activo?: boolean; visibilidad?: number }): Promise<EstadoFondo>
+  /** Abre el diálogo del sistema para elegir una imagen; se copia a `%APPDATA%\orbe\fondos`. */
+  fondoElegir(): Promise<EstadoFondo>
 
   memoriaInicio(): Promise<InicioMemoria>
   memoriaEstado(): Promise<EstadoMemoria>
@@ -672,20 +668,8 @@ export interface ApiOrbe {
   /** Deja de esperar al navegador (la conexión en curso termina con «Conexión cancelada»). */
   gmailCancelar(): void
 
-  /** Las piezas de contenido; de paso recoge los PNG nuevos exportados a `contenido\entrada\<marca>\`. */
-  contenidoEstado(): Promise<EstadoContenido>
-  /** Cambia los textos de una pieza (si estaba aprobada, deja de estarlo). */
-  contenidoActualizar(id: string, cambios: CambiosPieza): Promise<EstadoContenido>
-  contenidoAprobar(id: string, aprobada: boolean): Promise<EstadoContenido>
-  contenidoBorrar(id: string): Promise<EstadoContenido>
-  /** Copia el encargo de la pieza al portapapeles y abre Claude Design. */
-  contenidoDisenar(id: string): Promise<void>
-  /** Abre la carpeta de entrada de una marca (donde se exportan los PNG). */
-  contenidoCarpeta(marca: MarcaContenido): void
-  alContenido(cb: () => void): () => void
-
   /** Métricas de una cuenta. Sin `actualizar`, lo último leído (si lo hay) sin llamar a Instagram. */
-  metricasLeer(cuenta: MarcaContenido, actualizar: boolean): Promise<ResultadoMetricas>
+  metricasLeer(cuenta: CuentaIg, actualizar: boolean): Promise<ResultadoMetricas>
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -717,7 +701,7 @@ export interface PublicacionMetricas {
 }
 
 export interface InformeMetricas {
-  cuenta: MarcaContenido
+  cuenta: CuentaIg
   leido: number
   usuario: string
   seguidores: number
@@ -733,33 +717,6 @@ export interface InformeMetricas {
 
 export type ResultadoMetricas = { ok: true; informe: InformeMetricas } | { ok: false; error: string; informe: InformeMetricas | null }
 
-// ---------------------------------------------------------------------------------------------
-// Contenido
-// ---------------------------------------------------------------------------------------------
+/** Las cuentas de Instagram del usuario. */
+export type CuentaIg = 'morfy' | 'personal'
 
-export type MarcaContenido = 'jsdesign' | 'morfy' | 'personal'
-
-export interface Pieza {
-  id: string
-  marca: MarcaContenido
-  idea: string
-  /** El texto que va dentro de la imagen. */
-  texto: string
-  /** El pie de foto. */
-  pie: string
-  hashtags: string[]
-  /** Nombres de las imágenes en `contenido\piezas\<id>\`, en orden (más de una = carrusel). */
-  archivos: string[]
-  aprobada: boolean
-  creada: number
-  actualizada: number
-}
-
-export type CambiosPieza = Partial<Pick<Pieza, 'idea' | 'texto' | 'pie' | 'hashtags'>>
-
-export interface EstadoContenido {
-  /** Cada pieza con sus miniaturas (data URL), más recientes primero. */
-  piezas: Array<Pieza & { miniaturas: string[] }>
-  /** Archivos de la carpeta de entrada que no valen y por qué. */
-  avisos: string[]
-}

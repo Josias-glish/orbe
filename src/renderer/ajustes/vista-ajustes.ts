@@ -77,6 +77,15 @@ interface Borrador {
  * OpenAI), de dónde sale el dictado y qué voz neuronal lee las respuestas. Las claves solo viajan de aquí al proceso
  * principal, que las guarda en el .env: nunca vuelven a la pantalla.
  */
+export type Aparte = 'uso' | 'memoria' | 'voz' | 'fondo'
+/** Secciones que viven fuera de Configuración pero se abren desde su lista. */
+const APARTES: Array<{ que: Aparte; nombre: string; detalle: string; icono: Parameters<typeof crearIcono>[0] }> = [
+  { que: 'uso', nombre: 'Consumo', detalle: 'Tokens y dinero gastados', icono: 'consumo' },
+  { que: 'memoria', nombre: 'Memoria', detalle: 'Lo que Orbe sabe de ti', icono: 'libro' },
+  { que: 'voz', nombre: 'Voz y dictado', detalle: 'Leer en voz alta y enviar al dictar', icono: 'altavoz' },
+  { que: 'fondo', nombre: 'Fondo del chat', detalle: 'Elegir imagen, cambiarla o apagarla', icono: 'imagen' }
+]
+
 export class VistaAjustes {
   private vista: ConfigVista | null = null
   private borrador: Borrador | null = null
@@ -94,7 +103,9 @@ export class VistaAjustes {
 
   constructor(
     private readonly raiz: HTMLElement,
-    private readonly alVolver: () => void
+    private readonly alVolver: () => void,
+    /** Lo que antes estaba en la barra lateral y ahora se abre desde aquí. */
+    private readonly alAbrirAparte: (que: Aparte) => void = () => {}
   ) {}
 
   get visible(): boolean {
@@ -584,7 +595,7 @@ export class VistaAjustes {
     secciones.forEach((sec, i) => (sec.hidden = this.grupo !== i))
     if (this.grupo === null) {
       const lista = el('div', 'ajustes-grupos')
-      const iconos = ['🧠', '🐰', '🎙', '🔊', '🎩', '🔐']
+      const iconos = ['chip', 'conejo', 'micro', 'altavoz', 'sombrero', 'candado'] as const
       const resumen = this.resumenes(b)
       grupos.forEach((nombre, i) => {
         const g = el('button', 'ajustes-grupo')
@@ -592,7 +603,9 @@ export class VistaAjustes {
         g.dataset['grupo'] = String(i)
         const texto = el('span', 'ajustes-grupo-texto')
         texto.append(el('strong', undefined, nombre), el('small', undefined, resumen[i]))
-        g.append(el('span', 'ajustes-grupo-icono', iconos[i]), texto, el('span', 'ajustes-grupo-flecha', '›'))
+        const icono = el('span', 'ajustes-grupo-icono')
+        icono.append(crearIcono(iconos[i], 16))
+        g.append(icono, texto, el('span', 'ajustes-grupo-flecha', '›'))
         g.addEventListener('click', () => {
           this.grupo = i
           this.pintar()
@@ -600,6 +613,22 @@ export class VistaAjustes {
         })
         lista.append(g)
       })
+      for (const a of APARTES) {
+        const g = el('button', 'ajustes-grupo')
+        g.type = 'button'
+        g.dataset['aparte'] = a.que
+        const texto = el('span', 'ajustes-grupo-texto')
+        texto.append(el('strong', undefined, a.nombre), el('small', undefined, a.detalle))
+        const icono = el('span', 'ajustes-grupo-icono')
+        icono.append(crearIcono(a.icono, 16))
+        g.append(icono, texto, el('span', 'ajustes-grupo-flecha', '›'))
+        g.addEventListener('click', (e) => {
+          // Los menús de voz y fondo se cierran con un clic fuera: este clic no debe llegar a cerrarlos.
+          e.stopPropagation()
+          this.alAbrirAparte(a.que)
+        })
+        lista.append(g)
+      }
       cuerpo.append(lista)
     }
     cuerpo.append(...secciones)

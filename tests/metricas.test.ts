@@ -35,7 +35,7 @@ describe('métricas', () => {
   it('si faltan las métricas detalladas, sigue con lo básico y explica por qué', async () => {
     const demo = instagramDemo()
     const s = new ServicioMetricas(null, () => ({ ...demo, metricas: async () => { throw new Error('falta instagram_manage_insights') } }))
-    const i = await s.leer('jsdesign')
+    const i = await s.leer('personal')
     expect(i.avisoMetricas).toMatch(/instagram_manage_insights/)
     expect(i.medias.alcance).toBeNull()
     expect(i.publicaciones[0].tasa).toBeDefined() // sobre seguidores

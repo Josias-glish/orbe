@@ -139,6 +139,13 @@ diario en `metricas.json` (foto automática cada 6 h si no hay una de hoy y la c
 plantilla de tarea semanal. En la prueba de humo, Instagram es `metricas/demo.ts`. Prueba real pendiente del permiso
 `instagram_manage_insights`.
 
+v1.11.0 (**Etapa 8, interfaz**, rama `claude/etapa-8-interfaz`, sale de `claude/etapa-4-metricas`): fuera J&S Design
+(`CUENTAS` = morfy y personal; el token `ig.jsdesign` sigue en el cofre sin borrar, solo deja de mostrarse) y fuera la
+pestaña Contenido (código borrado; `%APPDATA%\orbe\contenido` intacto). Uso, Memoria, Voz y Fondo salen de la barra
+lateral: sus botones siguen en `#carril` con `hidden` (los menús y atajos los usan) y se abren desde la lista de
+Configuración (`APARTES` en `vista-ajustes.ts`). Iconos SVG propios en `crearIcono` en lugar de emojis. Fondo:
+«Elegir imagen…» (`fondoElegir`, diálogo del sistema; `ServicioFondos.elegir` copia a `datos/fondos`, `carpetaPropia`).
+
 Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
 4. **Publicación** (aparte por decisión del usuario; no se hace hasta que lo pida): aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
@@ -155,20 +162,7 @@ Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-
    genera en «AI Clients» del panel de Composio. Sustituye a la idea de dejar pasar conectores de claude.ai al CLI.
 6. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
 7. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
-8. **Barra lateral limpia e iconos propios** (pedido por el usuario el 11-nov-2026):
-   - Quitar de la barra lateral los botones de **Uso** (consumo), **Memoria**, **Fondo**, **Voz** y **Dictado** y
-     llevarlos dentro de **Configuración** (secciones de Ajustes); en el carril quedan Chat, Tareas y Métricas.
-     Revisar `#carril` en `index.html`, `alternar*`/`cerrar*`, Escape y los pasos de humo que pulsan esos botones.
-   - **Iconos propios, nada de emojis ni iconos genéricos**: un set coherente con la estética de Orbe (trazo, grosor y
-     esquinas iguales), dibujado a medida en SVG o tomado de un pack con licencia libre que encaje (comprobar licencia y
-     citar la fuente; «no verificado» hasta revisarla). Se le enseñan al usuario 2–3 opciones antes de cambiar todos.
-   - **Quitar J&S Design** del proyecto: sale de `CUENTAS` (Instagram, Métricas, plantilla semanal, textos y README);
-     quedan morfy y personal. El token `ig.jsdesign` del cofre y su historial en `metricas.json` no se borran.
-   - **Quitar la pestaña Contenido** (`src/main/contenido`, herramientas `contenido_*`, vista, canales y paso de humo).
-     La carpeta `%APPDATA%\orbe\contenido` se deja intacta. «Analizar con Claude» deja de usar
-     `contenido_ficha_marca` y de ofrecer guardar ideas; la rama `claude/etapa-3-disenador-auto` queda obsoleta.
-   - Después, **cambiar fondo** desde Configuración: elegir imagen propia o de una galería, vista previa y volver al de
-     siempre; el archivo se copia en `%APPDATA%\orbe` (con copia previa de lo que haya, según las reglas).
+8. Hecha en v1.11.0 (ver arriba).
 
 Cada etapa: código + pruebas + humo + versión nueva + PR + release, y una guía para que el usuario la pruebe con sus
 cuentas reales. No conectes cuentas reales tú mismo: el usuario genera los tokens y los guarda en Orbe.

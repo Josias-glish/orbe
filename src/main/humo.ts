@@ -734,7 +734,6 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
 
     // 9e. El fondo: botón, imagen aplicada, menú, otro fondo, visibilidad y apagarlo
     const imagenDelFondo = (): Promise<string> => js(`getComputedStyle(document.getElementById('fondo')).backgroundImage`)
-    comprobar('el botón de fondo aparece al haber imágenes', !(await js<boolean>(`document.getElementById('fondo-boton').hidden`)))
     p.imagen1 = (await imagenDelFondo()).slice(0, 30)
     comprobar('hay una imagen de fondo aplicada', (await imagenDelFondo()).startsWith('url("data:image/jpeg;base64,'), p.imagen1)
     comprobar('el panel lo sabe (para dar más contraste)', await existe('#panel.con-fondo'))
@@ -754,7 +753,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await capturar('9f-menu-fondo')
 
     const antesDeCambiar = await imagenDelFondo()
-    await pulsar('#fondo-menu .boton-memoria')
+    await js(`[...document.querySelectorAll('#fondo-menu .boton-memoria')].find((b) => b.textContent === 'Otro fondo').click()`)
     await esperar(600)
     const despues = await imagenDelFondo()
     comprobar('«Otro fondo» cambia la imagen', despues !== antesDeCambiar && despues.startsWith('url("data:image/jpeg'))
@@ -941,27 +940,6 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('#uso-boton')
     await esperar(200)
 
-    // Contenido: un PNG exportado (como desde Claude Design) aparece como pieza; uno de otras medidas avisa y se queda
-    const entradaMorfy = join(app.getPath('userData'), 'contenido', 'entrada', 'morfy')
-    const exportar = (nombre: string, ancho: number, alto: number): void => {
-      const ruta = join(entradaMorfy, nombre)
-      writeFileSync(ruta, nativeImage.createFromBitmap(Buffer.alloc(ancho * alto * 4, 0x9a), { width: ancho, height: alto }).toPNG())
-      utimesSync(ruta, new Date(Date.now() - 10_000), new Date(Date.now() - 10_000))
-    }
-    exportar('lanzamiento.png', 1080, 1350)
-    exportar('torcido.png', 900, 900)
-    await pulsar('#contenido-boton')
-    comprobar('se abre Contenido y recoge el PNG exportado', await esperarSelector('#contenido:not([hidden]) .contenido-pieza .contenido-miniaturas img', 5000))
-    v.avisoContenido = await textoDe('#contenido .memoria-error')
-    comprobar('el PNG de otras medidas avisa con el motivo', /torcido\.png: mide 900×900/.test(String(v.avisoContenido)), v.avisoContenido)
-    await js(`[...document.querySelectorAll('#contenido .contenido-pieza button')].find((b) => b.textContent === 'Aprobar').click()`)
-    await esperar(400)
-    v.piezaContenido = await textoDe('#contenido .contenido-pieza .tarea-insignia')
-    comprobar('aprobar marca la pieza como aprobada (sin publicar nada)', /morfy · Aprobada/.test(String(v.piezaContenido)), v.piezaContenido)
-    await capturar('13g-contenido')
-    await pulsar('#contenido-boton')
-    await esperar(200)
-
     // Métricas: la cuenta de prueba, su media y la publicación estrella por encima de la media
     await pulsar('#metricas-boton')
     comprobar('al abrirse, las métricas leen la cuenta y enseñan sus publicaciones', await esperarSelector('#metricas:not([hidden]) .metricas-pub', 5000) && (await contar('#metricas .metricas-pub')) === 6)
@@ -1001,7 +979,18 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
     comprobar('tiene las seis secciones (con «Identidad» y «Conectores»)', (await textosDe('#ajustes .ajuste-titulo')).length === 6, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
-    comprobar('la configuración se organiza en 6 grupos', (await contar('#ajustes .ajustes-grupo')) === 6)
+    comprobar('la configuración se organiza en 6 grupos más Consumo, Memoria, Voz y Fondo', (await contar('#ajustes .ajustes-grupo[data-grupo]')) === 6 && (await contar('#ajustes .ajustes-grupo[data-aparte]')) === 4)
+    comprobar('los grupos llevan iconos dibujados, no emojis', (await contar('#ajustes .ajustes-grupo-icono svg')) === 10)
+    comprobar('la barra lateral solo deja Chat, Tareas, Métricas, Personaje y Configuración', (await js<string[]>(`[...document.querySelectorAll('#carril > button')].filter((b) => b.offsetParent !== null).map((b) => b.id)`)).join() === 'chat-boton,tareas-boton,metricas-boton,personaje-boton,ajustes-boton')
+    await js(`document.querySelector('#ajustes .ajustes-grupo[data-aparte="uso"]').click()`)
+    comprobar('«Consumo» se abre desde Configuración', await esperarSelector('#uso:not([hidden])', 2000) && (await js<boolean>(`document.getElementById('ajustes').hidden`)))
+    await pulsar('#ajustes-boton')
+    await esperarSelector('#ajustes:not([hidden]) .ajustes-grupos', 3000)
+    await js(`document.querySelector('#ajustes .ajustes-grupo[data-aparte="fondo"]').click()`)
+    comprobar('«Fondo» vuelve al chat y abre su menú con «Elegir imagen…»', await esperarSelector('#fondo-menu:not([hidden])', 2000) && (await textoDe('#fondo-menu')).includes('Elegir imagen'))
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await pulsar('#ajustes-boton')
+    await esperarSelector('#ajustes:not([hidden]) .ajustes-grupos', 3000)
     const lista = await js<{ visible: number; contenido: number }>(`(() => { const l = document.querySelector('#ajustes .ajustes-grupos'); return { visible: l.clientHeight, contenido: l.scrollHeight } })()`)
     comprobar('la lista de grupos se ve entera (no se aplasta en un panel bajo)', lista.visible >= lista.contenido, lista)
     await esperar(300)
@@ -1054,7 +1043,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await js(`document.querySelector('#ajustes .ajustes-grupo[data-grupo="5"]').click()`)
     await esperar(300)
     v.filas = await contar('#ajustes .cofre-fila')
-    comprobar('Conectores enseña los seis secretos posibles, todos sin guardar', v.filas === 6 && (await contar('#ajustes .cofre-estado.guardado')) === 0, v.filas)
+    comprobar('Conectores enseña los cinco secretos posibles, todos sin guardar', v.filas === 5 && (await contar('#ajustes .cofre-estado.guardado')) === 0, v.filas)
     comprobar('en Conectores no aparece «Guardar y reiniciar»', !/Guardar y reiniciar/.test(await textoDe('#ajustes .memoria-cuerpo')))
     comprobar('Gmail no se pega: tiene un botón «Conectar»', /Conectar/.test(await textoDe('#ajustes .cofre-fila[data-clave="gmail.refresh"] .boton-memoria.primario')))
     comprobar('el campo del secreto es de contraseña', await js<boolean>(`document.querySelector('#ajustes input[aria-label="Clave secreta de Supabase"]').type === 'password'`))
