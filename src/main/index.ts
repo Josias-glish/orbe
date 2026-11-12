@@ -16,6 +16,8 @@ import { ServicioMetricas, dia } from './metricas/servicio'
 import { programarFotoDiaria, registrarMetricas } from './metricas/ipc'
 import { instagramDemo } from './metricas/demo'
 import { crearHerramientaCrecimiento } from './agente/herramientas/metricas'
+import { ClienteComposio } from './conectores/composio/cliente'
+import { crearHerramientasComposio } from './agente/herramientas/composio'
 import { Gmail } from './conectores/gmail/cliente'
 import { crearFuenteTokenIg, Instagram, type TokenGuardado } from './conectores/instagram/cliente'
 import { crearFuenteDeToken, leerClienteGoogle } from './conectores/gmail/oauth'
@@ -253,7 +255,9 @@ app.whenReady().then(async () => {
     const pararFotos = programarFotoDiaria(metricas, (c) => cofre.leer(`ig.${c}`) !== undefined, () => dia(new Date()))
     app.once('will-quit', pararFotos)
   }
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas)])
+  // Composio: cientos de apps por un solo conector MCP; la clave se lee del cofre en cada llamada (vale sin reiniciar).
+  const composio = crearHerramientasComposio(new ClienteComposio(() => cofre.leer<string>('composio.clave') ?? undefined))
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()

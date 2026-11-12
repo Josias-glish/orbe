@@ -14,7 +14,7 @@ export interface DefinicionSecreto {
   manual: boolean
   forma: FormaSecreto
   /** Grupo en la pantalla de Conectores. */
-  servicio: 'Instagram' | 'Meta' | 'Supabase' | 'Gmail'
+  servicio: 'Instagram' | 'Meta' | 'Supabase' | 'Gmail' | 'Composio'
 }
 
 export const SECRETOS: readonly DefinicionSecreto[] = [
@@ -57,6 +57,14 @@ export const SECRETOS: readonly DefinicionSecreto[] = [
     manual: false,
     forma: 'texto',
     servicio: 'Gmail'
+  },
+  {
+    clave: 'composio.clave',
+    nombre: 'Clave de Composio',
+    ayuda: 'dashboard.composio.dev → AI Clients → copia la clave «consumer» (la que va en x-consumer-api-key). Cada app se conecta después desde el chat, en tu navegador.',
+    manual: true,
+    forma: 'texto',
+    servicio: 'Composio'
   }
 ]
 

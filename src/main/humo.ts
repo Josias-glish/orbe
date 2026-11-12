@@ -1043,7 +1043,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await js(`document.querySelector('#ajustes .ajustes-grupo[data-grupo="5"]').click()`)
     await esperar(300)
     v.filas = await contar('#ajustes .cofre-fila')
-    comprobar('Conectores enseña los cinco secretos posibles, todos sin guardar', v.filas === 5 && (await contar('#ajustes .cofre-estado.guardado')) === 0, v.filas)
+    comprobar('Conectores enseña los seis secretos posibles (con Composio), todos sin guardar', v.filas === 6 && (await contar('#ajustes .cofre-estado.guardado')) === 0, v.filas)
     comprobar('en Conectores no aparece «Guardar y reiniciar»', !/Guardar y reiniciar/.test(await textoDe('#ajustes .memoria-cuerpo')))
     comprobar('Gmail no se pega: tiene un botón «Conectar»', /Conectar/.test(await textoDe('#ajustes .cofre-fila[data-clave="gmail.refresh"] .boton-memoria.primario')))
     comprobar('el campo del secreto es de contraseña', await js<boolean>(`document.querySelector('#ajustes input[aria-label="Clave secreta de Supabase"]').type === 'password'`))

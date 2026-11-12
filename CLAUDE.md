@@ -139,17 +139,29 @@ diario en `metricas.json` (foto automática cada 6 h si no hay una de hoy y la c
 plantilla de tarea semanal. En la prueba de humo, Instagram es `metricas/demo.ts`. Prueba real pendiente del permiso
 `instagram_manage_insights`.
 
-v1.11.0 (**Etapa 8, interfaz**, rama `claude/etapa-8-interfaz`, sale de `claude/etapa-4-metricas`): fuera J&S Design
+v1.11.0 (**Etapa 4b, interfaz**, rama `claude/etapa-8-interfaz`, sale de `claude/etapa-4-metricas`): fuera J&S Design
 (`CUENTAS` = morfy y personal; el token `ig.jsdesign` sigue en el cofre sin borrar, solo deja de mostrarse) y fuera la
 pestaña Contenido (código borrado; `%APPDATA%\orbe\contenido` intacto). Uso, Memoria, Voz y Fondo salen de la barra
 lateral: sus botones siguen en `#carril` con `hidden` (los menús y atajos los usan) y se abren desde la lista de
 Configuración (`APARTES` en `vista-ajustes.ts`). Iconos SVG propios en `crearIcono` en lugar de emojis. Fondo:
 «Elegir imagen…» (`fondoElegir`, diálogo del sistema; `ServicioFondos.elegir` copia a `datos/fondos`, `carpetaPropia`).
 
-Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
+v1.12.0 (**Etapa 5, Composio**, rama `claude/etapa-5-composio`): cliente MCP propio con `fetch`
+(`conectores/composio/cliente.ts`, `x-consumer-api-key` desde el cofre `composio.clave`, acepta JSON y SSE) y tres
+herramientas (`composio_buscar`, `composio_conectar`, `composio_ejecutar`). `Herramienta.accionDe(entrada)` deja que la
+acción dependa de la entrada: `clasificar.ts` da `composio.leer` (libre) o `composio.escribir` (mínimo «preguntar»).
+Por decisión del usuario (12-nov-2026) nada de Composio está bloqueado: enviar, publicar, borrar y las apps de
+Gmail/Meta van por «preguntar». `modoDe` usa `REGLAS_POR_DEFECTO` para acciones que falten en un `reglas.json` antiguo.
+
+El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
+«web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
+11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras
+personas · 17 voz. Lo de abajo queda como referencia histórica.
+
+Pendiente antiguo (detalle, código en borrador y prompts en `docs/fase3-borradores/`):
 
 4. **Publicación** (aparte por decisión del usuario; no se hace hasta que lo pida): aprobación → Supabase Storage (bucket privado, enlace firmado de 15 min) → Meta → borrar de Supabase.
-5. **Composio** (pedido por el usuario el 11-nov-2026, para tener muchos conectores sin programarlos uno a uno):
+5. Hecha en v1.12.0 (ver arriba). Nota original: **Composio** (pedido por el usuario el 11-nov-2026, para tener muchos conectores sin programarlos uno a uno):
    Orbe como cliente MCP de `https://connect.composio.dev/mcp` (clave en la cabecera `x-consumer-api-key`, guardada en
    el cofre como `composio.clave`; fuente: https://docs.composio.dev/docs/composio-connect.md). Composio expone 7
    meta-herramientas (`COMPOSIO_SEARCH_TOOLS`, `…_GET_TOOL_SCHEMAS`, `…_MULTI_EXECUTE_TOOL`, `…_MANAGE_CONNECTIONS`,
@@ -162,7 +174,7 @@ Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-
    genera en «AI Clients» del panel de Composio. Sustituye a la idea de dejar pasar conectores de claude.ai al CLI.
 6. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
 7. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
-8. Hecha en v1.11.0 (ver arriba).
+8. Hecha en v1.11.0 como «Etapa 4b» (ver arriba).
 
 Cada etapa: código + pruebas + humo + versión nueva + PR + release, y una guía para que el usuario la pruebe con sus
 cuentas reales. No conectes cuentas reales tú mismo: el usuario genera los tokens y los guarda en Orbe.

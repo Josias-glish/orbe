@@ -28,7 +28,9 @@ export const MINIMO: Readonly<Record<string, Modo>> = {
   'ig.comentar_ajeno': 'bloqueado',
   'gmail.enviar': 'bloqueado',
   'navegador.comprar': 'bloqueado',
-  'navegador.contrasena': 'bloqueado'
+  'navegador.contrasena': 'bloqueado',
+  // Composio: todo lo que no sea leer pide permiso en ese momento.
+  'composio.escribir': 'preguntar'
 }
 
 /** El `reglas.json` que se crea la primera vez (si ya existe, nunca se toca). */
@@ -44,7 +46,9 @@ export const REGLAS_POR_DEFECTO: Readonly<Record<string, Modo>> = {
   'navegador.leer': 'libre',
   'navegador.escribir': 'preguntar',
   'navegador.enviar': 'preguntar',
-  'navegador.comprar': 'bloqueado'
+  'navegador.comprar': 'bloqueado',
+  'composio.leer': 'libre',
+  'composio.escribir': 'preguntar'
 }
 
 export const BLOQUEADAS_SIEMPRE = [
@@ -58,7 +62,9 @@ export const BLOQUEADAS_SIEMPRE = [
 
 /** El modo efectivo: el de las reglas (lo desconocido, se pregunta), pero nunca por debajo del mínimo. */
 export function modoDe(accion: string, reglas: Readonly<Record<string, Modo>>): Modo {
-  const elegido = Object.prototype.hasOwnProperty.call(reglas, accion) ? reglas[accion]! : 'preguntar'
+  // Lo que falta en un reglas.json antiguo (acciones de conectores nuevos) toma su valor por defecto; lo desconocido, se pregunta.
+  const tiene = (r: Readonly<Record<string, Modo>>): boolean => Object.prototype.hasOwnProperty.call(r, accion)
+  const elegido = tiene(reglas) ? reglas[accion]! : tiene(REGLAS_POR_DEFECTO) ? REGLAS_POR_DEFECTO[accion]! : 'preguntar'
   const minimo = MINIMO[accion] ?? 'libre'
   return MODOS.indexOf(elegido) >= MODOS.indexOf(minimo) ? elegido : minimo
 }

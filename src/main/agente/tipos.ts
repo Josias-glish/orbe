@@ -57,6 +57,8 @@ export interface Herramienta<T = unknown> {
    * en vez de `nivel`; las herramientas sin conector no la llevan y siguen como siempre.
    */
   accion?: string
+  /** Si la acción depende de la entrada (p. ej. una acción de Composio por su nombre), la da esta función. */
+  accionDe?(entrada: unknown): string
   /** Comprueba y limpia lo que mandó el modelo; nunca se ejecuta nada con entrada sin validar. */
   validar(entrada: unknown): Validacion<T>
   /** La línea del chat («Buscando: tiempo en Lima»). */

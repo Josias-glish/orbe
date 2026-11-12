@@ -35,9 +35,10 @@ export class Politica {
   decidir(herramienta: Herramienta, entrada: unknown, titulo: string): Decision {
     const propia = herramienta.clasificar?.(entrada)
     let base: Decision
-    if (herramienta.accion) {
+    const accion = herramienta.accionDe?.(entrada) ?? herramienta.accion
+    if (accion) {
       // Herramienta de conector: manda la regla, y la propia herramienta solo puede endurecerla.
-      const regla = decisionPorRegla(herramienta.accion, modoDe(herramienta.accion, this.reglas), titulo, this.opciones.ordenUsuario)
+      const regla = decisionPorRegla(accion, modoDe(accion, this.reglas), titulo, this.opciones.ordenUsuario)
       base = propia && PESO[propia.tipo] > PESO[regla.tipo] ? propia : regla
     } else {
       base = propia ?? (herramienta.nivel === 'confirmar' ? { tipo: 'confirmar', titulo, detalle: 'Esta acción necesita tu permiso.' } : { tipo: 'permitir' })
