@@ -66,13 +66,15 @@ export class MenuHistorial {
     const titulo = el('p', 'potencia-titulo', 'Historial del chat')
     const buscar = el('input', 'historial-buscar')
     buscar.type = 'search'
-    buscar.placeholder = 'Buscar…'
+    buscar.placeholder = 'Buscar en las conversaciones…'
     buscar.value = this.filtro
     buscar.setAttribute('aria-label', 'Buscar en el historial')
     const lista = el('div', 'historial-lista')
+    let coinciden = new Set<string>()
+    let pedido = 0
     const pintarLista = (): void => {
       const f = this.filtro.toLowerCase()
-      const visibles = this.conversaciones.filter((c) => c.titulo.toLowerCase().includes(f))
+      const visibles = this.conversaciones.filter((c) => c.titulo.toLowerCase().includes(f) || coinciden.has(c.id))
       lista.replaceChildren(
         ...(visibles.length === 0
           ? [el('p', 'memoria-nota', this.conversaciones.length === 0 ? 'Aún no hay conversaciones guardadas. Se guardan al pulsar «Nueva conversación».' : 'Nada coincide.')]
@@ -87,7 +89,20 @@ export class MenuHistorial {
     }
     buscar.addEventListener('input', () => {
       this.filtro = buscar.value
+      coinciden = new Set()
       pintarLista()
+      // Además del título, busca dentro de los mensajes (índice de texto completo del proceso principal).
+      const yo = ++pedido
+      if (this.filtro.trim().length >= 2) {
+        void window.orbe
+          .historialBuscar(this.filtro)
+          .then((ids) => {
+            if (yo !== pedido) return
+            coinciden = new Set(ids)
+            pintarLista()
+          })
+          .catch(() => undefined)
+      }
     })
     pintarLista()
     this.menu.replaceChildren(titulo, buscar, lista)

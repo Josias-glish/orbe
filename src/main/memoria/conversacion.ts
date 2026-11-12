@@ -72,6 +72,21 @@ export class AlmacenConversacion {
     this.escribir(join(this.carpeta, `${id}.json`), { version: 1, actualizada: ahora.toISOString(), mensajes, id })
   }
 
+  /** Todas con sus mensajes (las archivadas y la de ahora, con id «actual»), para el índice de búsqueda. */
+  todas(): Array<{ id: string; actualizada: string; mensajes: MensajeGuardado[] }> {
+    const leerDe = (ruta: string, id: string): { id: string; actualizada: string; mensajes: MensajeGuardado[] } => {
+      const d = this.leer(ruta)
+      return { id, actualizada: String(d?.actualizada ?? ''), mensajes: Array.isArray(d?.mensajes) ? d.mensajes.filter(esMensaje) : [] }
+    }
+    let archivos: string[] = []
+    try {
+      archivos = readdirSync(this.carpeta).filter((f) => f.endsWith('.json'))
+    } catch {
+      // sin historial todavía
+    }
+    return [leerDe(this.archivo, 'actual'), ...archivos.map((f) => leerDe(join(this.carpeta, f), f.slice(0, -5)))].filter((c) => c.mensajes.length > 0)
+  }
+
   /** El historial, de la más reciente a la más antigua. */
   listar(): ConversacionArchivada[] {
     let archivos: string[] = []

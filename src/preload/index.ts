@@ -86,6 +86,7 @@ const api: ApiOrbe = {
   memoriaInicio: () => ipcRenderer.invoke(CANALES.memoriaInicio),
   historialListar: () => ipcRenderer.invoke(CANALES.historialListar),
   historialAbrir: (id) => ipcRenderer.invoke(CANALES.historialAbrir, id),
+  historialBuscar: (texto) => ipcRenderer.invoke(CANALES.historialBuscar, texto),
   memoriaEstado: () => ipcRenderer.invoke(CANALES.memoriaEstado),
   memoriaGuardar: (texto, forzar) => ipcRenderer.invoke(CANALES.memoriaGuardar, texto, forzar),
   memoriaActualizar: (id, cambios, forzar) => ipcRenderer.invoke(CANALES.memoriaActualizar, id, cambios, forzar),

@@ -11,7 +11,7 @@ import type {
 import { AlmacenMemoria, MAX_CUERPO, MAX_DESCRIPCION, MAX_RECUERDOS, type Recuerdo } from './almacen'
 import { construirBloqueMemoria } from './bloque'
 import { detectarOrdenRecordar } from './captura'
-import { AlmacenConversacion, construirHistorialPrevio } from './conversacion'
+import { AlmacenConversacion, construirHistorialPrevio, tituloDe } from './conversacion'
 import { carpetasClaudePorDefecto, importarDeClaude } from './importador'
 import { buscarSensible } from './secretos'
 
@@ -116,6 +116,7 @@ export class ServicioMemoria {
         titulo: r.descripcion,
         cuerpo: r.cuerpo,
         origen: r.origen,
+        fuente: r.fuente ?? (r.origen === 'claude' ? 'Memoria de Claude Code' : undefined),
         usar: r.usar,
         completo: r.completo,
         caracteres: bloque.porRecuerdo[r.id] ?? 0,
@@ -129,7 +130,7 @@ export class ServicioMemoria {
 
   /** Crea una nota del usuario. Con `forzar` se guarda aunque parezca contener un dato delicado. */
   guardarNota(texto: string, forzar = false): ResultadoMemoria {
-    const creada = this.crearNota(texto, forzar)
+    const creada = this.crearNota(texto, forzar, 'A mano, desde el gestor de memoria')
     if (creada.ok) return { ok: true, id: creada.id, estado: this.estado() }
     return { ok: false, error: creada.error, ...(creada.sensible ? { sensible: true } : {}) }
   }
@@ -140,7 +141,8 @@ export class ServicioMemoria {
    */
   private crearNota(
     texto: string,
-    forzar: boolean
+    forzar: boolean,
+    fuente: string
   ): { ok: true; id: string; duplicado: boolean } | { ok: false; error: string; motivo: string; sensible?: boolean } {
     const cuerpo = texto.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
     if (!cuerpo) return { ok: false, error: 'Escribe algo que Orbe deba recordar.', motivo: 'no hay nada que guardar' }
@@ -181,6 +183,7 @@ export class ServicioMemoria {
       descripcion: resumir(cuerpo, 140),
       cuerpo,
       origen: 'usuario',
+      fuente,
       usar: true,
       completo: true,
       modificado: this.ahora().toISOString()
@@ -265,7 +268,7 @@ export class ServicioMemoria {
     if (!this.activa()) {
       return noGuardado('la memoria está desactivada', 'Díselo y explícale que puede activarla desde el botón de memoria del panel.')
     }
-    const r = this.crearNota(orden.hecho, false)
+    const r = this.crearNota(orden.hecho, false, this.fuenteChat())
     if (!r.ok) {
       const pista = r.sensible
         ? 'Díselo con amabilidad y sugiérele no compartir datos así; si de verdad quiere guardarlo, puede hacerlo a mano desde el botón de memoria.'
@@ -320,6 +323,13 @@ export class ServicioMemoria {
     } catch (error) {
       console.error('[orbe] No se pudo guardar la conversación:', error)
     }
+  }
+
+  /** «Chat del 12 nov: «tema»»: de qué conversación salió un recuerdo pedido con «Recuerda que…». */
+  private fuenteChat(): string {
+    const dia = this.ahora().toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })
+    const mensajes = this.conversacion.cargar()
+    return mensajes.length > 0 ? `Chat del ${dia}: «${tituloDe(mensajes)}»` : `Chat del ${dia}`
   }
 
   /** El historial del chat. */

@@ -309,7 +309,8 @@ export class VistaMemoria {
     const origen = el(
       'p',
       'recuerdo-origen',
-      r.origen === 'claude' ? 'Importado de la memoria de Claude. Si lo borras, no se vuelve a importar.' : 'Lo creaste tú.'
+      (r.origen === 'claude' ? 'Importado de la memoria de Claude. Si lo borras, no se vuelve a importar.' : 'Lo creaste tú.') +
+        (r.fuente && r.origen !== 'claude' ? ` Origen: ${r.fuente}.` : '')
     )
     const acciones = el('div', 'recuerdo-acciones')
     acciones.append(

@@ -201,6 +201,12 @@ v1.16.0 (Etapa 9, historial del chat): `AlmacenConversacion.archivar|listar|abri
 lleva `id` y al archivarla otra vez se sobrescribe. IPC `historial:listar|abrir` (en `chat/ipc.ts`, reinicia el
 proveedor y prepara `historialPendiente`). UI `chat/menu-historial.ts` (botón `#historial-boton`).
 
+v1.17.0: `datos/base.ts` `BaseOrbe` (node:sqlite, FTS5 `unicode61 remove_diacritics 2`, `consultaFts` cita cada
+palabra como prefijo) en `data/<usuario>/orbe.db`; `datos/fuentes.ts` `documentosIndice` lee conversaciones
+(`AlmacenConversacion.todas`), recuerdos, `metricas.json` y `contenido/contenido.json`; se reindexa entero en cada
+búsqueda (ponytail). Herramienta `buscar_memoria` (externo) e IPC `historial:buscar`. `Recuerdo.fuente` (meta `fuente`).
+Desviación aprobada: métricas y contenido se indexan, no se mudan a la base.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

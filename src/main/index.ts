@@ -1,5 +1,5 @@
 import { perfilDe } from '../shared/identidad'
-import { app, Notification, type Tray } from 'electron'
+import { app, ipcMain, Notification, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
@@ -44,6 +44,12 @@ import { ejecutarHumo } from './humo'
 import { nivelInicial, registrarPotencia } from './potencia'
 import { modoAutoActivo, registrarModoAuto } from './modo-auto'
 import { crearCapturaVentana } from './pc/captura-ventana'
+import { userInfo } from 'node:os'
+import { BaseOrbe, type ResultadoBusqueda, type TipoDoc } from './datos/base'
+import { documentosIndice } from './datos/fuentes'
+import { AlmacenConversacion } from './memoria/conversacion'
+import { AlmacenMemoria } from './memoria/almacen'
+import { crearHerramientaBuscarMemoria } from './agente/herramientas/buscar-memoria'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -279,7 +285,33 @@ app.whenReady().then(async () => {
   // Con el helper, abrir_aplicacion espera (hasta 10 s) a que salga la ventana antes de contestar.
   if (helperPc) sistema.lanzador = { ...sistema.lanzador, ventanas: () => helperPc.pedir<{ ventanas: Array<{ hwnd: number; titulo: string }> }>('ventanas').then((r) => r.ventanas) }
   const pc = controlPc ? crearHerramientasPc(controlPc) : []
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio, ...pc])
+  // Base de datos local (Etapa 9): índice de búsqueda sobre conversaciones, recuerdos, métricas y contenido. Los
+  // archivos siguen siendo la fuente; el índice se rehace de ellos al buscar.
+  const base = new BaseOrbe(modoHumo ? ':memory:' : join(datos, 'data', userInfo().username.replace(/[^\w.-]/g, '_') || 'usuario', 'orbe.db'))
+  app.once('will-quit', () => base.cerrar())
+  const fuentesIndice = {
+    conversaciones: new AlmacenConversacion(join(datos, 'conversacion.json')),
+    memoria: new AlmacenMemoria(join(datos, 'memoria')),
+    rutaMetricas: join(datos, 'metricas.json'),
+    rutaContenido: join(datos, 'contenido', 'contenido.json')
+  }
+  const buscarEnDatos = (consulta: string, tipos?: TipoDoc[], limite?: number): ResultadoBusqueda[] => {
+    base.reindexar(documentosIndice(fuentesIndice))
+    return base.buscar(consulta, { tipos, limite })
+  }
+  ipcMain.handle(CANALES.historialBuscar, (e, texto: unknown): string[] =>
+    e.sender === orbe.ventana.webContents && typeof texto === 'string' && texto.length <= 200
+      ? [...new Set(buscarEnDatos(texto, ['conversacion'], 50).map((r) => r.ref))]
+      : []
+  )
+  const registro = crearRegistro(config, sistema, [
+    ...gmail,
+    ...instagram,
+    crearHerramientaCrecimiento(metricas),
+    crearHerramientaBuscarMemoria((c, t) => buscarEnDatos(c, t)),
+    ...composio,
+    ...pc
+  ])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
