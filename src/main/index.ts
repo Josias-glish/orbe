@@ -50,6 +50,8 @@ import { documentosIndice } from './datos/fuentes'
 import { AlmacenConversacion } from './memoria/conversacion'
 import { AlmacenMemoria } from './memoria/almacen'
 import { crearHerramientaBuscarMemoria } from './agente/herramientas/buscar-memoria'
+import { crearHerramientasAprender } from './agente/herramientas/aprender'
+import { AlmacenSkills } from './skills/almacen'
 import { restringirPermisos } from './permisos'
 import { ServicioDictado, ServicioSintesis, registrarVoz } from './voz'
 import { wavSilencioso } from './voz-demo'
@@ -299,6 +301,9 @@ app.whenReady().then(async () => {
   const pc = controlPc ? crearHerramientasPc(controlPc) : []
   // Base de datos local (Etapa 9): índice de búsqueda sobre conversaciones, recuerdos, métricas y contenido. Los
   // archivos siguen siendo la fuente; el índice se rehace de ellos al buscar.
+  // Skills propias (Etapa 9): solo su índice viaja en el prompt; el texto se carga con usar_skill.
+  const skills = new AlmacenSkills(modoHumo ? join(app.getPath('temp'), 'orbe-humo-skills') : join(datos, 'skills'))
+  const bloquePrompt = (): string | undefined => [memoria.bloquePrompt(), skills.indice()].filter(Boolean).join('\n\n') || undefined
   const fuentesIndice = {
     conversaciones: new AlmacenConversacion(join(datos, 'conversacion.json')),
     memoria: almacenRecuerdos,
@@ -319,6 +324,7 @@ app.whenReady().then(async () => {
     ...instagram,
     crearHerramientaCrecimiento(metricas),
     crearHerramientaBuscarMemoria((c, t) => buscarEnDatos(c, t)),
+    ...crearHerramientasAprender(skills, (texto) => memoria.guardarNota(texto, false, 'Aprendido de una corrección en el chat')),
     ...composio,
     ...pc
   ])
@@ -327,7 +333,7 @@ app.whenReady().then(async () => {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
   }
   const proveedor =
-    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro)
+    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, bloquePrompt, registro)
   const info =
     modoHumo && !humoReal
       ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo', agente: true, identidad: config.identidad }
@@ -372,7 +378,7 @@ app.whenReady().then(async () => {
   const tareas = new ServicioTareas({
     archivo: modoHumo ? null : join(datos, 'tareas.json'),
     crearProveedor: () =>
-      modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, () => memoria.bloquePrompt(), registro),
+      modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, bloquePrompt, registro),
     bus: actividad,
     contador: contadorUso,
     identidad: perfilDe(config.identidad),

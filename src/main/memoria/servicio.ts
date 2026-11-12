@@ -137,8 +137,8 @@ export class ServicioMemoria {
   }
 
   /** Crea una nota del usuario. Con `forzar` se guarda aunque parezca contener un dato delicado. */
-  guardarNota(texto: string, forzar = false): ResultadoMemoria {
-    const creada = this.crearNota(texto, forzar, 'A mano, desde el gestor de memoria')
+  guardarNota(texto: string, forzar = false, fuente = 'A mano, desde el gestor de memoria'): ResultadoMemoria {
+    const creada = this.crearNota(texto, forzar, fuente)
     if (creada.ok) return { ok: true, id: creada.id, estado: this.estado() }
     return { ok: false, error: creada.error, ...(creada.sensible ? { sensible: true } : {}) }
   }

@@ -211,6 +211,10 @@ v1.18.0: `memoria/consolidar.ts` (`sonDuplicados`, `caducado` 90 días, `propone
 `meta`; `alTurno` marca uso por FTS con `cualquiera`; consolidación diaria en index.ts (meta `consolidacion`, aviso);
 `memoria:propuesta` archiva a `_archivo/` o descarta (`config.descartadas`).
 
+v1.19.0: `skills/almacen.ts` `AlmacenSkills` (solo lee `<nombre>/SKILL.md`, `NOMBRE_SKILL`, copia `anterior-*` al
+mejorar, `indice()` va en el prompt junto a la memoria vía `bloquePrompt` de index.ts); `herramientas/aprender.ts`
+`usar_skill` y `proponer_aprendizaje` (siempre `ctx.preguntar`, también en auto). Etapa 9 cerrada.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

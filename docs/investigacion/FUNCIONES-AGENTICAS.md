@@ -31,8 +31,8 @@
 | M4 | **Caducidad**: un recuerdo que no se usa en N días pierde peso o se archiva | Copilot | ✔ v1.18.0 (90 días, solo resumen) | 9 |
 | M5 | **Comprobar antes de fiarse**: datos que cambian (precios, cifras) se vuelven a consultar | Grok Bot | ✔ v1.18.0 (prompt + aviso en `buscar_memoria`) | 9 |
 | M6 | **Consolidación nocturna** («dreaming»): une duplicados, resume y propone limpiar | Copilot Memory | ✔ v1.18.0 (diaria, propone; el usuario acepta) | 9 |
-| M7 | **Skills** propias (`SKILL.md`), cargadas solo cuando hacen falta | Claude Code, OpenClaw, Hermes | ✗ | 9 |
-| M8 | **Aprendizaje de correcciones**: tras corregir a Orbe, propone una skill o un recuerdo; la skill mejora al usarse | Hermes | ✗ | 9 |
+| M7 | **Skills** propias (`SKILL.md`), cargadas solo cuando hacen falta | Claude Code, OpenClaw, Hermes | ✔ v1.19.0 (índice en prompt, `usar_skill`) | 9 |
+| M8 | **Aprendizaje de correcciones**: tras corregir a Orbe, propone una skill o un recuerdo; la skill mejora al usarse | Hermes | ✔ v1.19.0 (`proponer_aprendizaje`, siempre con aprobación) | 9 |
 | M9 | Memoria compartida entre chat y tareas | dots | ✔ | — |
 
 ## 3. Varios agentes
