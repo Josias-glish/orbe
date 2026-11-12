@@ -209,7 +209,7 @@ Las preferencias de voz se guardan en la ventana de Orbe, no en el `.env`.
 ## Fondo del chat
 Con `ORBE_FONDOS` apuntando a una carpeta con imágenes (PNG o JPEG), Orbe las usa de fondo del panel. Elige una al azar la primera vez y recuerda cuál y cuánto se ve. Un velo oscuro por encima hace que el texto se lea con cualquier imagen. Las originales no se tocan: Orbe guarda una copia reducida (lado mayor de 1600 px, unos 100–250 KB) en su carpeta de datos, así que cambiar de fondo es casi instantáneo aunque las imágenes sean de 4K. Sin la variable, Orbe usa los fondos **incluidos en la instalación** (carpeta `resources/fondos`); si tampoco hay, no hay fondo hasta que elijas uno.
 
-**Elegir imagen…** (Configuración → Fondo del chat) abre el diálogo de Windows para elegir un PNG o JPEG de tu equipo. Orbe la **copia** a `%APPDATA%\orbeondos` (nunca pisa un archivo: si el nombre ya existe, la copia lleva la hora delante) y la pone de fondo. **Otro fondo** cambia al azar y la casilla lo apaga.
+**Elegir imagen…** (Configuración → Fondo del chat) abre el diálogo de Windows para elegir un PNG o JPEG de tu equipo. Orbe la **copia** a `%APPDATA%\orbe\fondos` (nunca pisa un archivo: si el nombre ya existe, la copia lleva la hora delante) y la pone de fondo. **Otro fondo** cambia al azar y la casilla lo apaga.
 
 Los fondos que vienen en `resources/fondos/` (26 imágenes de Solo Leveling reducidas, unos 5 MB) se incluyen en el instalador. Son imágenes con derechos de autor de sus titulares, incluidas aquí para uso personal: si quieres otras, `npm run fondos -- "C:\ruta\a\tus\imagenes"` las reduce y las copia a esa carpeta, y el siguiente `npm run dist` las mete en el `.exe`. Con `ORBE_FONDOS` se usa tu propia carpeta en su lugar.
 
