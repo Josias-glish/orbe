@@ -155,6 +155,15 @@ Pendiente, en este orden (detalle, código en borrador y prompts en `docs/fase3-
    genera en «AI Clients» del panel de Composio. Sustituye a la idea de dejar pasar conectores de claude.ai al CLI.
 6. **Funciones tipo dots**: revisor de riesgo, activadores por sondeo, aprendizaje de correcciones.
 7. **Navegador propio**: Playwright con Edge del sistema y perfil aparte; Meta, Google y bancos bloqueados.
+8. **Barra lateral limpia e iconos propios** (pedido por el usuario el 11-nov-2026):
+   - Quitar de la barra lateral los botones de **Uso** (consumo), **Memoria**, **Fondo**, **Voz** y **Dictado** y
+     llevarlos dentro de **Configuración** (secciones de Ajustes); en el carril quedan Chat, Tareas, Contenido, Métricas.
+     Revisar `#carril` en `index.html`, `alternar*`/`cerrar*`, Escape y los pasos de humo que pulsan esos botones.
+   - **Iconos propios, nada de emojis ni iconos genéricos**: un set coherente con la estética de Orbe (trazo, grosor y
+     esquinas iguales), dibujado a medida en SVG o tomado de un pack con licencia libre que encaje (comprobar licencia y
+     citar la fuente; «no verificado» hasta revisarla). Se le enseñan al usuario 2–3 opciones antes de cambiar todos.
+   - Después, **cambiar fondo** desde Configuración: elegir imagen propia o de una galería, vista previa y volver al de
+     siempre; el archivo se copia en `%APPDATA%\orbe` (con copia previa de lo que haya, según las reglas).
 
 Cada etapa: código + pruebas + humo + versión nueva + PR + release, y una guía para que el usuario la pruebe con sus
 cuentas reales. No conectes cuentas reales tú mismo: el usuario genera los tokens y los guarda en Orbe.
