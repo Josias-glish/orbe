@@ -1483,6 +1483,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
   try {
     await new Promise<void>((r) => (wc.isLoading() ? wc.once('did-finish-load', () => r()) : r()))
     await esperar(1200)
+    // El conejo 3D pesa decenas de MB: se espera a que deje de estar «cargando» antes de la primera captura.
+    for (let i = 0; i < 40 && (await js<string>('window.__orbeDiagnostico().figura')) === 'cargando'; i++) await esperar(250)
     informe.webgl = await js('window.__orbeDiagnostico()')
 
     if (real) {

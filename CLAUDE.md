@@ -153,6 +153,9 @@ acción dependa de la entrada: `clasificar.ts` da `composio.leer` (libre) o `com
 Por decisión del usuario (12-nov-2026) nada de Composio está bloqueado: enviar, publicar, borrar y las apps de
 Gmail/Meta van por «preguntar». `modoDe` usa `REGLAS_POR_DEFECTO` para acciones que falten en un `reglas.json` antiguo.
 
+v1.12.1: el conejo 3D incluido pasa a ser `conejo-con-pelo.glb` (de `orbe-sitio`, 26 MB, 1,1 M triángulos,
+piel y pelo; su animación no se reproduce). El humo espera a que la figura deje de estar «cargando».
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras
