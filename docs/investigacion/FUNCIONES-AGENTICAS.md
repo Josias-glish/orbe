@@ -26,45 +26,45 @@
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
 | M1 | Recuerdos en archivos y perfil del usuario | Hermes (`memory.md`, `user.md`), Claude (CLAUDE.md) | ✔ recuerdos `.md` | — |
-| M2 | **Búsqueda** en recuerdos y en conversaciones pasadas (SQLite FTS5) con resumen | Hermes | ✗ | 7 |
-| M3 | **Origen** de cada recuerdo (de qué conversación o acción sale) | Copilot (citas) | ✗ | 7 |
-| M4 | **Caducidad**: un recuerdo que no se usa en N días pierde peso o se archiva | Copilot | ✗ | 7 |
-| M5 | **Comprobar antes de fiarse**: datos que cambian (precios, cifras) se vuelven a consultar | Grok Bot | ✗ | 7 |
-| M6 | **Consolidación nocturna** («dreaming»): une duplicados, resume y propone limpiar | Copilot Memory | ✗ | 7 |
-| M7 | **Skills** propias (`SKILL.md`), cargadas solo cuando hacen falta | Claude Code, OpenClaw, Hermes | ✗ | 7 |
-| M8 | **Aprendizaje de correcciones**: tras corregir a Orbe, propone una skill o un recuerdo; la skill mejora al usarse | Hermes | ✗ | 7 |
+| M2 | **Búsqueda** en recuerdos y en conversaciones pasadas (SQLite FTS5) con resumen | Hermes | ✗ | 9 |
+| M3 | **Origen** de cada recuerdo (de qué conversación o acción sale) | Copilot (citas) | ✗ | 9 |
+| M4 | **Caducidad**: un recuerdo que no se usa en N días pierde peso o se archiva | Copilot | ✗ | 9 |
+| M5 | **Comprobar antes de fiarse**: datos que cambian (precios, cifras) se vuelven a consultar | Grok Bot | ✗ | 9 |
+| M6 | **Consolidación nocturna** («dreaming»): une duplicados, resume y propone limpiar | Copilot Memory | ✗ | 9 |
+| M7 | **Skills** propias (`SKILL.md`), cargadas solo cuando hacen falta | Claude Code, OpenClaw, Hermes | ✗ | 9 |
+| M8 | **Aprendizaje de correcciones**: tras corregir a Orbe, propone una skill o un recuerdo; la skill mejora al usarse | Hermes | ✗ | 9 |
 | M9 | Memoria compartida entre chat y tareas | dots | ✔ | — |
 
 ## 3. Varios agentes
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| A1 | **Agentes con nombre y rol** (p. ej. «Contenido», «Correo», «Investigador»): instrucciones, herramientas permitidas, modelo y memoria propios | Grok Bot (Bots), Copilot (custom agents), dots (varios dots) | ✗ | 8 |
-| A2 | Datos comunes a todos los agentes (tu nombre, zona horaria, marcas) | Grok Bot | ✗ | 8 |
-| A3 | **Rutinas por agente** con historial de ejecuciones (últimas 20) y topes | Grok Bot (Routines) | ◐ tareas con historial, sin agente | 8 |
-| A4 | **Buzón entre agentes**: un agente deja un encargo a otro, que lo atiende y responde después | Grok Bot (mensajes asíncronos) | ✗ | 8 |
-| A5 | **Subagentes en paralelo** con contexto aislado para trabajos largos | Claude Code (subagents), Manus (Wide Research) | ✗ (solo se reciben avisos de subagentes de Claude Code) | 8 |
-| A6 | Orquestador: Atlas/Orbe reparte el trabajo entre agentes | Grok Bot, dots Space | ✗ | 8 |
+| A1 | **Agentes con nombre y rol** (p. ej. «Contenido», «Correo», «Investigador», «Ventas»): instrucciones, herramientas permitidas, modelo y memoria propios; se ejecutan como subagentes nativos del CLI de Claude | Grok Bot (Bots), Copilot (custom agents), dots (varios dots) | ✗ | 10 |
+| A2 | Datos comunes a todos los agentes (tu nombre, zona horaria, marcas) | Grok Bot | ✗ | 10 |
+| A3 | **Rutinas por agente** con historial de ejecuciones (últimas 20) y topes | Grok Bot (Routines) | ◐ tareas con historial, sin agente | 10 |
+| A4 | **Buzón entre agentes**: un agente deja un encargo a otro, que lo atiende y responde después | Grok Bot (mensajes asíncronos) | ✗ | 10 |
+| A5 | **Subagentes en paralelo** con contexto aislado para trabajos largos: se **reutilizan los del CLI de Claude** (`--agents`) | Claude Code (subagents), Manus (Wide Research) | ✗ (solo se reciben avisos de subagentes de Claude Code) | 10 |
+| A6 | Orquestador: Atlas/Orbe reparte el trabajo entre agentes | Grok Bot, dots Space | ✗ | 10 |
 
 ## 4. Proactividad y segundo plano
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
 | P1 | Tareas programadas con «solo si hay algo» | dots, Cowork | ✔ | — |
-| P2 | **Heartbeat**: cada N min lee `PROACTIVO.md` y decide si actúa (sin gasto si está vacío) | OpenClaw | ✗ | 9 |
-| P3 | **Activadores por evento** (por sondeo): correo nuevo, comentario o mensaje de Instagram, archivo nuevo en una carpeta, al encender el PC | dots (event triggers), Grok Bot | ✗ | 9 |
-| P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✗ | 9 |
-| P5 | **Ponerse al día al encender** (lo que no se pudo hacer con el portátil apagado) | Adaptación propia (sin 24/7) | ◐ | 9 |
+| P2 | **Heartbeat**: cada N min lee `PROACTIVO.md` y decide si actúa (sin gasto si está vacío) | OpenClaw | ✗ | 11 |
+| P3 | **Activadores por evento** (por sondeo): correo nuevo, comentario o mensaje de Instagram, archivo nuevo en una carpeta, al encender el PC | dots (event triggers), Grok Bot | ✗ | 11 |
+| P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✗ | 11 |
+| P5 | **Ponerse al día al encender** (lo que no se pudo hacer con el portátil apagado) | Adaptación propia (sin 24/7) | ◐ | 11 |
 | P6 | Parte de situación diario | Atlas | ✔ | — |
-| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 12 |
+| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 15 |
 
 ## 5. Investigación profunda
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web simple | 10 |
-| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 10 |
-| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 10 |
+| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web simple | 13 |
+| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 13 |
+| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 13 |
 
 ## 6. Herramientas e integraciones
 
@@ -74,19 +74,22 @@
 | H2 | Instagram (leer, métricas) | — | ✔ Etapas 2 y 4 | — |
 | H3 | **Miles de apps** por un solo conector | dots (4.000+ apps), Grok Bot (connectors) | ✗ | 5 (Composio) |
 | H4 | MCP como servidor y como cliente | Claude, Copilot | ◐ servidor sí; cliente llega con Composio | 5 |
-| H5 | **Navegador propio** del agente con perfil aparte | dots, Grok Bot, Comet, Claude in Chrome | ✗ | 13 |
-| H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 13 |
-| H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 11 |
+| H5 | **Navegador propio** del agente con perfil aparte | dots, Grok Bot, Comet, Claude in Chrome | ✗ | 16 |
+| H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 16 |
+| H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 14 |
 | H8 | Publicación en Instagram | Plan propio | ✗ aparte por decisión del usuario | — |
+| H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ◐ solo Gmail | 7 |
+| H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ◐ solo lectura de pantalla | 8 |
 
 ## 7. Interfaz y canales
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
 | I1 | Avatar con presencia (conejo, Atlas) | dots | ✔ | — |
-| I2 | Voz: dictado y respuesta hablada | dots (llamada), Gemini | ◐ voz de Windows; neuronal aplazada | 15 |
-| I3 | **Conversación por voz manos libres** (como una llamada) | dots | ✗ | 15 |
-| I4 | Slack, Teams, WhatsApp, Telegram | dots, OpenClaw | ⊘ sin teléfono ni equipo; Telegram y WhatsApp exigen teléfono | — |
+| I2 | Voz: dictado y respuesta hablada | dots (llamada), Gemini | ◐ voz de Windows; neuronal aplazada | 18 |
+| I3 | **Conversación por voz manos libres** (como una llamada) | dots | ✗ | 18 |
+| I4 | Chatear tú con Atlas por WhatsApp, Telegram, Slack o Teams | dots, OpenClaw | ⊘ sin teléfono; además Meta prohíbe los asistentes de IA generales en la API de WhatsApp desde el 15-ene-2026 | — |
+| I7 | **WhatsApp de la marca** atendido con Atlas: clientes escriben, Atlas resume y redacta, tú apruebas cada respuesta | Petición del usuario (12-nov) | ✗ | 12 |
 | I5 | Ordenador en la nube que trabaja 24/7 | dots, Grok Bot, Manus | ⊘ excluido desde el principio («excepto 24/7»), sin servidor | — |
 | I6 | Interfaces dentro del chat (MCP Apps) | Claude | ⊘ más adelante | — |
 
@@ -96,13 +99,14 @@
 |---|---|---|---|---|
 | S1 | Secretos aparte de la memoria (cofre/Vault) | Grok Bot (Vault) | ✔ cofre DPAPI | — |
 | S2 | Registro de actividad con secretos tachados | Copilot, dots | ✔ | — |
-| S3 | Solo skills propias; nada de catálogos de terceros | Lección de OpenClaw (341 maliciosas) | — | 7 |
-| S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 13 |
-| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | — | 11 |
-| S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 14 |
+| S3 | Solo skills propias; nada de catálogos de terceros | Lección de OpenClaw (341 maliciosas) | — | 9 |
+| S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 16 |
+| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | — | 14 |
+| S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 17 |
 
 ## Resumen
 
-- 57 funciones: **hechas** 12 · **parciales** 11 · **faltan** 28 · **descartadas con motivo** 3 · **reglas de
+- 60 funciones: **hechas** 12 · **parciales** 13 · **faltan** 29 · **descartadas con motivo** 3 · **reglas de
   seguridad nuevas** 3 (S3–S5).
-- Las que faltan están repartidas en las Etapas 5 a 15 del [prompt de construcción](PROMPT-CONSTRUCCION.md).
+- Las que faltan están repartidas en las Etapas 5 a 18 del [prompt de construcción](PROMPT-CONSTRUCCION.md).
+- WhatsApp, Google ampliado, control del PC y subagentes nativos: [WHATSAPP-GOOGLE-PC.md](WHATSAPP-GOOGLE-PC.md).

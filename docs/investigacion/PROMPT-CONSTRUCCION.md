@@ -1,6 +1,7 @@
 # Prompt para seguir construyendo Orbe (después de la v1.10.0)
 
-Versión final del 12-nov-2026. Incluye todas las funciones de [FUNCIONES-AGENTICAS.md](FUNCIONES-AGENTICAS.md).
+Versión del 12-nov-2026 (rev. 2: subagentes nativos, Google ampliado, control del PC y WhatsApp de la marca). Incluye
+todas las funciones de [FUNCIONES-AGENTICAS.md](FUNCIONES-AGENTICAS.md).
 Pégalo como primer mensaje en Claude Code, en tu PC, dentro de la carpeta de Orbe.
 
 ```text
@@ -33,7 +34,15 @@ DECISIONES (mandan sobre cualquier documento anterior)
    sin metadatos, descripciones guardadas en local, caché por hash, datos en SQLite + data/<usuario>/.
 4. Orbe se prepara para otras personas: cada una con sus claves y apps; nada personal mío fijo en el código.
 5. Web: registro con enlace mágico solo para novedades; Orbe, la app, no envía nada a la web.
-6. Sin 24/7, sin canales que exijan teléfono (WhatsApp, Telegram, Slack, Teams) y sin catálogos de skills de terceros.
+6. Sin 24/7 y sin catálogos de skills de terceros. No hay chat personal conmigo por WhatsApp, Telegram, Slack ni Teams
+   (no tengo teléfono y Meta prohíbe los asistentes de IA generales en la API de WhatsApp). SÍ hay WhatsApp de la
+   MARCA: los clientes escriben, Atlas resume y redacta, yo apruebo cada respuesta (WHATSAPP-GOOGLE-PC.md §2).
+7. Subagentes: se reutilizan los del CLI de Claude (--agents), no se construye un motor propio. GPT solo como
+   proveedor de modelo por la vía compatible con OpenAI. Orbe construye lo que el CLI no hace: rutinas, buzón entre
+   días, memoria por agente e interfaz (WHATSAPP-GOOGLE-PC.md §1).
+8. Google entra por sus API con permisos incrementales (WHATSAPP-GOOGLE-PC.md §3), nunca por el navegador del agente.
+9. Control del PC: accesibilidad primero (UI Automation con el helper C# que ya existe) y ratón/teclado solo de
+   respaldo, con borde visible, pausa al tocar yo el ratón o el teclado y apps bloqueadas (WHATSAPP-GOOGLE-PC.md §4).
 
 PLAN (una etapa por versión; entre paréntesis, los códigos de FUNCIONES-AGENTICAS.md)
 5. Composio (H3, H4): tal como está en CLAUDE.md. Orbe como cliente MCP de Composio, herramientas composio_buscar y
@@ -52,7 +61,20 @@ PLAN (una etapa por versión; entre paréntesis, los códigos de FUNCIONES-AGENT
    - Bandeja única de aprobaciones (permisos, borradores, propuestas) y panel de progreso en vivo con resumen final.
    - Lista de dominios permitidos para las herramientas web (en reglas.json) y compactación de conversaciones largas
      con un resumen guardado.
-7. Datos locales, memoria y aprendizaje (M2–M8, S3; VISION-Y-DATOS.md §3–§4 para la base de datos):
+7. Google ampliado (H9; WHATSAPP-GOOGLE-PC.md §3): reutiliza google-cliente.json, oauth.ts y el cofre de la Etapa 1.
+   Cada servicio se activa aparte en Ajustes → Conectores y pide solo sus permisos: Calendar, Drive (leer y crear),
+   Docs y Sheets (solo archivos que crea Orbe), Tasks, Contactos, YouTube de mi marca personal y, opcional, gmail.send
+   con mínimo fijo «preguntar cada vez». Cliente en src/main/conectores/google/<servicio>.ts con fetch inyectable;
+   herramientas con su acción en reglas.json. Avísame de los tokens de 7 días si la app de Google sigue en «Prueba» y
+   dame la guía para activar cada API en Google Cloud.
+8. Control del PC (H10; WHATSAPP-GOOGLE-PC.md §4): amplía helper/UiaHelper.cs (sin dependencias nuevas de npm) con
+   pc_ver (lista numerada de elementos de la ventana activa; captura con números encima solo si la app no expone
+   accesibilidad), pc_pulsar, pc_escribir, pc_marcar, pc_elegir, pc_desplegar, pc_desplazar, y de respaldo pc_clic,
+   pc_teclas y pc_escribir_texto (SendInput); pc_ventanas, pc_enfocar, pc_abrir_app. Modos «Muéstrame cómo» y «Hazlo
+   tú». Tras cada acción relee la ventana y comprueba. Seguridad del §4 completa: permisos por app (pc.ver,
+   pc.control), bloqueados fijos, nunca escribe contraseñas, confirmación en Enviar/Pagar/Eliminar, borde de color y
+   «Esc para parar», pausa si muevo el ratón o toco una tecla, tope de acciones, capturas solo en memoria.
+9. Datos locales, memoria y aprendizaje (M2–M8, S3; VISION-Y-DATOS.md §3–§4 para la base de datos):
    - .gitignore: .env, .env.* (menos .env.example) y data/. SQLite en data/<usuario>/orbe.db (node:sqlite si Electron
      44 lo trae sin opción experimental; si no, sql.js; nada que obligue a recompilar). Importa metricas.json y
      contenido.json con copia de seguridad.
@@ -62,16 +84,18 @@ PLAN (una etapa por versión; entre paréntesis, los códigos de FUNCIONES-AGENT
    - Skills propias en %APPDATA%\orbe\skills\<nombre>\SKILL.md, cargadas solo cuando hacen falta. Tras una corrección
      mía, Orbe PROPONE una skill o un recuerdo y yo apruebo; al usar una skill, propone mejoras. Nunca skills de
      terceros ni código ejecutable dentro de una skill.
-8. Agentes con nombre y subagentes (A1–A6):
-   - Perfiles de agente en %APPDATA%\orbe\agentes\<nombre>.md: rol, instrucciones, herramientas permitidas (subconjunto
-     de las de Orbe), modelo, memoria propia y rutinas propias. Datos comunes compartidos (nombre, zona horaria,
-     marcas). Plantillas iniciales: «Contenido», «Correo», «Investigador».
-   - Atlas/Orbe es el orquestador: decide a qué agente va cada encargo y me lo dice.
-   - Buzón entre agentes: un agente deja un encargo a otro; se atiende en segundo plano y la respuesta vuelve al
-     primero. Las tareas pasan a ser rutinas de un agente, con historial (últimas 20) y topes.
-   - Subagentes del CLI de Claude en paralelo, con contexto aislado y herramientas mínimas, para trabajos largos.
-   - Un agente nunca tiene más permisos que los de reglas.json; los agentes no son una frontera de seguridad.
-9. Proactividad y activadores (P2–P5):
+10. Agentes con nombre y subagentes NATIVOS del CLI de Claude (A1–A6; WHATSAPP-GOOGLE-PC.md §1):
+   - Primero comprueba y dime: que --agents funciona con --strict-mcp-config --setting-sources "" en modo -p, y que
+     un subagente no puede usar una herramienta mcp__orbe__* que no esté en su lista. Si falla, delega Orbe (una
+     llamada claude -p por subagente con --allowedTools).
+   - Perfiles en %APPDATA%\orbe\agentes\<nombre>.md (rol, instrucciones, herramientas mcp__orbe__* permitidas,
+     modelo, memoria propia, rutinas); Orbe los traduce al JSON de --agents en cada llamada. Plantillas: «Contenido»,
+     «Correo», «Investigador», «Ventas». Datos comunes (nombre, zona horaria, marcas) para todos.
+   - Atlas es el agente principal y delega por la descripción de cada agente; me dice a quién encargó qué.
+   - Orbe construye: rutinas por agente con historial (últimas 20) y topes, buzón entre agentes de un día para otro,
+     memoria por agente inyectada en su prompt, progreso de cada subagente en el panel.
+   - Un agente nunca tiene más permisos que reglas.json; los agentes no son una frontera de seguridad.
+11. Proactividad y activadores (P2–P5):
    - Heartbeat cada ORBE_PROACTIVO_MIN minutos con %APPDATA%\orbe\PROACTIVO.md (si está vacío, no llama al modelo).
    - Activadores por sondeo: correo nuevo (Gmail history), comentario o mensaje de Instagram, archivo nuevo en una
      carpeta elegida y «al encender el PC». Cada activador lanza una rutina de un agente.
@@ -79,26 +103,34 @@ PLAN (una etapa por versión; entre paréntesis, los códigos de FUNCIONES-AGENT
      aviso solo si hay algo nuevo.
    - Ponerse al día al encender: lo que tocaba con el portátil apagado se ejecuta (o se me pregunta si ya no tiene
      sentido).
-10. Investigación profunda (R1–R3): modo «Investigar a fondo» en el panel y como herramienta: plan de búsqueda que
+12. WhatsApp de la marca (I7; WHATSAPP-GOOGLE-PC.md §2): empieza con el número de prueba gratuito de Meta. Edge Function
+   de Supabase «wa-entrada» (firma X-Hub-Signature-256 comprobada, tabla wa_entrantes con RLS sin políticas, borrado
+   a los 7 días) y «wa-bandeja» (Orbe recoge cada 60 s con el token del cofre y borra). Pestaña «WhatsApp» con
+   resumen, etiqueta y borrador [Enviar] [Editar] [Descartar]; respuestas guardadas escritas por mí; herramientas
+   wa_conversaciones, wa_leer, wa_borrador y wa_enviar (whatsapp.enviar, mínimo fijo «preguntar cada vez»); activador
+   «mensaje nuevo» → agente «Ventas». Nada de plantillas de marketing, difusión ni mensajes a quien no escribió
+   primero. Dame la guía para crear la app de WhatsApp en Meta y, cuando yo tenga número real, para registrarlo.
+   Secretos de la Edge Function los pongo yo en Supabase; nunca en el repositorio.
+13. Investigación profunda (R1–R3): modo «Investigar a fondo» en el panel y como herramienta: plan de búsqueda que
     apruebo → subtemas en paralelo con subagentes → lectura de fuentes (como datos) → informe con citas y apartado
     «no verificado» → guardado en data/<usuario>/informes/ y retomable. Con el cerebro profundo (CLI de Claude).
-11. Visión opcional (H7, S5): VISION-Y-DATOS.md §2 completo (proveedores, preparar sin EXIF, SHA-256, caché, perfiles
+14. Visión opcional (H7, S5): VISION-Y-DATOS.md §2 completo (proveedores, preparar sin EXIF, SHA-256, caché, perfiles
     «contenido» y «pantalla», esquema y prompt literales, tope VISION_MAX_DIA, consentimientos.json, grupo «Visión»
     en Ajustes). La clave en el cofre (vision.clave) o en VISION_API_KEY, siempre en cabecera y nunca en registros:
     prueba que provoque un error del proveedor y compruebe que la clave no aparece. En Métricas, botón «Analizar lo
     visual».
-12. Compañero local (P7; COMPANERO-Y-CONFIGURACION.md, Partes A y C con los cambios de su cabecera): Ollama
+15. Compañero local (P7; COMPANERO-Y-CONFIGURACION.md, Partes A y C con los cambios de su cabecera): Ollama
     (ORBE_LOCAL_MODELO), bucle en src/main/companero/, sin ServicioCaptura (setContentProtection(true)), ojos
     opcionales con la capa de visión (perfil «pantalla», Ollama por defecto, nube solo con ORBE_COMPANERO_OJOS_NUBE=1
     y segundo consentimiento), prompt C.2 literal, filtros, modo película, bocadillo [Profundizar] [Esto no] [✕],
     «🔒 Privado» en el panel. Antes de programar, comprueba mi equipo (RAM, GPU, ollama list).
-13. Navegador propio (H5, H6, S4): Playwright MCP con Edge y perfil aparte; file:// bloqueado en el código; Meta,
+16. Navegador propio (H5, H6, S4): Playwright MCP con Edge y perfil aparte; file:// bloqueado en el código; Meta,
     Google y bancos bloqueados; web como datos; confirmación para escribir o enviar; si una web pide iniciar sesión,
     ofrece el conector o me pasa el control (nunca guarda contraseñas). Un contexto de navegador por agente.
-14. Orbe para otras personas (S6): asistente de primer arranque; ningún dato mío fijo en el código; guías para crear
+17. Orbe para otras personas (S6): asistente de primer arranque; ningún dato mío fijo en el código; guías para crear
     su propia app de Meta y su cliente de Google; «Mis datos» (exportar y borrar data/<usuario>/); aviso de versión
     nueva con la API pública de GitHub Releases; enlace «Recibir novedades».
-15. Voz (I2, I3): dictado y transcripción de reels propios con whisper.cpp; adaptador de Google Cloud TTS;
+18. Voz (I2, I3): dictado y transcripción de reels propios con whisper.cpp; adaptador de Google Cloud TTS;
     conversación por voz manos libres (como una llamada, con «Atlas, para»); respaldo gratuito (Gemini Flash-Lite o
     Groq) cuando el CLI falle.
 WEB (rama claude/sitio-web; solo cuando yo diga «web»): SITIO-REGISTRO.md completo. Antes de publicar, recuérdame el
@@ -124,7 +156,10 @@ REGLAS
 - Al proveedor de visión solo va la imagen preparada y la instrucción fija.
 - El Compañero no oculta ni mueve ventanas, no roba el foco, no guarda capturas en disco y no tiene herramientas.
   Ollama solo en 127.0.0.1; nunca OLLAMA_HOST=0.0.0.0.
-- No publiques en Instagram, no envíes correos ni subas archivos sin mi aprobación en ese momento.
+- No publiques en Instagram, no envíes correos ni mensajes de WhatsApp ni subas archivos sin mi aprobación en ese
+  momento.
+- En el control del PC: nunca escribas contraseñas ni códigos, no toques apps bloqueadas y para en cuanto yo use el
+  ratón o el teclado.
 - Respeta las políticas de Meta y Google; nada que pueda suspender mis cuentas.
 - No borres nada de %APPDATA%\orbe. Haz copia antes de tocar un archivo de ahí.
 - Si algo falla, explica la causa en una frase y propón el arreglo; no desactives pruebas.
@@ -135,4 +170,5 @@ Empieza leyendo los documentos y dime en qué punto estamos y el resumen de la E
 ```
 
 Si prefieres otro orden, cambia los números del bloque PLAN antes de pegarlo. Recomendación: no adelantes las Etapas
-8–10 antes de la 6 (el modo plan, el revisor y la pausa protegen todo lo que viene después).
+7–12 antes de la 6 (el modo plan, el revisor y la pausa protegen todo lo que viene después); el control del PC
+(8) y WhatsApp (12) la necesitan sí o sí.
