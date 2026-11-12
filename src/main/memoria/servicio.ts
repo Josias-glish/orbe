@@ -1,6 +1,8 @@
 import type {
   AvisoMemoria,
   CambiosRecuerdo,
+  ConversacionArchivada,
+  MensajeGuardado,
   EstadoMemoria,
   InformeImportacion,
   InicioMemoria,
@@ -320,8 +322,25 @@ export class ServicioMemoria {
     }
   }
 
-  /** «Nueva conversación»: se olvida lo guardado. */
+  /** El historial del chat. */
+  historial(): ConversacionArchivada[] {
+    return this.conversacion.listar()
+  }
+
+  /** Reabre una conversación del historial; el modelo recibe su contexto con el próximo mensaje. */
+  abrirHistorial(id: string): MensajeGuardado[] | null {
+    const mensajes = this.conversacion.abrir(id, this.ahora())
+    if (mensajes) this.historialPendiente = construirHistorialPrevio(mensajes)
+    return mensajes
+  }
+
+  /** «Nueva conversación»: la actual pasa al historial y se empieza de cero. */
   nuevaConversacion(): void {
+    try {
+      this.conversacion.archivar(this.ahora())
+    } catch (error) {
+      console.error('[orbe] No se pudo archivar la conversación:', error)
+    }
     this.conversacion.vaciar()
     this.historialPendiente = null
   }

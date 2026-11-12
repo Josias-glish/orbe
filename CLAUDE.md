@@ -196,6 +196,11 @@ v1.15.2: `VentanaOrbe` se recarga sola si el proceso de dibujo se cae (`render-p
 reajusta el ratón (`interactivo = true`, `setIgnoreMouseEvents(false)`) para que la página nueva pueda volver a pedir
 «transparente al ratón»; hacerlo en cada `did-finish-load` (v1.15.3) tapaba los clics alrededor del conejo.
 
+v1.16.0 (Etapa 9, historial del chat): `AlmacenConversacion.archivar|listar|abrir` guarda cada conversación en
+`conversaciones/<id>.json` (junto a `conversacion.json`); «Nueva conversación» archiva antes de vaciar; la reabierta
+lleva `id` y al archivarla otra vez se sobrescribe. IPC `historial:listar|abrir` (en `chat/ipc.ts`, reinicia el
+proveedor y prepara `historialPendiente`). UI `chat/menu-historial.ts` (botón `#historial-boton`).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

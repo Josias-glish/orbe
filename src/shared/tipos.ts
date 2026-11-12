@@ -57,6 +57,8 @@ export const CANALES = {
   fondoAjustar: 'fondo:ajustar',
   fondoElegir: 'fondo:elegir',
   memoriaInicio: 'memoria:inicio',
+  historialListar: 'historial:listar',
+  historialAbrir: 'historial:abrir',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
   memoriaActualizar: 'memoria:actualizar',
@@ -324,6 +326,14 @@ export type AvisoMemoria = { tipo: 'guardado'; id: string; texto: string } | { t
 export interface MensajeGuardado {
   rol: 'usuario' | 'asistente'
   texto: string
+}
+
+/** Una conversación archivada del historial del chat. */
+export interface ConversacionArchivada {
+  id: string
+  titulo: string
+  actualizada: string
+  mensajes: number
 }
 
 export interface InicioMemoria {
@@ -661,6 +671,10 @@ export interface ApiOrbe {
   fondoElegir(): Promise<EstadoFondo>
 
   memoriaInicio(): Promise<InicioMemoria>
+  /** El historial del chat: conversaciones archivadas al empezar una nueva. */
+  historialListar(): Promise<ConversacionArchivada[]>
+  /** Reabre una conversación del historial (archiva la actual); devuelve sus mensajes. */
+  historialAbrir(id: string): Promise<MensajeGuardado[] | null>
   memoriaEstado(): Promise<EstadoMemoria>
   memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
   memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>
