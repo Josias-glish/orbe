@@ -166,6 +166,11 @@ Los permisos de tareas salen en la tarjeta del chat (`panel.permisoDeTarea`; cer
 `ServicioChat` emite «Resumen: …» al final si hubo 2+ acciones. `ORBE_DOMINIOS` limita `abrir_url`. `chat/compactar.ts`
 resume la mitad antigua del historial de la API por encima de 240 000 caracteres. Sin pantalla de bienvenida en el chat.
 
+v1.14.0 (Etapa 7, reducida por decisión del usuario a «buscador ampliado»; Google ampliado va por Composio):
+con el proveedor CLI, `--tools` es `WebSearch,WebFetch`; `WebFetch` se permite con `WebFetch(domain:…)` por cada
+dominio de `ORBE_DOMINIOS` (o entero si la lista está vacía; que cubra subdominios no está verificado). En el chat
+sale como «Leyendo: url» (`leer_web`) y su resultado es texto de fuera.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

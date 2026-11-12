@@ -55,7 +55,7 @@ export interface ArgumentosAgente {
   configMcp: string
   /** Las herramientas que el CLI puede usar sin preguntar (nada más está permitido). */
   permitidas: string[]
-  /** Dejar activa la búsqueda web que trae el propio CLI. */
+  /** Dejar activas la búsqueda web y la lectura de páginas (WebFetch) que trae el propio CLI. */
   busquedaCli: boolean
 }
 
@@ -73,7 +73,7 @@ export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string
     '--verbose',
     '--model', modelo,
     '--effort', esfuerzo,
-    '--tools', agente?.busquedaCli ? 'WebSearch' : '',
+    '--tools', agente?.busquedaCli ? 'WebSearch,WebFetch' : '',
     '--system-prompt', prompt,
     '--setting-sources', '',
     '--strict-mcp-config',
@@ -148,7 +148,7 @@ interface TurnoActivo {
   /** Llamadas a herramientas que Orbe está ejecutando ahora: mientras haya alguna, el silencio del CLI es normal. */
   herramientasEnCurso: number
   /** Las búsquedas web del propio CLI que se están contando en el chat (por identificador de la herramienta). */
-  busquedas: Map<string, { titulo: string; parametros: string }>
+  busquedas: Map<string, { titulo: string; parametros: string; leer: boolean }>
 }
 
 /**
@@ -360,11 +360,18 @@ export class ProveedorCli implements ProveedorChat {
     }
   }
 
-  /** La búsqueda web que trae el CLI la ejecuta él: aquí solo se cuenta en el chat («Buscando: …»). */
+  /** La búsqueda web y la lectura de páginas del CLI las ejecuta él: aquí solo se cuentan en el chat («Buscando: …»). */
   private alPedirHerramienta(turno: TurnoActivo, e: Extract<EventoCli, { k: 'herramienta_pedida' }>): void {
+    if (e.nombre === 'WebFetch') {
+      const url = typeof e.entrada['url'] === 'string' ? e.entrada['url'].trim() : ''
+      const previa = { titulo: `Leyendo: ${recortar(url || '…', 120)}`, parametros: recortar(JSON.stringify({ url }), 300), leer: true }
+      turno.busquedas.set(e.id, previa)
+      turno.manejadores.alAccion?.({ accionId: `busqueda-${e.id}`, herramienta: 'leer_web', estado: 'en_curso', titulo: previa.titulo, parametros: previa.parametros })
+      return
+    }
     if (e.nombre !== 'WebSearch') return
     const consulta = typeof e.entrada['query'] === 'string' ? e.entrada['query'].trim() : ''
-    const previa = { titulo: `Buscando: ${recortar(consulta || '…', 120)}`, parametros: recortar(JSON.stringify({ consulta }), 300) }
+    const previa = { titulo: `Buscando: ${recortar(consulta || '…', 120)}`, parametros: recortar(JSON.stringify({ consulta }), 300), leer: false }
     turno.busquedas.set(e.id, previa)
     turno.manejadores.alAccion?.({ accionId: `busqueda-${e.id}`, herramienta: 'buscar_web', estado: 'en_curso', ...previa })
   }
@@ -375,10 +382,15 @@ export class ProveedorCli implements ProveedorChat {
     turno.busquedas.delete(e.id)
     turno.manejadores.alAccion?.({
       accionId: `busqueda-${e.id}`,
-      herramienta: 'buscar_web',
-      ...previa,
+      herramienta: previa.leer ? 'leer_web' : 'buscar_web',
+      titulo: previa.titulo,
+      parametros: previa.parametros,
       estado: e.error ? 'error' : 'ok',
-      resultado: e.error ? recortar(e.texto || 'La búsqueda falló.', 300) : describirResultadoBusquedaCli(e.texto)
+      resultado: e.error
+        ? recortar(e.texto || (previa.leer ? 'No pude leer la página.' : 'La búsqueda falló.'), 300)
+        : previa.leer
+          ? recortar(e.texto, 300)
+          : describirResultadoBusquedaCli(e.texto)
     })
   }
 
@@ -406,7 +418,8 @@ export class ProveedorCli implements ProveedorChat {
         }),
         permitidas: [
           ...agente.registro.nombres.map((n) => `mcp__${SERVIDOR_MCP}__${n}`),
-          ...(agente.busquedaCli ? ['WebSearch'] : [])
+          // Leer páginas: con ORBE_DOMINIOS, solo esas webs (regla de permisos del CLI «WebFetch(domain:…)»).
+          ...(agente.busquedaCli ? ['WebSearch', ...(agente.dominios?.length ? agente.dominios.map((d) => `WebFetch(domain:${d})`) : ['WebFetch'])] : [])
         ],
         busquedaCli: agente.busquedaCli === true
       }
