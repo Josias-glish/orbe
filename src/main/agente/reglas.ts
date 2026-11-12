@@ -48,7 +48,11 @@ export const REGLAS_POR_DEFECTO: Readonly<Record<string, Modo>> = {
   'navegador.enviar': 'preguntar',
   'navegador.comprar': 'bloqueado',
   'composio.leer': 'libre',
-  'composio.escribir': 'preguntar'
+  'composio.escribir': 'preguntar',
+  // Control del PC: mirar es libre y actuar pregunta. Por app: `pc_<programa>.ver` / `pc_<programa>.control`
+  // (p. ej. `pc_spotify.control`: libre); lo bloqueado (consolas, contraseñas, bancos) no se relaja aquí.
+  'pc.ver': 'libre',
+  'pc.control': 'preguntar'
 }
 
 export const BLOQUEADAS_SIEMPRE = [
@@ -63,8 +67,16 @@ export const BLOQUEADAS_SIEMPRE = [
 /** El modo efectivo: el de las reglas (lo desconocido, se pregunta), pero nunca por debajo del mínimo. */
 export function modoDe(accion: string, reglas: Readonly<Record<string, Modo>>): Modo {
   // Lo que falta en un reglas.json antiguo (acciones de conectores nuevos) toma su valor por defecto; lo desconocido, se pregunta.
-  const tiene = (r: Readonly<Record<string, Modo>>): boolean => Object.prototype.hasOwnProperty.call(r, accion)
-  const elegido = tiene(reglas) ? reglas[accion]! : tiene(REGLAS_POR_DEFECTO) ? REGLAS_POR_DEFECTO[accion]! : 'preguntar'
+  const tiene = (r: Readonly<Record<string, Modo>>, a = accion): boolean => Object.prototype.hasOwnProperty.call(r, a)
+  // Una app sin regla propia (`pc_chrome.control`) toma la general (`pc.control`).
+  const general = accion.replace(/^pc_[a-z_]+\./, 'pc.')
+  const elegido = tiene(reglas)
+    ? reglas[accion]!
+    : tiene(reglas, general)
+      ? reglas[general]!
+      : tiene(REGLAS_POR_DEFECTO, general)
+        ? REGLAS_POR_DEFECTO[general]!
+        : 'preguntar'
   const minimo = MINIMO[accion] ?? 'libre'
   return MODOS.indexOf(elegido) >= MODOS.indexOf(minimo) ? elegido : minimo
 }

@@ -116,7 +116,7 @@ registrarNombres('Es la configuración del sistema, y no cambio ajustes de Windo
 ])
 
 /** Programas de destino que son consolas, intérpretes o herramientas de administración (sin la extensión). */
-const DESTINOS_PROHIBIDOS = new Set([
+export const DESTINOS_PROHIBIDOS = new Set([
   'cmd',
   'powershell',
   'powershell_ise',

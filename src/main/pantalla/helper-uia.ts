@@ -68,6 +68,8 @@ export class ClienteHelper {
   private buffer = ''
   private stderrFinal = ''
   private cerrando = false
+  /** Avisos que el helper manda por su cuenta (p. ej. «el usuario tocó el ratón» durante el control del PC). */
+  alEvento: ((mensaje: { tipo: string; que?: string }) => void) | null = null
 
   private readonly arranqueMaxMs: number
 
@@ -136,6 +138,8 @@ export class ClienteHelper {
           } else if (mensaje.tipo === 'error') {
             clearTimeout(temporizador)
             rechazar(new ErrorHelper(mensaje.mensaje ?? 'Error desconocido al preparar el lector de pantalla.'))
+          } else if (mensaje.tipo === 'usuario') {
+            this.alEvento?.({ tipo: mensaje.tipo, que: (mensaje as { que?: string }).que })
           } else {
             this.alRespuesta(mensaje)
           }

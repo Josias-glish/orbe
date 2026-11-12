@@ -10,6 +10,9 @@ import { CANALES } from '../shared/tipos'
 import { existsSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { crearRegistro } from './agente/herramientas'
+import { crearHerramientasPc } from './agente/herramientas/pc'
+import { ControlPc } from './pc/control'
+import { crearMarco } from './pc/marco'
 import { crearHerramientasGmail } from './agente/herramientas/gmail'
 import { crearHerramientasInstagram } from './agente/herramientas/instagram'
 import { ServicioMetricas, dia } from './metricas/servicio'
@@ -257,7 +260,20 @@ app.whenReady().then(async () => {
   }
   // Composio: cientos de apps por un solo conector MCP; la clave se lee del cofre en cada llamada (vale sin reiniciar).
   const composio = crearHerramientasComposio(new ClienteComposio(() => cofre.leer<string>('composio.clave') ?? undefined))
-  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio])
+  // Control del PC (H10): con el helper real (nunca en la prueba de humo). Si el usuario toca el ratón o el teclado
+  // mientras Orbe actúa, el helper avisa y se detiene todo (`detenerTodo`, que se define más abajo).
+  let pararPorUsuario = (): void => {}
+  const helperPc = helper
+  const controlPc = helperPc
+    ? new ControlPc({
+        pedir: (op, p, ms) => helperPc.pedir(op, p, ms),
+        marco: crearMarco(perfilDe(config.identidad).nombre),
+        alUsuario: () => pararPorUsuario()
+      })
+    : null
+  if (helperPc && controlPc) helperPc.alEvento = () => controlPc.usuarioIntervino()
+  const pc = controlPc ? crearHerramientasPc(controlPc) : []
+  const registro = crearRegistro(config, sistema, [...gmail, ...instagram, crearHerramientaCrecimiento(metricas), ...composio, ...pc])
   // Leer el menú Inicio tarda unos segundos (PowerShell): se adelanta cuando Orbe ya arrancó, para que «abre Spotify» sea inmediato.
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
@@ -321,7 +337,9 @@ app.whenReady().then(async () => {
   const detenerTodo = (): void => {
     servicioChat?.cancelarActivo()
     tareas.cancelarTodo()
+    void controlPc?.terminar()
   }
+  pararPorUsuario = detenerTodo
   registrarAtajos(
     { alternarPanel: () => orbe.alternar(), leerPantalla: () => void pantalla.leerConAtajo(), detenerTodo },
     { panel: config.atajoPanel, leer: config.atajoLeer, pausa: config.atajoPausa }

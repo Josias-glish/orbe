@@ -171,6 +171,16 @@ con el proveedor CLI, `--tools` es `WebSearch,WebFetch`; `WebFetch` se permite c
 dominio de `ORBE_DOMINIOS` (o entero si la lista está vacía; que cubra subdominios no está verificado). En el chat
 sale como «Leyendo: url» (`leer_web`) y su resultado es texto de fuera.
 
+v1.15.0 (Etapa 8, control del PC H10): `helper/UiaHelper.cs` gana la clase `Control` (ops `elementos`, `actuar`,
+`ventanas`, `enfocar`, `punto`, `clic`, `teclas`, `texto`, `vigilar`), se declara DPI-aware (píxeles físicos) y con
+ganchos de bajo nivel avisa `{"tipo":"usuario"}` (lo simulado va marcado como inyectado y se ignora; lo hecho en la
+ventana de Orbe no cuenta salvo Esc) → `ClienteHelper.alEvento` → `ControlPc.usuarioIntervino` → `detenerTodo`.
+Nunca escribe en campos de contraseña o código (lo comprueba el C#). `src/main/pc/control.ts`: `motivoBloqueo`,
+`CON_EFECTO`, `parsearTeclas` (sin tecla Windows), tope de 40 acciones, sesión con borde (`pc/marco.ts`, ventana
+transparente sin foco ni clics, `setContentProtection`). Herramientas en `agente/herramientas/pc.ts`; acción por app
+`pc_<proceso>.ver|control`, que sin regla propia cae en `pc.ver` (libre) / `pc.control` (preguntar) (`modoDe`).
+Solo con el helper real (no en humo). Sin captura con números para apps sin accesibilidad (Etapa 13).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras
