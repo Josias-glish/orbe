@@ -107,6 +107,8 @@ export interface Config {
     permitirLocal: boolean
     /** ORBE_DOMINIOS: si hay alguno, el agente solo abre esas webs (y sus subdominios). */
     dominios: string[]
+    /** ORBE_PROACTIVO_MIN: cada cuántos minutos se lee PROACTIVO.md (0 = apagado). */
+    proactivoMin: number
     /** ORBE_ECC: ofrecer la herramienta `ecc_tarea` (ECC en una sesión aparte, solo para tareas concretas). Decisión del usuario, 13-nov. */
     ecc: boolean
   }
@@ -177,6 +179,14 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     const n = Number(pasosLeidos)
     if (Number.isInteger(n) && n >= 1 && n <= 25) pasosAgente = n
     else avisos.push(`ORBE_AGENTE_PASOS="${pasosLeidos}" no es válido (un entero entre 1 y 25); uso ${pasosAgente}.`)
+  }
+
+  let proactivoMin = 0
+  const proactivoLeido = leer('ORBE_PROACTIVO_MIN')
+  if (proactivoLeido) {
+    const n = Number(proactivoLeido)
+    if (Number.isInteger(n) && (n === 0 || (n >= 15 && n <= 1440))) proactivoMin = n
+    else avisos.push(`ORBE_PROACTIVO_MIN="${proactivoLeido}" no es válido (0, o de 15 a 1440 minutos); queda apagado.`)
   }
 
   let busquedaMax = BUSQUEDAS_MAX_POR_DEFECTO
@@ -339,7 +349,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     fondosCarpeta: leer('ORBE_FONDOS'),
     memoriaMax,
     memoriaOrigenes,
-    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal, dominios, ecc },
+    agente: { activo: agenteActivo, pasos: pasosAgente, busquedaMax, permitirLocal, dominios, ecc, proactivoMin },
     busqueda: { proveedor: busquedaProveedor, clave: busquedaClave, url: busquedaUrl },
     apariencia,
     diseno,

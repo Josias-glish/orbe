@@ -2414,6 +2414,11 @@ input {
 select.memoria-campo {
   background: rgba(10, 12, 28, 0.9);
 }
+/* La lista desplegada usa el mismo fondo oscuro (si no, Windows la pinta blanca). */
+select.memoria-campo option {
+  background: #0a0c1c;
+  color: var(--texto, #e8eaff);
+}
 .gestos-fila {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

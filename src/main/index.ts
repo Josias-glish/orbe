@@ -53,6 +53,7 @@ import { crearHerramientaBuscarMemoria } from './agente/herramientas/buscar-memo
 import { crearHerramientasAprender } from './agente/herramientas/aprender'
 import { AlmacenSkills } from './skills/almacen'
 import { AlmacenAgentes, rutaPluginInstalado } from './agentes/perfiles'
+import { asegurarProactivo, ID_LATIDO, leerProactivo } from './tareas/latido'
 import { crearHerramientaEcc } from './agente/herramientas/ecc'
 import type { Herramienta } from './agente/tipos'
 import { resolverRutaCli } from './chat/proveedor-cli'
@@ -406,6 +407,7 @@ app.whenReady().then(async () => {
     setInterval(consolidar, 3 * 3_600_000).unref()
   }
 
+  const rutaProactivo = join(datos, 'PROACTIVO.md')
   const tareas = new ServicioTareas({
     archivo: modoHumo ? null : join(datos, 'tareas.json'),
     crearProveedor: () =>
@@ -424,10 +426,25 @@ app.whenReady().then(async () => {
     },
     alCambio: () => {
       if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.tareasCambio)
-    }
+    },
+    agentes: () => (config.proveedor === 'cli' ? new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre) : []),
+    // El latido (P2) lee PROACTIVO.md en cada vuelta: si no pide nada, no se llama al modelo.
+    instruccion: (t) => (t.id === ID_LATIDO ? leerProactivo(rutaProactivo) : undefined)
   })
   registrarTareas(orbe.ventana, tareas)
   tareas.iniciar()
+  if (!modoHumo) {
+    asegurarProactivo(rutaProactivo)
+    if (config.agente.proactivoMin > 0 || tareas.estado().tareas.some((t) => t.id === ID_LATIDO)) {
+      tareas.asegurar(ID_LATIDO, {
+        titulo: 'Latido proactivo',
+        instruccion: 'Revisa lo que pide PROACTIVO.md (se lee en cada vuelta) y actúa solo si toca.',
+        programa: { tipo: 'cada', minutos: config.agente.proactivoMin || 60 },
+        activa: config.agente.proactivoMin > 0,
+        soloSiHayAlgo: true
+      })
+    }
+  }
   app.once('will-quit', () => tareas.detener())
   servicioChat = registrarChat(
     orbe.ventana,

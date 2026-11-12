@@ -221,6 +221,11 @@ v1.20.0: `agentes/perfiles.ts` `AlmacenAgentes` (plantillas, `definiciones` filt
 `herramientas/ecc.ts` `ecc_tarea`: `claude -p --plugin-dir <ecc> --tools Agent,Skill` aparte, sin MCP de Orbe
 (ORBE_ECC; ruta por `rutaPluginInstalado`). Comprobado: un subagente no usa herramientas fuera de su lista.
 
+v1.21.0: `TareaVista.agente`/`maxDia` (validados en programa.ts; tope en `revisar`), `promptTarea` encarga al agente;
+`DependenciasTareas.instruccion` (null = saltar sin modelo) y `asegurar(id)`; latido `tareas/latido.ts` (`ID_LATIDO`,
+PROACTIVO.md sin comentarios); `iniciar` anota y notifica lo perdido (>12 h). `MCP_TOOL_TIMEOUT` 30 min,
+`MAX_MCP_OUTPUT_TOKENS` 40000, `Herramienta.maxResultado`; ECC guarda en `ecc/<fecha>.md`.
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

@@ -1,4 +1,8 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { asegurarProactivo, ID_LATIDO, leerProactivo } from '../src/main/tareas/latido'
 import type { ProveedorChat, ManejadoresTurno } from '../src/main/chat/proveedor'
 import type { TurnoEntrada } from '../src/main/chat/contenido'
 import { siguienteEjecucion, validarTarea } from '../src/main/tareas/programa'
@@ -146,5 +150,72 @@ describe('ServicioTareas', () => {
   it('sin modelo configurado lo explica', () => {
     const s = new ServicioTareas({ archivo: null, crearProveedor: null, motivoNoDisponible: 'Falta la clave.' })
     expect(s.estado()).toMatchObject({ disponible: false, motivo: 'Falta la clave.' })
+  })
+})
+
+describe('Etapa 11: agentes, topes, latido y ponerse al día', () => {
+  it('una tarea con agente se le encarga; el tope diario salta las automáticas de más', () => {
+    expect(promptTarea({ titulo: 'x', instruccion: 'y', soloSiHayAlgo: false, agente: 'correo' }, 0)).toContain('subagent_type «correo»')
+    const v = validarTarea({ instruccion: 'x', programa: { tipo: 'ahora' }, agente: '../malo', maxDia: 99 })
+    expect(v.ok && v.tarea.agente).toBeUndefined()
+    expect(v.ok && v.tarea.maxDia).toBeUndefined()
+
+    let t = local(2026, 11, 13, 10)
+    let llamadas = 0
+    const s = new ServicioTareas({ archivo: null, crearProveedor: () => (llamadas++, new ProveedorFalso('ok')), ahora: () => t, agentes: () => ['correo'] })
+    s.guardar({ titulo: 'c', instruccion: 'mira', programa: { tipo: 'cada', minutos: 15 }, maxDia: 1, agente: 'correo' })
+    const tarea = s.estado().tareas[0]
+    expect(tarea.agente).toBe('correo')
+    expect(s.estado().agentes).toEqual(['correo'])
+    // Simula que ya se hizo una hoy: la siguiente que toque no se encola.
+    ;(s as unknown as { tareas: Array<{ historial: unknown[] }> }).tareas[0]!.historial.unshift({ id: 'h', inicio: t, fin: t, estado: 'completada', resultado: '' })
+    t += 20 * 60_000
+    s.revisar()
+    expect(llamadas).toBe(0)
+  })
+
+  it('el latido no llama al modelo si PROACTIVO.md no pide nada, y sí si pide algo', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orbe-latido-'))
+    const ruta = join(dir, 'PROACTIVO.md')
+    asegurarProactivo(ruta)
+    expect(leerProactivo(ruta)).toBeNull()
+    let llamadas = 0
+    let pedido = ''
+    const s = new ServicioTareas({
+      archivo: null,
+      crearProveedor: () => {
+        llamadas++
+        const p = new ProveedorFalso(MARCA_NADA)
+        return Object.assign(p, { enviar: async (turno: TurnoEntrada, m: ManejadoresTurno) => ((pedido = turno.texto), p.constructor.prototype.enviar.call(p, turno, m)) })
+      },
+      instruccion: (t) => (t.id === ID_LATIDO ? leerProactivo(ruta) : undefined)
+    })
+    s.asegurar(ID_LATIDO, { titulo: 'Latido', instruccion: 'x', programa: { tipo: 'cada', minutos: 15 }, soloSiHayAlgo: true })
+    expect(s.estado().tareas[0]!.id).toBe(ID_LATIDO)
+    s.ejecutarYa(ID_LATIDO)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(llamadas).toBe(0)
+    writeFileSync(ruta, readFileSync(ruta, 'utf8') + '\nAvísame si hay correos de clientes sin responder.')
+    s.ejecutarYa(ID_LATIDO)
+    await esperar(() => s.estado().tareas[0]!.ultima?.estado === 'nada-nuevo')
+    expect(llamadas).toBe(1)
+    expect(pedido).toContain('correos de clientes')
+  })
+
+  it('al arrancar, lo que se perdió con el PC apagado queda anotado y se avisa', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orbe-tareas-'))
+    const archivo = join(dir, 'tareas.json')
+    const hace2dias = local(2026, 11, 11, 8)
+    writeFileSync(
+      archivo,
+      JSON.stringify({ version: 1, tareas: [{ id: 'a', titulo: 'Resumen', instruccion: 'x', programa: { tipo: 'diaria', hora: '08:00' }, activa: true, soloSiHayAlgo: false, creada: hace2dias - 86_400_000, proxima: hace2dias, historial: [] }] })
+    )
+    const avisos: string[] = []
+    const s = new ServicioTareas({ archivo, crearProveedor: null, ahora: () => local(2026, 11, 13, 7), notificar: (t, c) => avisos.push(`${t} | ${c}`) })
+    s.iniciar()
+    s.detener()
+    const t = s.estado().tareas[0]!
+    expect(t.historial[0]!.resultado).toMatch(/PC estuvo apagado/)
+    expect(avisos[0]).toMatch(/no se hizo una tarea.*Resumen/)
   })
 })

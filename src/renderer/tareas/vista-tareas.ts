@@ -258,6 +258,8 @@ export class VistaTareas {
     meta.append(el('span', undefined, describirPrograma(t.programa)))
     if (t.activa && t.proxima) meta.append(el('span', 'tarea-proxima', `Próxima: ${cuandoCorto(t.proxima)}`))
     if (t.soloSiHayAlgo) meta.append(el('span', undefined, 'Avisa solo si hay algo'))
+    if (t.agente) meta.append(el('span', undefined, `Agente «${t.agente}»`))
+    if (t.maxDia) meta.append(el('span', undefined, `Máx. ${t.maxDia} al día`))
     c.append(meta)
     // La última vez, en dos líneas; al pulsarla se abre entera.
     const ultima = t.historial.find((h) => h.fin !== null)
@@ -378,7 +380,16 @@ export class VistaTareas {
   }
 
   private aNueva(t: TareaVista): TareaNueva {
-    return { id: t.id, titulo: t.titulo, instruccion: t.instruccion, programa: t.programa, activa: t.activa, soloSiHayAlgo: t.soloSiHayAlgo }
+    return {
+      id: t.id,
+      titulo: t.titulo,
+      instruccion: t.instruccion,
+      programa: t.programa,
+      activa: t.activa,
+      soloSiHayAlgo: t.soloSiHayAlgo,
+      ...(t.agente ? { agente: t.agente } : {}),
+      ...(t.maxDia ? { maxDia: t.maxDia } : {})
+    }
   }
 
   private nueva(): void {
@@ -473,6 +484,21 @@ export class VistaTareas {
     tipo.addEventListener('change', pintarDetalle)
     pintarDetalle()
 
+    // Quién la hace (A3) y tope diario.
+    const agente = el('select', 'memoria-campo')
+    for (const n of ['', ...(this.estado?.agentes ?? [])]) {
+      const o = el('option', undefined, n ? `Agente «${n}»` : 'Orbe (sin agente)')
+      o.value = n
+      agente.append(o)
+    }
+    agente.value = t.agente ?? ''
+    const maxDia = el('input', 'memoria-campo')
+    maxDia.type = 'number'
+    maxDia.min = '1'
+    maxDia.max = '20'
+    maxDia.placeholder = 'Sin tope'
+    maxDia.value = t.maxDia ? String(t.maxDia) : ''
+
     const solo = el('label', 'memoria-opcion')
     const cajaSolo = el('input')
     cajaSolo.type = 'checkbox'
@@ -513,7 +539,9 @@ export class VistaTareas {
         instruccion: instruccion.value,
         programa: programa(),
         activa: t.activa ?? true,
-        soloSiHayAlgo: cajaSolo.checked
+        soloSiHayAlgo: cajaSolo.checked,
+        ...(agente.value ? { agente: agente.value } : {}),
+        ...(maxDia.value ? { maxDia: Number(maxDia.value) } : {})
       }
       void (async () => {
         await this.hacer(() => window.orbe.tareasGuardar(nueva))
@@ -524,7 +552,16 @@ export class VistaTareas {
         }
       })()
     })
-    form.append(etiqueta('Instrucción', instruccion), etiqueta('Nombre', titulo), etiqueta('Cuándo', tipo), detalle, solo, acciones)
+    form.append(
+      etiqueta('Instrucción', instruccion),
+      etiqueta('Nombre', titulo),
+      etiqueta('Cuándo', tipo),
+      detalle,
+      ...((this.estado?.agentes ?? []).length > 0 ? [etiqueta('Quién', agente)] : []),
+      etiqueta('Máximo al día', maxDia),
+      solo,
+      acciones
+    )
     form.append(
       el(
         'p',

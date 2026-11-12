@@ -53,7 +53,9 @@ export function siguienteEjecucion(p: ProgramaTarea, despues: number, creada = d
 
 export { describirPrograma } from '../../shared/tareas'
 
-export type ValidacionTarea = { ok: true; tarea: Required<Omit<TareaNueva, 'id'>> & { id?: string } } | { ok: false; error: string }
+export type ValidacionTarea =
+  | { ok: true; tarea: Required<Omit<TareaNueva, 'id' | 'agente' | 'maxDia'>> & Pick<TareaNueva, 'id' | 'agente' | 'maxDia'> }
+  | { ok: false; error: string }
 
 /** Comprueba lo que llega de la interfaz: textos con límite, horas válidas, intervalos razonables. */
 export function validarTarea(entrada: unknown, ahora = Date.now()): ValidacionTarea {
@@ -107,7 +109,9 @@ export function validarTarea(entrada: unknown, ahora = Date.now()): ValidacionTa
       instruccion,
       programa,
       activa: e.activa !== false,
-      soloSiHayAlgo: e.soloSiHayAlgo === true
+      soloSiHayAlgo: e.soloSiHayAlgo === true,
+      ...(typeof e.agente === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(e.agente) ? { agente: e.agente } : {}),
+      ...(Number.isInteger(e.maxDia) && (e.maxDia as number) >= 1 && (e.maxDia as number) <= 20 ? { maxDia: e.maxDia as number } : {})
     }
   }
 }

@@ -486,6 +486,10 @@ export interface TareaVista {
   activa: boolean
   /** Solo avisar si el resultado trae algo nuevo o importante (si no, queda como «nada nuevo» sin molestar). */
   soloSiHayAlgo: boolean
+  /** El agente con nombre que la hace (A3), si se eligió uno. */
+  agente?: string
+  /** Tope de ejecuciones automáticas por día (1–20); sin él, las que toquen. */
+  maxDia?: number
   creada: number
   /** Próxima vez que se hará (ms) o null si ya no toca más. */
   proxima: number | null
@@ -498,6 +502,8 @@ export interface EstadoTareas {
   tareas: TareaVista[]
   /** Hay un modelo configurado capaz de hacer tareas (si no, se explica por qué). */
   disponible: boolean
+  /** Los agentes con nombre a los que se puede encargar una tarea. */
+  agentes?: string[]
   motivo?: string
 }
 
@@ -509,6 +515,8 @@ export interface TareaNueva {
   programa: ProgramaTarea
   activa?: boolean
   soloSiHayAlgo?: boolean
+  agente?: string
+  maxDia?: number
 }
 
 /** Lo que gastó una llamada al modelo (o un turno entero, en el CLI). */

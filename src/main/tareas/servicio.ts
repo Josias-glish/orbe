@@ -38,6 +38,13 @@ export interface DependenciasTareas {
   ahora?: () => number
   /** Quién avisa: los textos de las notificaciones salen con la voz de la identidad (por defecto, Orbe). */
   identidad?: PerfilIdentidad
+  /** Los agentes con nombre disponibles (para elegir quién hace una tarea). */
+  agentes?: () => string[]
+  /**
+   * La instrucción de una tarea en el momento de hacerla (p. ej. el latido lee PROACTIVO.md): undefined usa la guardada;
+   * null la salta sin llamar al modelo (nada que hacer, sin gasto).
+   */
+  instruccion?: (tarea: TareaVista) => string | null | undefined
 }
 
 interface EnCurso {
@@ -50,10 +57,13 @@ interface EnCurso {
 }
 
 /** El texto que recibe el modelo en cada ejecución: la instrucción del usuario y cómo debe terminar. */
-export function promptTarea(t: Pick<TareaVista, 'titulo' | 'instruccion' | 'soloSiHayAlgo'>, cuando: number): string {
+export function promptTarea(t: Pick<TareaVista, 'titulo' | 'instruccion' | 'soloSiHayAlgo' | 'agente'>, cuando: number): string {
   const fecha = new Date(cuando).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })
   return [
     `Tarea programada «${t.titulo}» (${fecha}). La haces tú solo, en segundo plano: el usuario no está mirando el chat.`,
+    ...(t.agente
+      ? [`Encárgasela a tu agente «${t.agente}» con la herramienta Agent (subagent_type «${t.agente}») y resume lo que te devuelva.`]
+      : []),
     '',
     t.instruccion,
     '',
@@ -91,6 +101,7 @@ export class ServicioTareas {
 
   iniciar(): void {
     const t = this.ahora()
+    const perdidas: string[] = []
     // Lo que se pasó de hora con Orbe cerrado: si fue hace poco se hace ya; si no, se espera a la siguiente vez.
     for (const tarea of this.tareas) {
       if (tarea.ultima?.estado === 'en-curso' || tarea.ultima?.estado === 'esperando') {
@@ -99,8 +110,26 @@ export class ServicioTareas {
         tarea.historial[0] = tarea.ultima
       }
       if (tarea.activa && tarea.proxima !== null && tarea.proxima <= t && t - tarea.proxima > RECUPERAR_MAX_MS) {
+        // Ponerse al día (P5): queda anotada y se avisa; si aún sirve, «Ejecutar ya».
+        const saltada: EjecucionTarea = {
+          id: randomUUID(),
+          inicio: tarea.proxima,
+          fin: tarea.proxima,
+          estado: 'cancelada',
+          resultado: 'No se hizo: el PC estuvo apagado. Si todavía sirve, pulsa «Ejecutar ya».'
+        }
+        tarea.historial.unshift(saltada)
+        tarea.historial.splice(HISTORIAL_MAX)
+        tarea.ultima = saltada
+        perdidas.push(tarea.titulo)
         tarea.proxima = siguienteEjecucion(tarea.programa, t, tarea.creada)
       }
+    }
+    if (perdidas.length > 0) {
+      this.d.notificar?.(
+        `Con el PC apagado no se ${perdidas.length === 1 ? 'hizo una tarea' : `hicieron ${perdidas.length} tareas`}`,
+        `${perdidas.slice(0, 3).join(', ')}${perdidas.length > 3 ? '…' : ''}. Mira Tareas por si aún quieres hacerlas.`
+      )
     }
     this.revisar()
     this.intervalo = setInterval(() => this.revisar(), TICK_MS)
@@ -120,6 +149,9 @@ export class ServicioTareas {
     for (const tarea of this.tareas) {
       if (!tarea.activa || tarea.proxima === null || tarea.proxima > t) continue
       tarea.proxima = siguienteEjecucion(tarea.programa, t, tarea.creada)
+      // Tope diario (A3): las automáticas de hoy que pasen de maxDia se saltan.
+      const hoy = new Date(t).toDateString()
+      if (tarea.maxDia && tarea.historial.filter((h) => h.estado !== 'cancelada' && new Date(h.inicio).toDateString() === hoy).length >= tarea.maxDia) continue
       this.encolar(tarea.id)
     }
     this.guardarPronto()
@@ -131,6 +163,7 @@ export class ServicioTareas {
     return {
       tareas: this.tareas.map((t) => ({ ...t, historial: t.historial.map((h) => ({ ...h })), ultima: t.ultima ? { ...t.ultima } : null })),
       disponible: this.d.crearProveedor !== null,
+      agentes: this.d.agentes?.() ?? [],
       ...(this.d.crearProveedor === null ? { motivo: this.d.motivoNoDisponible ?? 'No hay ningún modelo configurado.' } : {})
     }
   }
@@ -159,6 +192,10 @@ export class ServicioTareas {
     tarea.programa = v.tarea.programa
     tarea.activa = v.tarea.activa
     tarea.soloSiHayAlgo = v.tarea.soloSiHayAlgo
+    if (v.tarea.agente) tarea.agente = v.tarea.agente
+    else delete tarea.agente
+    if (v.tarea.maxDia) tarea.maxDia = v.tarea.maxDia
+    else delete tarea.maxDia
     if (!existente || cambiaPrograma) tarea.creada = t
     tarea.proxima = tarea.activa ? siguienteEjecucion(tarea.programa, t, tarea.creada) : null
     if (!existente) this.tareas.unshift(tarea)
@@ -238,7 +275,20 @@ export class ServicioTareas {
     void this.ejecutar(tarea).finally(() => this.siguiente())
   }
 
+  /** Crea o actualiza una tarea con un id fijo (las de Orbe, como el latido). */
+  asegurar(id: string, entrada: Omit<TareaNueva, 'id'>): void {
+    if (this.tareas.some((t) => t.id === id)) {
+      this.guardar({ ...entrada, id })
+      return
+    }
+    const r = this.guardar(entrada)
+    if (!('error' in r) && this.tareas[0]) this.tareas[0].id = id
+    this.guardarPronto()
+  }
+
   private async ejecutar(tarea: TareaVista): Promise<void> {
+    const dinamica = this.d.instruccion?.(tarea)
+    if (dinamica === null) return
     const inicio = this.ahora()
     const ejecucion: EjecucionTarea = { id: randomUUID(), inicio, fin: null, estado: 'en-curso', resultado: '' }
     tarea.ultima = ejecucion
@@ -271,7 +321,7 @@ export class ServicioTareas {
     let separar = false
     try {
       const r = await proveedor.enviar(
-        { texto: promptTarea(tarea, inicio) },
+        { texto: promptTarea({ ...tarea, instruccion: dinamica ?? tarea.instruccion }, inicio) },
         {
           alTexto: (delta) => {
             if (separar && texto) texto += '\n\n'
