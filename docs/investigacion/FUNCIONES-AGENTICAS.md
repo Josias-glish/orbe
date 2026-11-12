@@ -56,15 +56,15 @@
 | P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✗ | 11 |
 | P5 | **Ponerse al día al encender** (lo que no se pudo hacer con el portátil apagado) | Adaptación propia (sin 24/7) | ◐ | 11 |
 | P6 | Parte de situación diario | Atlas | ✔ | — |
-| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 15 |
+| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 14 |
 
 ## 5. Investigación profunda
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web simple | 13 |
-| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 13 |
-| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 13 |
+| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web simple | 12 |
+| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 12 |
+| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 12 |
 
 ## 6. Herramientas e integraciones
 
@@ -74,9 +74,9 @@
 | H2 | Instagram (leer, métricas) | — | ✔ Etapas 2 y 4 | — |
 | H3 | **Miles de apps** por un solo conector | dots (4.000+ apps), Grok Bot (connectors) | ✗ | 5 (Composio) |
 | H4 | MCP como servidor y como cliente | Claude, Copilot | ◐ servidor sí; cliente llega con Composio | 5 |
-| H5 | **Navegador propio** del agente con perfil aparte | dots, Grok Bot, Comet, Claude in Chrome | ✗ | 16 |
-| H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 16 |
-| H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 14 |
+| H5 | **Navegador propio** del agente con perfil aparte | dots, Grok Bot, Comet, Claude in Chrome | ✗ | 15 |
+| H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 15 |
+| H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 13 |
 | H8 | Publicación en Instagram | Plan propio | ✗ aparte por decisión del usuario | — |
 | H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ◐ solo Gmail | 7 |
 | H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ◐ solo lectura de pantalla | 8 |
@@ -86,10 +86,10 @@
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
 | I1 | Avatar con presencia (conejo, Atlas) | dots | ✔ | — |
-| I2 | Voz: dictado y respuesta hablada | dots (llamada), Gemini | ◐ voz de Windows; neuronal aplazada | 18 |
-| I3 | **Conversación por voz manos libres** (como una llamada) | dots | ✗ | 18 |
+| I2 | Voz: dictado y respuesta hablada | dots (llamada), Gemini | ◐ voz de Windows; neuronal aplazada | 17 |
+| I3 | **Conversación por voz manos libres** (como una llamada) | dots | ✗ | 17 |
 | I4 | Chatear tú con Atlas por WhatsApp, Telegram, Slack o Teams | dots, OpenClaw | ⊘ sin teléfono; además Meta prohíbe los asistentes de IA generales en la API de WhatsApp desde el 15-ene-2026 | — |
-| I7 | **WhatsApp de la marca** atendido con Atlas: clientes escriben, Atlas resume y redacta, tú apruebas cada respuesta | Petición del usuario (12-nov) | ✗ | 12 |
+| I7 | **WhatsApp de la marca** atendido con Atlas: clientes escriben, Atlas resume y redacta, tú apruebas cada respuesta | Petición del usuario (12-nov) | ⊘ aplazado por decisión del usuario (12-nov); diseño guardado en WHATSAPP-GOOGLE-PC.md §2 | — |
 | I5 | Ordenador en la nube que trabaja 24/7 | dots, Grok Bot, Manus | ⊘ excluido desde el principio («excepto 24/7»), sin servidor | — |
 | I6 | Interfaces dentro del chat (MCP Apps) | Claude | ⊘ más adelante | — |
 
@@ -100,13 +100,13 @@
 | S1 | Secretos aparte de la memoria (cofre/Vault) | Grok Bot (Vault) | ✔ cofre DPAPI | — |
 | S2 | Registro de actividad con secretos tachados | Copilot, dots | ✔ | — |
 | S3 | Solo skills propias; nada de catálogos de terceros | Lección de OpenClaw (341 maliciosas) | — | 9 |
-| S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 16 |
-| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | — | 14 |
-| S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 17 |
+| S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 15 |
+| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | — | 13 |
+| S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 16 |
 
 ## Resumen
 
-- 60 funciones: **hechas** 12 · **parciales** 13 · **faltan** 29 · **descartadas con motivo** 3 · **reglas de
+- 60 funciones: **hechas** 12 · **parciales** 13 · **faltan** 28 · **descartadas o aplazadas con motivo** 4 · **reglas de
   seguridad nuevas** 3 (S3–S5).
-- Las que faltan están repartidas en las Etapas 5 a 18 del [prompt de construcción](PROMPT-CONSTRUCCION.md).
+- Las que faltan están repartidas en las Etapas 5 a 17 del [prompt de construcción](PROMPT-CONSTRUCCION.md).
 - WhatsApp, Google ampliado, control del PC y subagentes nativos: [WHATSAPP-GOOGLE-PC.md](WHATSAPP-GOOGLE-PC.md).

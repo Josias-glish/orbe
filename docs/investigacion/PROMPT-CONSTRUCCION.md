@@ -1,6 +1,6 @@
 # Prompt para seguir construyendo Orbe (después de la v1.10.0)
 
-Versión del 12-nov-2026 (rev. 2: subagentes nativos, Google ampliado, control del PC y WhatsApp de la marca). Incluye
+Versión del 12-nov-2026 (rev. 3: subagentes nativos, Google ampliado y control del PC; WhatsApp aplazado). Incluye
 todas las funciones de [FUNCIONES-AGENTICAS.md](FUNCIONES-AGENTICAS.md).
 Pégalo como primer mensaje en Claude Code, en tu PC, dentro de la carpeta de Orbe.
 
@@ -35,8 +35,8 @@ DECISIONES (mandan sobre cualquier documento anterior)
 4. Orbe se prepara para otras personas: cada una con sus claves y apps; nada personal mío fijo en el código.
 5. Web: registro con enlace mágico solo para novedades; Orbe, la app, no envía nada a la web.
 6. Sin 24/7 y sin catálogos de skills de terceros. No hay chat personal conmigo por WhatsApp, Telegram, Slack ni Teams
-   (no tengo teléfono y Meta prohíbe los asistentes de IA generales en la API de WhatsApp). SÍ hay WhatsApp de la
-   MARCA: los clientes escriben, Atlas resume y redacta, yo apruebo cada respuesta (WHATSAPP-GOOGLE-PC.md §2).
+   (no tengo teléfono y Meta prohíbe los asistentes de IA generales en la API de WhatsApp). El WhatsApp de la marca
+   (WHATSAPP-GOOGLE-PC.md §2) queda APLAZADO: no lo construyas hasta que yo lo pida.
 7. Subagentes: se reutilizan los del CLI de Claude (--agents), no se construye un motor propio. GPT solo como
    proveedor de modelo por la vía compatible con OpenAI. Orbe construye lo que el CLI no hace: rutinas, buzón entre
    días, memoria por agente e interfaz (WHATSAPP-GOOGLE-PC.md §1).
@@ -103,34 +103,26 @@ PLAN (una etapa por versión; entre paréntesis, los códigos de FUNCIONES-AGENT
      aviso solo si hay algo nuevo.
    - Ponerse al día al encender: lo que tocaba con el portátil apagado se ejecuta (o se me pregunta si ya no tiene
      sentido).
-12. WhatsApp de la marca (I7; WHATSAPP-GOOGLE-PC.md §2): empieza con el número de prueba gratuito de Meta. Edge Function
-   de Supabase «wa-entrada» (firma X-Hub-Signature-256 comprobada, tabla wa_entrantes con RLS sin políticas, borrado
-   a los 7 días) y «wa-bandeja» (Orbe recoge cada 60 s con el token del cofre y borra). Pestaña «WhatsApp» con
-   resumen, etiqueta y borrador [Enviar] [Editar] [Descartar]; respuestas guardadas escritas por mí; herramientas
-   wa_conversaciones, wa_leer, wa_borrador y wa_enviar (whatsapp.enviar, mínimo fijo «preguntar cada vez»); activador
-   «mensaje nuevo» → agente «Ventas». Nada de plantillas de marketing, difusión ni mensajes a quien no escribió
-   primero. Dame la guía para crear la app de WhatsApp en Meta y, cuando yo tenga número real, para registrarlo.
-   Secretos de la Edge Function los pongo yo en Supabase; nunca en el repositorio.
-13. Investigación profunda (R1–R3): modo «Investigar a fondo» en el panel y como herramienta: plan de búsqueda que
+12. Investigación profunda (R1–R3): modo «Investigar a fondo» en el panel y como herramienta: plan de búsqueda que
     apruebo → subtemas en paralelo con subagentes → lectura de fuentes (como datos) → informe con citas y apartado
     «no verificado» → guardado en data/<usuario>/informes/ y retomable. Con el cerebro profundo (CLI de Claude).
-14. Visión opcional (H7, S5): VISION-Y-DATOS.md §2 completo (proveedores, preparar sin EXIF, SHA-256, caché, perfiles
+13. Visión opcional (H7, S5): VISION-Y-DATOS.md §2 completo (proveedores, preparar sin EXIF, SHA-256, caché, perfiles
     «contenido» y «pantalla», esquema y prompt literales, tope VISION_MAX_DIA, consentimientos.json, grupo «Visión»
     en Ajustes). La clave en el cofre (vision.clave) o en VISION_API_KEY, siempre en cabecera y nunca en registros:
     prueba que provoque un error del proveedor y compruebe que la clave no aparece. En Métricas, botón «Analizar lo
     visual».
-15. Compañero local (P7; COMPANERO-Y-CONFIGURACION.md, Partes A y C con los cambios de su cabecera): Ollama
+14. Compañero local (P7; COMPANERO-Y-CONFIGURACION.md, Partes A y C con los cambios de su cabecera): Ollama
     (ORBE_LOCAL_MODELO), bucle en src/main/companero/, sin ServicioCaptura (setContentProtection(true)), ojos
     opcionales con la capa de visión (perfil «pantalla», Ollama por defecto, nube solo con ORBE_COMPANERO_OJOS_NUBE=1
     y segundo consentimiento), prompt C.2 literal, filtros, modo película, bocadillo [Profundizar] [Esto no] [✕],
     «🔒 Privado» en el panel. Antes de programar, comprueba mi equipo (RAM, GPU, ollama list).
-16. Navegador propio (H5, H6, S4): Playwright MCP con Edge y perfil aparte; file:// bloqueado en el código; Meta,
+15. Navegador propio (H5, H6, S4): Playwright MCP con Edge y perfil aparte; file:// bloqueado en el código; Meta,
     Google y bancos bloqueados; web como datos; confirmación para escribir o enviar; si una web pide iniciar sesión,
     ofrece el conector o me pasa el control (nunca guarda contraseñas). Un contexto de navegador por agente.
-17. Orbe para otras personas (S6): asistente de primer arranque; ningún dato mío fijo en el código; guías para crear
+16. Orbe para otras personas (S6): asistente de primer arranque; ningún dato mío fijo en el código; guías para crear
     su propia app de Meta y su cliente de Google; «Mis datos» (exportar y borrar data/<usuario>/); aviso de versión
     nueva con la API pública de GitHub Releases; enlace «Recibir novedades».
-18. Voz (I2, I3): dictado y transcripción de reels propios con whisper.cpp; adaptador de Google Cloud TTS;
+17. Voz (I2, I3): dictado y transcripción de reels propios con whisper.cpp; adaptador de Google Cloud TTS;
     conversación por voz manos libres (como una llamada, con «Atlas, para»); respaldo gratuito (Gemini Flash-Lite o
     Groq) cuando el CLI falle.
 WEB (rama claude/sitio-web; solo cuando yo diga «web»): SITIO-REGISTRO.md completo. Antes de publicar, recuérdame el
@@ -156,7 +148,7 @@ REGLAS
 - Al proveedor de visión solo va la imagen preparada y la instrucción fija.
 - El Compañero no oculta ni mueve ventanas, no roba el foco, no guarda capturas en disco y no tiene herramientas.
   Ollama solo en 127.0.0.1; nunca OLLAMA_HOST=0.0.0.0.
-- No publiques en Instagram, no envíes correos ni mensajes de WhatsApp ni subas archivos sin mi aprobación en ese
+- No publiques en Instagram, no envíes correos ni mensajes ni subas archivos sin mi aprobación en ese
   momento.
 - En el control del PC: nunca escribas contraseñas ni códigos, no toques apps bloqueadas y para en cuanto yo use el
   ratón o el teclado.
@@ -170,5 +162,5 @@ Empieza leyendo los documentos y dime en qué punto estamos y el resumen de la E
 ```
 
 Si prefieres otro orden, cambia los números del bloque PLAN antes de pegarlo. Recomendación: no adelantes las Etapas
-7–12 antes de la 6 (el modo plan, el revisor y la pausa protegen todo lo que viene después); el control del PC
-(8) y WhatsApp (12) la necesitan sí o sí.
+7–11 antes de la 6 (el modo plan, el revisor y la pausa protegen todo lo que viene después); el control del PC
+(8) la necesita sí o sí.

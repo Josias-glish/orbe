@@ -7,8 +7,8 @@
 | [COMPANERO-Y-CONFIGURACION.md](COMPANERO-Y-CONFIGURACION.md) | Compañero local («dos cerebros»), ojos opcionales, prompts exactos de los modelos y guía de configuración | Aprobado con cambios (12-nov) |
 | [VISION-Y-DATOS.md](VISION-Y-DATOS.md) | Capa de visión propia (sin LiteLLM), consentimiento, EXIF, caché por hash, SQLite y `data/<usuario>/` | Aprobado (12-nov) |
 | [SITIO-REGISTRO.md](SITIO-REGISTRO.md) | Registro en la web para novedades y borrador del protocolo de tratamiento de datos | Aprobado (12-nov); revisar §2 antes de publicar |
-| [WHATSAPP-GOOGLE-PC.md](WHATSAPP-GOOGLE-PC.md) | Subagentes nativos del CLI de Claude, WhatsApp de la marca, Google ampliado y control del PC | Vigente (12-nov) |
-| [PROMPT-CONSTRUCCION.md](PROMPT-CONSTRUCCION.md) | Prompt final para Claude Code en el PC: Etapas 5 a 18 y la web | Vigente (12-nov, rev. 2) |
+| [WHATSAPP-GOOGLE-PC.md](WHATSAPP-GOOGLE-PC.md) | Subagentes nativos del CLI de Claude, Google ampliado, control del PC y WhatsApp (aplazado) | Vigente (12-nov) |
+| [PROMPT-CONSTRUCCION.md](PROMPT-CONSTRUCCION.md) | Prompt final para Claude Code en el PC: Etapas 5 a 17 y la web | Vigente (12-nov, rev. 3) |
 
 ## Registro de decisiones
 
@@ -22,3 +22,4 @@
 | 12-nov-2026 | Todas las funciones agénticas de la investigación entran en el plan (catálogo maestro, Etapas 5–15). |
 | 12-nov-2026 | Subagentes: se reutilizan los del CLI de Claude (`--agents`); GPT solo como proveedor de modelo. |
 | 12-nov-2026 | WhatsApp de la marca con aprobación de cada respuesta (no chat personal: sin teléfono y prohibido por Meta). Google ampliado. Control del PC con accesibilidad primero. Etapas 5–18. |
+| 12-nov-2026 | WhatsApp aplazado por ahora (se guarda el diseño). Plan: Etapas 5–17. |

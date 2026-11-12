@@ -27,7 +27,10 @@ Si alguna falla, Orbe hace la delegación él mismo (una llamada `claude -p` por
 GPT queda como **proveedor de modelo** por la vía compatible con OpenAI que Orbe ya tiene. El OpenAI Agents SDK
 necesita una clave de API de pago y un segundo sistema de permisos: no se usa.
 
-## 2. WhatsApp
+## 2. WhatsApp — APLAZADO
+
+> 12-nov-2026: el usuario decide quitarlo por ahora. El diseño se conserva para retomarlo; no entra en el plan de
+> construcción.
 
 ### Qué se puede y qué no
 
