@@ -238,6 +238,12 @@ offscreen sin JS ni red, miniatura .png del último paint); `vista-pdf.ts` (IPC 
 ecc/); TipoDoc «informe» en el índice. Barras de desplazamiento globales al final de estilos.css (sin scrollbar-color:
 anula las ::-webkit-scrollbar).
 
+v1.24.0: visión = ojos del Compañero (`main/vision/`: proveedores.ts, servicio.ts con caché sha256 y tope en
+vision-uso.json, ojos.ts con desktopCapturer de UNA ventana sin ocultar Orbe, ipc.ts vision:estado/consentir/probar);
+`shared/vision.ts` valida el JSON del prompt C.1. Consentimiento único en consentimientos.json (`vision.version`), no
+depende del proveedor. Decisión del usuario: sin perfil «contenido» ni botón en Métricas (publicaciones con Claude in
+Chrome). Gafas 3D: la pantalla LED se coloca delante del punto más saliente del cristal (rejilla de rayos).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

@@ -1,3 +1,4 @@
+import type { EstadoVision, ResultadoOjos } from './vision'
 import type { ConfigIdentidad } from './identidad'
 import type { EstadoCofre, ResultadoCofre } from './cofre'
 /** Tipos y canales compartidos entre el proceso principal, el preload y la interfaz. */
@@ -62,6 +63,9 @@ export const CANALES = {
   historialBuscar: 'historial:buscar',
   pdfVista: 'pdf:vista',
   pdfAbrir: 'pdf:abrir',
+  visionEstado: 'vision:estado',
+  visionConsentir: 'vision:consentir',
+  visionProbar: 'vision:probar',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
   memoriaActualizar: 'memoria:actualizar',
@@ -711,6 +715,9 @@ export interface ApiOrbe {
   pdfVista(ruta: string): Promise<{ nombre: string; miniatura: string | null } | null>
   /** Ver el PDF en el visor de Orbe, abrirlo con la app de Windows o mostrarlo en su carpeta. */
   pdfAbrir(ruta: string, modo: 'ver' | 'abrir' | 'carpeta'): Promise<void>
+  visionEstado(): Promise<EstadoVision | null>
+  visionConsentir(): Promise<EstadoVision | null>
+  visionProbar(): Promise<ResultadoOjos | null>
   memoriaEstado(): Promise<EstadoMemoria>
   memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
   memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>

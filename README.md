@@ -301,6 +301,15 @@ La imagen entera vive solo en memoria del proceso principal (caduca a los 5 minu
 - No puede leer ventanas de programas ejecutados como administrador (Windows lo impide), y algunas aplicaciones (juegos, ciertas apps de Electron con la accesibilidad apagada) no exponen su texto: en esos casos lo dice.
 - En navegadores basados en Chromium, la primera lectura puede tardar un instante mientras la página activa su accesibilidad.
 
+### Visión: los ojos del Compañero
+Opcional y apagada por defecto. Con `VISION_PROVIDER` en el `.env` (`claude-cli` usa tu suscripción con Haiku; también
+`ollama` solo en 127.0.0.1, `anthropic`, `openai`, `gemini` u `openrouter` con la **Clave de visión** del cofre),
+Orbe puede mirar **una ventana** sin pantallazo visible: no se oculta ni mueve nada, la imagen (768 px, JPEG) vive solo
+en memoria y al proveedor va solo la imagen y una instrucción fija. Vuelve un JSON validado (actividad, app, qué se ve);
+lo sensible vuelve vacío. Nunca mira bancos, gestores de contraseñas, ventanas privadas ni a Orbe, y descarta las
+imágenes negras (DRM). El permiso se pide **una sola vez** y vale aunque cambies de proveedor. Tope diario
+`VISION_MAX_DIA` (50) y caché por huella. Pruébalo en **Ajustes → Visión**.
+
 ### Errores
 Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando tiene sentido y los detalles técnicos plegados:
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.

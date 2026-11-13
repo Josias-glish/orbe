@@ -76,7 +76,7 @@
 | H4 | MCP como servidor y como cliente | Claude, Copilot | ✔ v1.12.0 (servidor propio + cliente de Composio) | 5 |
 | H5 | **Navegador propio** del agente con perfil aparte | dots, Grok Bot, Comet, Claude in Chrome | ✗ | 15 |
 | H6 | Si una web pide iniciar sesión, ofrecer el conector o pasarte el control | Grok Bot | ✗ | 15 |
-| H7 | **Visión** (entender imágenes) opcional | Todos | ✗ | 13 |
+| H7 | **Visión** (entender imágenes) opcional | Todos | ✔ v1.24.0 (ojos del Compañero: captura silenciosa de una ventana, JSON validado; sin perfil de contenido por decisión del usuario) | 13 |
 | H8 | Publicación en Instagram | Plan propio | ✗ aparte por decisión del usuario | — |
 | H9 | **Google ampliado**: Calendar, Drive, Docs, Sheets, Tasks, Contactos, YouTube y envío de Gmail opcional, con permisos incrementales | dots, Gemini (apps de Google) | ⊘ el usuario conecta Drive, Calendar y demás por Composio (12-nov); la Etapa 7 quedó en buscador ampliado | — |
 | H10 | **Control del PC**: ver la ventana como lista de elementos, pulsar, escribir, teclas y ratón, con «Muéstrame cómo» y «Hazlo tú» | Claude (computer use), dots, Manus | ✔ v1.15.0 · v1.15.1 `ver_pagina`, `pc_mirar` (imagen de la ventana y clic sobre ella) y modo auto | 8 |
@@ -101,7 +101,7 @@
 | S2 | Registro de actividad con secretos tachados | Copilot, dots | ✔ | — |
 | S3 | Solo skills propias; nada de catálogos de terceros | Lección de OpenClaw (341 maliciosas) | — | 9 |
 | S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 15 |
-| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | — | 13 |
+| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | ✔ v1.24.0 (una sola vez, vale para cualquier proveedor) | 13 |
 | S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 16 |
 
 ## Resumen
