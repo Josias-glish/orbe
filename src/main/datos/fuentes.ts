@@ -1,3 +1,5 @@
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import type { AlmacenMemoria } from '../memoria/almacen'
 import { tituloDe, type AlmacenConversacion } from '../memoria/conversacion'
 import { leerJson, type DocIndice } from './base'
@@ -8,6 +10,8 @@ export interface FuentesIndice {
   /** metricas.json (historial diario por cuenta) y contenido.json (ideas y publicaciones), si existen. */
   rutaMetricas?: string
   rutaContenido?: string
+  /** Carpeta de los informes de «Investigar a fondo» (`<fecha>-<tema>.md`). */
+  carpetaInformes?: string
 }
 
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -48,6 +52,14 @@ export function documentosIndice(f: FuentesIndice): DocIndice[] {
         texto: cuerpo,
         fecha: texto(c['fecha']) || texto(c['creado'])
       })
+    }
+  }
+  if (f.carpetaInformes && existsSync(f.carpetaInformes)) {
+    for (const nombre of readdirSync(f.carpetaInformes).filter((n) => n.endsWith('.md')).slice(-500)) {
+      const ruta = join(f.carpetaInformes, nombre)
+      const cuerpo = readFileSync(ruta, 'utf8')
+      const titulo = /^# (.+)$/m.exec(cuerpo)?.[1] ?? nombre
+      docs.push({ tipo: 'informe', ref: nombre, titulo: `Informe: ${titulo}`, texto: cuerpo, fecha: statSync(ruta).mtime.toISOString() })
     }
   }
   return docs

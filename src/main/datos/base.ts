@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
-export type TipoDoc = 'conversacion' | 'recuerdo' | 'metricas' | 'contenido'
+export type TipoDoc = 'conversacion' | 'recuerdo' | 'metricas' | 'contenido' | 'informe'
 
 export interface DocIndice {
   tipo: TipoDoc

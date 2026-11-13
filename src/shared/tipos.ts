@@ -60,6 +60,8 @@ export const CANALES = {
   historialListar: 'historial:listar',
   historialAbrir: 'historial:abrir',
   historialBuscar: 'historial:buscar',
+  pdfVista: 'pdf:vista',
+  pdfAbrir: 'pdf:abrir',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
   memoriaActualizar: 'memoria:actualizar',
@@ -705,6 +707,10 @@ export interface ApiOrbe {
   historialAbrir(id: string): Promise<MensajeGuardado[] | null>
   /** Ids de las conversaciones archivadas cuyo texto contiene lo buscado (búsqueda de texto completo). */
   historialBuscar(texto: string): Promise<string[]>
+  /** Miniatura de un PDF que creó Orbe (informes o ECC); null si la ruta no es suya. */
+  pdfVista(ruta: string): Promise<{ nombre: string; miniatura: string | null } | null>
+  /** Ver el PDF en el visor de Orbe, abrirlo con la app de Windows o mostrarlo en su carpeta. */
+  pdfAbrir(ruta: string, modo: 'ver' | 'abrir' | 'carpeta'): Promise<void>
   memoriaEstado(): Promise<EstadoMemoria>
   memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
   memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>

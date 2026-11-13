@@ -232,6 +232,12 @@ con contexto envuelto como dato); `promptTarea.anterior` (P4); `dejar_encargo` (
 `orbe:accion` desde panel.ts); sonidos en Ajustes vía evento `orbe:sonidos`. Carril: chat, agentes, tareas,
 métricas, memoria, ajustes.
 
+v1.23.0: `investigar_a_fondo` (`herramientas/investigar.ts`, sesión aparte con `--agents` «subtema»; plan siempre
+aprobado), `sesionCliAparte` compartida en ecc.ts; `convertir_a_pdf` y `guardarPdf` (`herramientas/pdf.ts`, ventana
+offscreen sin JS ni red, miniatura .png del último paint); `vista-pdf.ts` (IPC pdf:vista/pdf:abrir, solo informes/ y
+ecc/); TipoDoc «informe» en el índice. Barras de desplazamiento globales al final de estilos.css (sin scrollbar-color:
+anula las ::-webkit-scrollbar).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

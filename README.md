@@ -236,6 +236,8 @@ Orbe recuerda entre sesiones dos cosas: **lo que sabe de ti** y **la conversaci�
 
 **Proactividad.** En Tareas eliges qué agente hace cada tarea y un máximo al día. Con `ORBE_PROACTIVO_MIN` (p. ej. 60), Orbe lee cada tanto `%APPDATA%\orbe\PROACTIVO.md` y hace lo que diga en segundo plano; si el archivo no pide nada, no gasta. Lo que no se pudo hacer con el PC apagado queda anotado y te avisa para hacerlo con «Ejecutar ya».
 
+**Investigar a fondo.** Con la lupa del chat (o «Investiga a fondo: …»), Orbe propone un plan de subtemas que apruebas; subagentes los investigan en paralelo y sale un informe con citas y un apartado «No verificado», guardado en `%APPDATA%\orbe\informes\` en Markdown y PDF (con vista previa en el chat). «Amplía el informe de X» lo retoma; «pásalo a PDF» convierte también resultados de ECC.
+
 **Activadores y agentes.** Una tarea puede hacerse «Cuando pase algo»: correo nuevo, comentarios nuevos en Instagram, un archivo nuevo en una carpeta o al encender el PC (Orbe mira cada 5 minutos). La plantilla «Vigilar un tema» te avisa solo de lo nuevo. Un agente puede dejarle un encargo a otro (`dejar_encargo`), y el botón **Agentes** de la barra lateral muestra quién trabaja y en qué. La barra queda: Chat, Agentes, Tareas, Métricas, Memoria y Configuración.
 
 **ECC para tareas concretas.** Con `ORBE_ECC=1` y el plugin ECC instalado en Claude Code, los planes de campaña, SEO, estudios de mercado, textos largos, voz de marca y código se encargan a ECC en una sesión aparte (`ecc_tarea`), sin las herramientas de Orbe y pidiendo permiso salvo en modo auto.
