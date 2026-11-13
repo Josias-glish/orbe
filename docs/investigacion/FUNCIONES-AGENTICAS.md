@@ -62,9 +62,9 @@
 
 | # | Función | Viene de | Orbe hoy | Etapa |
 |---|---|---|---|---|
-| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ◐ búsqueda web + lectura de páginas (WebFetch del CLI, v1.14.0) | 12 |
-| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✗ | 12 |
-| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✗ | 12 |
+| R1 | **Modo «Investigar a fondo»**: plan de búsqueda → varias búsquedas → lectura de fuentes → informe con citas | Gemini (Deep Research), dots, Manus | ✔ v1.23.0 (`investigar_a_fondo`: plan aprobado, informe con citas y «No verificado») | 12 |
+| R2 | Subtemas investigados en paralelo por subagentes | Manus (Wide Research) | ✔ v1.23.0 (un subagente del CLI por subtema, en paralelo) | 12 |
+| R3 | Informe guardado en `data/<usuario>/informes/` y retomable | Claude, Manus | ✔ v1.23.0 (`informes/<fecha>-<tema>.md` + PDF con vista previa; ampliable) | 12 |
 
 ## 6. Herramientas e integraciones
 

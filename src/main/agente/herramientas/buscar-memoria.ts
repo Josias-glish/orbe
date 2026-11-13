@@ -4,11 +4,11 @@ import { crearEsquema, crearValidador } from '../validacion'
 
 const campos = {
   consulta: { tipo: 'texto', descripcion: 'Palabras a buscar (sin comillas ni operadores).', max: 200 },
-  en: { tipo: 'opcion', descripcion: 'Limitar a un tipo (por defecto, todo).', valores: ['conversaciones', 'recuerdos', 'metricas', 'contenido'], opcional: true }
+  en: { tipo: 'opcion', descripcion: 'Limitar a un tipo (por defecto, todo).', valores: ['conversaciones', 'recuerdos', 'metricas', 'contenido', 'informes'], opcional: true }
 } as const
 
-const TIPO: Record<string, TipoDoc> = { conversaciones: 'conversacion', recuerdos: 'recuerdo', metricas: 'metricas', contenido: 'contenido' }
-const NOMBRE: Record<TipoDoc, string> = { conversacion: 'Conversación', recuerdo: 'Recuerdo', metricas: 'Métricas', contenido: 'Contenido' }
+const TIPO: Record<string, TipoDoc> = { conversaciones: 'conversacion', recuerdos: 'recuerdo', metricas: 'metricas', contenido: 'contenido', informes: 'informe' }
+const NOMBRE: Record<TipoDoc, string> = { conversacion: 'Conversación', recuerdo: 'Recuerdo', metricas: 'Métricas', contenido: 'Contenido', informe: 'Informe' }
 
 /**
  * Busca en lo que Orbe guarda en este PC (M2): conversaciones pasadas, recuerdos, métricas y contenido. Devuelve los

@@ -147,6 +147,15 @@ export class PanelChat {
     this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
+    // «Investigar a fondo»: deja el encabezado en la caja y el modelo usa investigar_a_fondo (propone el plan antes).
+    porId('investigar-boton').addEventListener('click', () => {
+      const caja = porId<HTMLTextAreaElement>('entrada')
+      const PREFIJO = 'Investiga a fondo: '
+      if (!caja.value.startsWith(PREFIJO)) caja.value = PREFIJO + caja.value
+      caja.focus()
+      caja.setSelectionRange(caja.value.length, caja.value.length)
+      caja.dispatchEvent(new Event('input', { bubbles: true }))
+    })
     this.botonTextoImagen = porId('texto-imagen')
     this.menuTextoImagen = new MenuTextoImagen(this.botonTextoImagen, porId('texto-imagen-menu'), (modo, origen) => void this.leerImagen(modo, origen))
     this.botonMicro = porId('microfono')

@@ -28,6 +28,45 @@ export interface OpcionesEcc {
   tiempoMaxMs?: number
 }
 
+/**
+ * Una sesión aparte del CLI de Claude (`-p --output-format json`): sin las claves ni los plugins del usuario, en una
+ * carpeta vacía, con la entrada por stdin. Devuelve el texto final; se corta si el usuario detiene la tarea.
+ */
+export async function sesionCliAparte(o: {
+  rutaCli: string
+  args: string[]
+  cwd: string
+  entrada: string
+  senal: AbortSignal
+  nombre: string
+  tiempoMaxMs: number
+  lanzar?: typeof spawn
+}): Promise<string> {
+  mkdirSync(o.cwd, { recursive: true })
+  const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }
+  for (const v of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_PLUGIN_DIRS']) delete env[v]
+  const hijo = (o.lanzar ?? spawn)(o.rutaCli, o.args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const salida = await new Promise<string>((resolver, rechazar) => {
+    let texto = ''
+    const fin = setTimeout(() => (hijo.kill(), rechazar(new Error(`${o.nombre} tardó demasiado.`))), o.tiempoMaxMs)
+    const cancelar = (): void => void hijo.kill()
+    o.senal.addEventListener('abort', cancelar, { once: true })
+    hijo.stdout?.setEncoding('utf8')
+    hijo.stdout?.on('data', (t: string) => (texto += t))
+    hijo.on('error', (err) => (clearTimeout(fin), rechazar(err)))
+    hijo.on('close', () => (clearTimeout(fin), o.senal.removeEventListener('abort', cancelar), resolver(texto)))
+    hijo.stdin?.end(o.entrada)
+  })
+  let r: { result?: unknown; is_error?: unknown }
+  try {
+    r = JSON.parse(salida) as typeof r
+  } catch {
+    throw new Error(`${o.nombre} no devolvió una respuesta legible.`)
+  }
+  if (r.is_error === true || typeof r.result !== 'string') throw new Error(`${o.nombre} falló: ${String(r.result ?? 'sin detalle').slice(0, 200)}`)
+  return r.result
+}
+
 /** Los argumentos de la sesión de ECC: el plugin, Agent y Skill, y nada de Orbe ni de los ajustes del usuario. */
 export function argumentosEcc(o: Pick<OpcionesEcc, 'plugin' | 'modelo' | 'busquedaCli'>): string[] {
   const tools = ['Agent', 'Skill', ...(o.busquedaCli ? ['WebSearch', 'WebFetch'] : [])].join(',')
@@ -70,28 +109,8 @@ export function crearHerramientaEcc(o: OpcionesEcc): Herramienta {
         })
         if (!ok) return { texto: 'El usuario no quiso usar ECC: hazlo tú sin él.' }
       }
-      mkdirSync(o.cwd, { recursive: true })
-      const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }
-      for (const v of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_PLUGIN_DIRS']) delete env[v]
-      const hijo = (o.lanzar ?? spawn)(o.rutaCli, argumentosEcc(o), { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
-      const salida = await new Promise<string>((resolver, rechazar) => {
-        let texto = ''
-        const fin = setTimeout(() => (hijo.kill(), rechazar(new Error('ECC tardó demasiado.'))), o.tiempoMaxMs ?? 15 * 60_000)
-        const cancelar = (): void => void hijo.kill()
-        ctx.senal.addEventListener('abort', cancelar, { once: true })
-        hijo.stdout?.setEncoding('utf8')
-        hijo.stdout?.on('data', (t: string) => (texto += t))
-        hijo.on('error', (err) => (clearTimeout(fin), rechazar(err)))
-        hijo.on('close', () => (clearTimeout(fin), ctx.senal.removeEventListener('abort', cancelar), resolver(texto)))
-        hijo.stdin?.end(e.tarea)
-      })
-      let r: { result?: unknown; is_error?: unknown }
-      try {
-        r = JSON.parse(salida) as typeof r
-      } catch {
-        throw new Error('ECC no devolvió una respuesta legible.')
-      }
-      if (r.is_error === true || typeof r.result !== 'string') throw new Error(`ECC falló: ${String(r.result ?? 'sin detalle').slice(0, 200)}`)
+      const resultado = await sesionCliAparte({ ...o, args: argumentosEcc(o), entrada: e.tarea, senal: ctx.senal, nombre: 'ECC', tiempoMaxMs: o.tiempoMaxMs ?? 15 * 60_000 })
+      const r = { result: resultado }
       mkdirSync(o.carpetaResultados, { recursive: true })
       const archivo = join(o.carpetaResultados, `${new Date().toISOString().replace(/[:.]/g, '-')}.md`)
       writeFileSync(archivo, `# Encargo\n\n${e.tarea}\n\n# Resultado de ECC\n\n${r.result}\n`, 'utf8')

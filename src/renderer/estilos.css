@@ -236,19 +236,6 @@ input {
   gap: 10px;
   user-select: text;
 }
-.mensajes::-webkit-scrollbar {
-  width: 8px;
-}
-.mensajes::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-.mensajes::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.26);
-  background-clip: content-box;
-}
 
 .msg {
   max-width: 92%;
@@ -330,19 +317,6 @@ input {
   font-weight: 400;
 }
 /* Barras de desplazamiento horizontales discretas (código y tablas anchas). */
-.contenido pre::-webkit-scrollbar,
-.contenido table::-webkit-scrollbar {
-  height: 8px;
-}
-.contenido pre::-webkit-scrollbar-track,
-.contenido table::-webkit-scrollbar-track {
-  background: transparent;
-}
-.contenido pre::-webkit-scrollbar-thumb,
-.contenido table::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-}
 .contenido blockquote {
   margin: 0.5em 0;
   padding: 0.1em 0.8em;
@@ -898,15 +872,6 @@ input {
   overflow-wrap: anywhere;
   user-select: text;
 }
-.chip-vista-texto::-webkit-scrollbar {
-  width: 8px;
-}
-.chip-vista-texto::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
 .chip-vista-nota {
   margin: 4px 0 0;
   font-size: 10.5px;
@@ -948,6 +913,10 @@ input {
   font-size: 12.5px;
   color: var(--texto-suave);
   white-space: pre-line;
+  /* Un detalle largo (un plan, un encargo) se desplaza dentro: los botones siempre a la vista. */
+  max-height: min(34vh, 220px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 /* El revisor: tu orden y lo que conviene comprobar antes de permitir. */
 .confirmacion-revision {
@@ -1474,15 +1443,6 @@ input {
 }
 .ajustes-cuerpo > * {
   flex-shrink: 0;
-}
-.memoria-cuerpo::-webkit-scrollbar {
-  width: 8px;
-}
-.memoria-cuerpo::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 .memoria-cuerpo.apagada .memoria-lista {
   opacity: 0.5;
@@ -2768,5 +2728,92 @@ select.memoria-campo option {
 @media (prefers-reduced-motion: reduce) {
   #personaje-boton.agentes-trabajando {
     animation: none;
+  }
+}
+
+/* ---------- Barras de desplazamiento: el tono de Orbe (cian a violeta) en todas las partes ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.55), rgba(139, 92, 246, 0.6));
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.55), rgba(139, 92, 246, 0.6));
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--cian), var(--violeta));
+  background-clip: content-box;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* ---------- Vista previa de un PDF creado por Orbe ---------- */
+.pdf-tarjeta {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--superficie);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+.pdf-hoja {
+  flex: none;
+  width: 110px;
+  padding: 0;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  cursor: zoom-in;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+.pdf-hoja:hover {
+  transform: translateY(-2px);
+}
+.pdf-hoja:focus-visible {
+  outline: 2px solid var(--cian);
+}
+.pdf-hoja img {
+  display: block;
+  width: 100%;
+}
+.pdf-sin-vista {
+  display: grid;
+  place-items: center;
+  height: 140px;
+  color: var(--violeta);
+  font-weight: 700;
+}
+.pdf-lado {
+  min-width: 0;
+}
+.pdf-nombre {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--texto);
+  overflow-wrap: anywhere;
+}
+.pdf-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdf-hoja {
+    transition: none;
   }
 }

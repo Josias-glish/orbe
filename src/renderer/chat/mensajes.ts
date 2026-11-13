@@ -168,6 +168,38 @@ export class RespuestaEnCurso {
   }
 
   /** La lista de fuentes bajo la respuesta: título y dominio de cada una, todo con `textContent`, y el enlace con `href`. */
+  /** Los PDF que Orbe creó y nombra en la respuesta: tarjeta con la primera página y «Ver», «Abrir», «Carpeta». */
+  private pintarPdfs(): void {
+    const rutas = [...new Set(this.textoActual.match(/[A-Za-z]:[\\/][^\s`"'<>|*?]+?\.pdf/gi) ?? [])].slice(0, 3)
+    for (const ruta of rutas) {
+      void window.orbe.pdfVista(ruta).then((v) => {
+        if (!v) return
+        const tarjeta = elemento('div', 'pdf-tarjeta')
+        const hoja = elemento('button', 'pdf-hoja')
+        hoja.type = 'button'
+        hoja.title = 'Ver el PDF'
+        if (v.miniatura) {
+          const img = elemento('img')
+          img.src = v.miniatura
+          img.alt = `Primera página de ${v.nombre}`
+          hoja.append(img)
+        } else hoja.append(elemento('span', 'pdf-sin-vista', 'PDF'))
+        hoja.addEventListener('click', () => void window.orbe.pdfAbrir(ruta, 'ver'))
+        const lado = elemento('div', 'pdf-lado')
+        const botones = elemento('div', 'pdf-botones')
+        for (const [modo, texto] of [['ver', 'Ver'], ['abrir', 'Abrir'], ['carpeta', 'Carpeta']] as const) {
+          const b = elemento('button', 'boton-memoria', texto)
+          b.type = 'button'
+          b.addEventListener('click', () => void window.orbe.pdfAbrir(ruta, modo))
+          botones.append(b)
+        }
+        lado.append(elemento('p', 'pdf-nombre', v.nombre), botones)
+        tarjeta.append(hoja, lado)
+        this.el.append(tarjeta)
+      })
+    }
+  }
+
   private pintarFuentes(): void {
     this.el.querySelector('.fuentes')?.remove()
     if (this.fuentes.size === 0) return
@@ -218,6 +250,7 @@ export class RespuestaEnCurso {
     for (const tramo of this.tramos) this.pintarTramo(tramo)
     this.cerrarAccionesAbiertas()
     this.pintarFuentes()
+    this.pintarPdfs()
     if (motivo === 'cancelado') this.el.append(elemento('p', 'nota', this.hayAcciones ? 'Tarea detenida' : 'Respuesta detenida'))
     if (motivo === 'limite_tokens') this.el.append(elemento('p', 'nota', 'La respuesta se cortó por su longitud máxima'))
     if (motivo === 'limite_pasos') this.el.append(elemento('p', 'nota', 'La tarea llegó a su límite de pasos y se detuvo aquí'))

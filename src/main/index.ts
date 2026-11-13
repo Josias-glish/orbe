@@ -56,6 +56,9 @@ import { AlmacenAgentes, rutaPluginInstalado } from './agentes/perfiles'
 import { asegurarProactivo, ID_LATIDO, leerProactivo } from './tareas/latido'
 import { archivosDe, revisarActivadores, type FuentesActivadores } from './tareas/activadores'
 import { crearHerramientaBuzon } from './agente/herramientas/buzon'
+import { crearHerramientaInvestigar } from './agente/herramientas/investigar'
+import { crearHerramientaPdf, guardarPdf } from './agente/herramientas/pdf'
+import { registrarVistaPdf } from './vista-pdf'
 import { crearHerramientaEcc } from './agente/herramientas/ecc'
 import type { Herramienta } from './agente/tipos'
 import { resolverRutaCli } from './chat/proveedor-cli'
@@ -318,6 +321,12 @@ app.whenReady().then(async () => {
   const skills = new AlmacenSkills(modoHumo ? join(app.getPath('temp'), 'orbe-humo-skills') : join(datos, 'skills'))
   const bloquePrompt = (): string | undefined => [memoria.bloquePrompt(), skills.indice()].filter(Boolean).join('\n\n') || undefined
   // ECC solo para tareas concretas: una sesión aparte del CLI con el plugin, que Atlas abre con ecc_tarea.
+  // Investigar a fondo (R1–R3): sesión aparte del CLI con subagentes que buscan y leen; necesita el CLI y la búsqueda web.
+  const herramientaInvestigar = (): Herramienta[] => {
+    const rutaCli = resolverRutaCli(config.rutaCli || undefined)
+    if (modoHumo || !rutaCli || config.agente.busquedaMax === 0) return []
+    return [crearHerramientaInvestigar({ rutaCli, cwd: join(datos, 'cli-vacio'), carpeta: join(datos, 'informes'), modelo: config.modelo || 'sonnet', pdf: guardarPdf })]
+  }
   const herramientaEcc = (): Herramienta[] => {
     if (!config.agente.ecc || modoHumo) return []
     const plugin = rutaPluginInstalado('ecc@ecc')
@@ -342,7 +351,8 @@ app.whenReady().then(async () => {
     conversaciones: new AlmacenConversacion(join(datos, 'conversacion.json')),
     memoria: almacenRecuerdos,
     rutaMetricas: join(datos, 'metricas.json'),
-    rutaContenido: join(datos, 'contenido', 'contenido.json')
+    rutaContenido: join(datos, 'contenido', 'contenido.json'),
+    carpetaInformes: join(datos, 'informes')
   }
   const buscarEnDatos = (consulta: string, tipos?: TipoDoc[], limite?: number): ResultadoBusqueda[] => {
     base.reindexar(documentosIndice(fuentesIndice))
@@ -353,6 +363,7 @@ app.whenReady().then(async () => {
       ? [...new Set(buscarEnDatos(texto, ['conversacion'], 50).map((r) => r.ref))]
       : []
   )
+  registrarVistaPdf(() => orbe.ventana.webContents, [join(datos, 'informes'), join(datos, 'ecc')])
   const nombresAgentes = (): string[] => new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre)
   const registro = crearRegistro(config, sistema, [
     ...gmail,
@@ -361,6 +372,8 @@ app.whenReady().then(async () => {
     crearHerramientaBuscarMemoria((c, t) => buscarEnDatos(c, t)),
     ...crearHerramientasAprender(skills, (texto) => memoria.guardarNota(texto, false, 'Aprendido de una corrección en el chat')),
     ...herramientaEcc(),
+    ...herramientaInvestigar(),
+    ...(modoHumo ? [] : [crearHerramientaPdf([join(datos, 'informes'), join(datos, 'ecc')])]),
     ...(config.proveedor === 'cli' && !modoHumo
       ? [
           crearHerramientaBuzon(
