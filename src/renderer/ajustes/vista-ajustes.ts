@@ -2,7 +2,7 @@ import { esIdIdentidad, perfilDe, type ConfigIdentidad } from '../../shared/iden
 import { DISENOS } from '../../shared/disenos'
 import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
 import { SECRETOS, type DefinicionSecreto, type EstadoCofre, type ResultadoCofre } from '../../shared/cofre'
-import type { EstadoVision } from '../../shared/vision'
+import { detallePantalla, type EstadoVision } from '../../shared/vision'
 import { crearIcono } from '../chat/contexto-ui'
 
 type Proveedor = 'cli' | 'api' | 'openai'
@@ -407,7 +407,7 @@ export class VistaAjustes {
           this.visionPrueba = !r
             ? { texto: 'No respondió.', error: true }
             : r.ok
-              ? { texto: r.descripcion.sensible ? `${r.ventana}: había algo privado y lo descarté.` : `${r.ventana}: ${r.descripcion.que_se_ve}`, error: false }
+              ? { texto: r.descripcion.sensible ? `${r.ventana}: había algo privado y lo descarté.` : detallePantalla(r.ventana, r.descripcion), error: false }
               : { texto: r.error, error: true }
           this.pintar()
         })
@@ -416,7 +416,11 @@ export class VistaAjustes {
       acciones.append(probar)
     }
     if (acciones.childElementCount) hijos.push(acciones)
-    if (this.visionPrueba) hijos.push(el('p', this.visionPrueba.error ? 'memoria-error' : 'memoria-nota', this.visionPrueba.texto))
+    if (this.visionPrueba) {
+      const p = el('p', this.visionPrueba.error ? 'memoria-error' : 'memoria-nota', this.visionPrueba.texto)
+      p.style.whiteSpace = 'pre-line'
+      hijos.push(p)
+    }
     return hijos
   }
 

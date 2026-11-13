@@ -32,10 +32,10 @@ export function validarPantalla(respuesta: string): DescripcionPantalla | null {
     typeof d['actividad'] !== 'string' ||
     !ACTIVIDADES.includes(d['actividad']) ||
     t(d['app'], 80) === null ||
-    t(d['que_se_ve'], 600) === null ||
+    t(d['que_se_ve'], 1500) === null ||
     t(d['titulo_obra'], 200) === null ||
     !Array.isArray(textos) ||
-    textos.length > 5 ||
+    textos.length > 8 ||
     !textos.every((x) => typeof x === 'string' && x.length <= 120)
   ) {
     return null
@@ -59,3 +59,27 @@ export interface EstadoVision {
 export type ResultadoOjos =
   | { ok: true; descripcion: DescripcionPantalla; ventana: string; estado: EstadoVision }
   | { ok: false; error: string; estado: EstadoVision }
+
+const NOMBRE_ACTIVIDAD: Record<DescripcionPantalla['actividad'], string> = {
+  viendo_video: 'Viendo un vídeo',
+  disenando: 'Diseñando',
+  programando: 'Programando',
+  leyendo: 'Leyendo',
+  escribiendo: 'Escribiendo',
+  jugando: 'Jugando',
+  navegando: 'Navegando',
+  otra: 'Otra cosa'
+}
+
+/** La descripción completa, una parte por línea, para enseñarla en Ajustes → Visión. */
+export function detallePantalla(ventana: string, d: DescripcionPantalla): string {
+  return [
+    `Ventana: ${ventana}${d.app && d.app !== ventana ? ` (${d.app})` : ''}`,
+    `Actividad: ${NOMBRE_ACTIVIDAD[d.actividad]}`,
+    d.titulo_obra && `Obra: ${d.titulo_obra}`,
+    `Qué se ve: ${d.que_se_ve}`,
+    d.textos_visibles.length > 0 && `Textos visibles: ${d.textos_visibles.map((x) => `«${x}»`).join(' · ')}`
+  ]
+    .filter(Boolean)
+    .join('\n')
+}

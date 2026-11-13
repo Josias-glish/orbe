@@ -14,18 +14,21 @@ REGLAS
    médicos, pon "sensible": true y deja el resto de campos vacíos.
 3. No inventes. Si no puedes leer o reconocer algo, no lo pongas.
 4. "titulo_obra" solo si se lee claramente el nombre de una película, serie, canción, juego o libro.
-5. "textos_visibles": como máximo 5 textos cortos (≤ 8 palabras cada uno), los más importantes.
+5. "textos_visibles": como máximo 8 textos cortos (≤ 12 palabras cada uno), los más importantes.
+6. "que_se_ve" es detallado (4 a 6 frases): qué parte de la app está abierta; el contenido principal (tema,
+   imágenes, personas u objetos, colores y composición); qué está haciendo la persona y en qué punto va
+   (por ejemplo, qué elemento tiene seleccionado o qué parte del vídeo o del texto está a la vista).
 
 Responde SOLO con este JSON:
 {
   "sensible": false,
   "actividad": "viendo_video | disenando | programando | leyendo | escribiendo | jugando | navegando | otra",
   "app": "nombre de la aplicación o web si se reconoce, o \\"\\"",
-  "que_se_ve": "1 a 3 frases objetivas",
+  "que_se_ve": "4 a 6 frases objetivas y concretas",
   "titulo_obra": "",
   "textos_visibles": []
 }`
-export const VERSION_PROMPT = 1
+export const VERSION_PROMPT = 2
 
 export interface ConfigVision {
   proveedor: ProveedorVision

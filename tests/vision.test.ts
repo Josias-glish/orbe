@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ desktopCapturer: { getSources: vi.fn() } }))
 
-import { validarPantalla } from '../src/shared/vision'
+import { detallePantalla, validarPantalla } from '../src/shared/vision'
 import { describirImagen } from '../src/main/vision/proveedores'
 import { ServicioVision, type ConfigVision } from '../src/main/vision/servicio'
 import { casiNegra, ventanaPermitida } from '../src/main/vision/ojos'
@@ -17,6 +17,12 @@ describe('validarPantalla', () => {
     expect(validarPantalla('```json\n' + BUENA + '\n```')?.app).toBe('Canva')
     expect(validarPantalla(BUENA.replace('disenando', 'hackeando'))).toBeNull()
     expect(validarPantalla('no sé')).toBeNull()
+  })
+  it('el detalle enseña cada parte en su línea y omite las vacías', () => {
+    const d = validarPantalla(BUENA)!
+    expect(detallePantalla('Google Chrome', d).split('\n')).toEqual([
+      'Ventana: Google Chrome (Canva)', 'Actividad: Diseñando', 'Qué se ve: Un póster.', 'Textos visibles: «Rebajas»'
+    ])
   })
   it('lo sensible vuelve vacío: no se conserva nada de lo visto', () => {
     expect(validarPantalla('{"sensible": true, "que_se_ve": "contraseña 1234"}')).toEqual({
