@@ -374,7 +374,7 @@ app.whenReady().then(async () => {
     },
     archivoConsentimiento: modoHumo ? null : join(datos, 'consentimientos.json'),
     archivoUso: modoHumo ? null : join(datos, 'vision-uso.json'),
-    rutaCli: config.rutaCli,
+    rutaCli: resolverRutaCli(config.rutaCli || undefined) ?? undefined,
     cwd: join(datos, 'vision-cli')
   })
   registrarVision(() => orbe.ventana.webContents, vision, () => fuente.ventana())
