@@ -1,3 +1,4 @@
+import { PROVEEDORES, type ProveedorVision } from './vision/proveedores'
 import { existsSync, readFileSync } from 'node:fs'
 import { DISENOS } from '../shared/disenos'
 import { esIdIdentidad, type ConfigIdentidad } from '../shared/identidad'
@@ -57,6 +58,8 @@ export const ATAJO_PANEL_POR_DEFECTO = 'CommandOrControl+Shift+Space'
 export const ATAJO_LEER_POR_DEFECTO = 'CommandOrControl+Shift+Alt+Space'
 // Sin Ctrl+Alt: en los teclados en español es AltGr y escribiría símbolos.
 export const ATAJO_PAUSA_POR_DEFECTO = 'CommandOrControl+Shift+Backspace'
+/** Modelo por defecto de cada proveedor de visión; los de pago no tienen: hay que elegirlo en VISION_MODEL. */
+const MODELO_VISION: Record<ProveedorVision, string> = { ninguno: '', 'claude-cli': 'haiku', ollama: 'gemma3:4b', anthropic: '', openai: '', gemini: '', openrouter: '' }
 export const MEMORIA_MAX_POR_DEFECTO = 6000
 export const URL_OPENAI_POR_DEFECTO = 'https://api.openai.com/v1'
 /** El estilo por defecto de la voz neuronal: un mayordomo digital sereno y elegante (sin imitar a nadie en concreto). */
@@ -128,6 +131,8 @@ export interface Config {
   eventos: { activo: boolean; puerto: number }
   /** Quién habla: Orbe (por defecto) o una identidad propia (ORBE_IDENTIDAD=atlas), con nombre y trato opcionales. */
   identidad: ConfigIdentidad
+  /** Los «ojos» del Compañero (VISION_*). La clave nunca sale del proceso principal; la del cofre manda. */
+  vision: { proveedor: ProveedorVision; modelo: string; baseUrl: string; maxDia: number; clave: string }
   avisos: string[]
 }
 
@@ -179,6 +184,20 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     const n = Number(pasosLeidos)
     if (Number.isInteger(n) && n >= 1 && n <= 25) pasosAgente = n
     else avisos.push(`ORBE_AGENTE_PASOS="${pasosLeidos}" no es válido (un entero entre 1 y 25); uso ${pasosAgente}.`)
+  }
+
+  let visionProveedor: ProveedorVision = 'ninguno'
+  const visionLeido = leer('VISION_PROVIDER').toLowerCase()
+  if (visionLeido) {
+    if ((PROVEEDORES as readonly string[]).includes(visionLeido)) visionProveedor = visionLeido as ProveedorVision
+    else avisos.push(`VISION_PROVIDER="${visionLeido}" no es válido (${PROVEEDORES.join(', ')}); la visión queda apagada.`)
+  }
+  let visionMax = 50
+  const visionMaxLeido = leer('VISION_MAX_DIA')
+  if (visionMaxLeido) {
+    const n = Number(visionMaxLeido)
+    if (Number.isInteger(n) && n >= 1 && n <= 1000) visionMax = n
+    else avisos.push(`VISION_MAX_DIA="${visionMaxLeido}" no es válido (de 1 a 1000); uso ${visionMax}.`)
   }
 
   let proactivoMin = 0
@@ -356,6 +375,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     rive: { archivo: riveArchivo, maquina: leer('ORBE_RIVE_MAQUINA') },
     modelo3d: leer('ORBE_MODELO_3D'),
     eventos: { activo: eventosActivo, puerto: puertoEventos },
+    vision: { proveedor: visionProveedor, modelo: leer('VISION_MODEL') || MODELO_VISION[visionProveedor], baseUrl: leer('VISION_BASE_URL'), maxDia: visionMax, clave: leer('VISION_API_KEY') },
     identidad: { id: identidadId, nombre: leer('ORBE_IDENTIDAD_NOMBRE'), trato: leer('ORBE_TRATO') },
     avisos
   }

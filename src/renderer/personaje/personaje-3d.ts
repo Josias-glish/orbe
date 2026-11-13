@@ -198,9 +198,19 @@ export class Personaje3D implements Avatar {
     const rayo = new Raycaster()
     for (const lado of [-1, 1]) {
       const x = lado * lentes.x * ancho
-      rayo.set(new Vector3(x, y, caja.max.z + 1), new Vector3(0, 0, -1))
-      const impacto = rayo.intersectObject(modelo, true)[0]
-      const z = (impacto?.point.z ?? caja.max.z) + 0.004
+      // El cristal es curvo y la pantalla plana: se pone delante del punto más saliente de todo el cristal (no solo
+      // del centro), o la parte que sobresale tapa medio ojo con un corte vertical.
+      let zMax = -Infinity
+      for (let i = 0; i <= 4; i++) {
+        for (let j = 0; j <= 2; j++) {
+          const px = x + (i / 4 - 0.5) * lentes.ancho * ancho * 0.9
+          const py = y + (j / 2 - 0.5) * lentes.alto * alto * 0.9
+          rayo.set(new Vector3(px, py, caja.max.z + 1), new Vector3(0, 0, -1))
+          const impacto = rayo.intersectObject(modelo, true)[0]
+          if (impacto) zMax = Math.max(zMax, impacto.point.z)
+        }
+      }
+      const z = (Number.isFinite(zMax) ? zMax : caja.max.z) + 0.004
       const lienzo = document.createElement('canvas')
       lienzo.width = 192
       lienzo.height = 96

@@ -14,7 +14,7 @@ export interface DefinicionSecreto {
   manual: boolean
   forma: FormaSecreto
   /** Grupo en la pantalla de Conectores. */
-  servicio: 'Instagram' | 'Meta' | 'Supabase' | 'Gmail' | 'Composio'
+  servicio: 'Instagram' | 'Meta' | 'Supabase' | 'Gmail' | 'Composio' | 'Visión'
 }
 
 export const SECRETOS: readonly DefinicionSecreto[] = [
@@ -65,6 +65,14 @@ export const SECRETOS: readonly DefinicionSecreto[] = [
     manual: true,
     forma: 'texto',
     servicio: 'Composio'
+  },
+  {
+    clave: 'vision.clave',
+    nombre: 'Clave de visión',
+    ayuda: 'Solo si VISION_PROVIDER es anthropic, openai, gemini u openrouter. Con claude-cli u ollama no hace falta.',
+    manual: true,
+    forma: 'texto',
+    servicio: 'Visión'
   }
 ]
 

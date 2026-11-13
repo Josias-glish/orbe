@@ -2,6 +2,7 @@ import { esIdIdentidad, perfilDe, type ConfigIdentidad } from '../../shared/iden
 import { DISENOS } from '../../shared/disenos'
 import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../shared/tipos'
 import { SECRETOS, type DefinicionSecreto, type EstadoCofre, type ResultadoCofre } from '../../shared/cofre'
+import type { EstadoVision } from '../../shared/vision'
 import { crearIcono } from '../chat/contexto-ui'
 
 type Proveedor = 'cli' | 'api' | 'openai'
@@ -48,6 +49,13 @@ function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, 
   if (clase) e.className = clase
   if (texto !== undefined) e.textContent = texto
   return e
+}
+
+function boton(texto: string, clase: string, alPulsar: () => void): HTMLButtonElement {
+  const b = el('button', clase, texto)
+  b.type = 'button'
+  b.addEventListener('click', alPulsar)
+  return b
 }
 
 /** El preajuste que corresponde a una dirección (una dirección vacía es la de OpenAI). */
@@ -100,6 +108,9 @@ export class VistaAjustes {
   private borrarPendiente: string | null = null
   private cofreOcupado = false
   private conectandoGmail = false
+  private vision: EstadoVision | null = null
+  private visionPrueba: { texto: string; error: boolean } | null = null
+  private visionOcupada = false
 
   constructor(
     private readonly raiz: HTMLElement,
@@ -118,6 +129,8 @@ export class VistaAjustes {
     this.guardando = false
     this.cofreMensaje = null
     this.borrarPendiente = null
+    this.visionPrueba = null
+    this.vision = await window.orbe.visionEstado().catch(() => null)
     try {
       this.cofre = await window.orbe.cofreEstado()
     } catch {
@@ -169,7 +182,8 @@ export class VistaAjustes {
       b.dictado.url ? `${host(b.dictado.url)} · ${b.dictado.modelo}` : 'Sin configurar',
       b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows',
       b.identidad.id === 'orbe' ? 'Orbe (cercano, de tú)' : `${perfilDe(b.identidad).nombre} · trata de «${perfilDe(b.identidad).trato}»`,
-      this.resumenCofre()
+      this.resumenCofre(),
+      !this.vision || this.vision.proveedor === 'ninguno' ? 'Apagada' : `${this.vision.proveedor} · ${this.vision.activa ? 'lista' : (this.vision.motivo ?? '')}`
     ]
   }
 
@@ -356,6 +370,56 @@ export class VistaAjustes {
     return this.campo(etiqueta, caja)
   }
 
+  /** Los «ojos» del Compañero: estado, el permiso (se pide una sola vez) y una prueba con la ventana que usabas. */
+  private seccionVision(): HTMLElement[] {
+    const v = this.vision
+    if (!v) return [el('p', 'memoria-error', 'No he podido consultar la visión.')]
+    const donde =
+      v.proveedor === 'claude-cli' ? 'a Claude, con tu suscripción (servidores de Anthropic)' : v.proveedor === 'ollama' ? 'a Ollama, en tu PC (no sale nada)' : `a ${v.proveedor}, en la nube`
+    if (v.proveedor === 'ninguno') return [el('p', 'memoria-error', v.motivo ?? 'Apagada.')]
+    const hijos: HTMLElement[] = [
+      el('p', 'memoria-nota', `Proveedor: ${v.proveedor}${v.modelo ? ` · ${v.modelo}` : ''}. Hoy: ${v.usadasHoy} de ${v.maxDia} imágenes.`),
+      el(
+        'p',
+        'memoria-nota',
+        `Qué ve: solo la ventana que estás usando, en silencio (Orbe no se oculta ni parpadea y no te quita el foco), reducida a 768 px y sin datos de la foto. Va ${donde} y se borra al momento: nunca se guarda en disco. Nunca mira bancos, pagos, contraseñas, ventanas privadas ni a Orbe.`
+      )
+    ]
+    if (v.motivo && v.consentida) hijos.push(el('p', 'memoria-error', v.motivo))
+    const acciones = el('div', 'tarea-acciones')
+    if (!v.consentida) {
+      acciones.append(
+        boton('Dar permiso (solo esta vez)', 'boton-memoria primario', () => {
+          void window.orbe.visionConsentir().then((e) => {
+            this.vision = e
+            this.pintar()
+          })
+        })
+      )
+    }
+    if (v.activa) {
+      const probar = boton(this.visionOcupada ? 'Mirando…' : 'Probar con la ventana que usabas', 'boton-memoria', () => {
+        this.visionOcupada = true
+        this.pintar()
+        void window.orbe.visionProbar().then((r) => {
+          this.visionOcupada = false
+          if (r) this.vision = r.estado
+          this.visionPrueba = !r
+            ? { texto: 'No respondió.', error: true }
+            : r.ok
+              ? { texto: r.descripcion.sensible ? `${r.ventana}: había algo privado y lo descarté.` : `${r.ventana}: ${r.descripcion.que_se_ve}`, error: false }
+              : { texto: r.error, error: true }
+          this.pintar()
+        })
+      })
+      probar.disabled = this.visionOcupada
+      acciones.append(probar)
+    }
+    if (acciones.childElementCount) hijos.push(acciones)
+    if (this.visionPrueba) hijos.push(el('p', this.visionPrueba.error ? 'memoria-error' : 'memoria-nota', this.visionPrueba.texto))
+    return hijos
+  }
+
   private seccion(titulo: string, ...hijos: (HTMLElement | null)[]): HTMLElement {
     const s = el('section', 'ajuste-seccion')
     s.append(el('h3', 'ajuste-titulo', titulo))
@@ -379,7 +443,7 @@ export class VistaAjustes {
     volver.title = 'Volver al chat'
     volver.setAttribute('aria-label', 'Volver al chat')
     volver.append(crearIcono('volver', 18))
-    const grupos = ['Inteligencia', 'Personaje y avisos', 'Dictado (micrófono)', 'Voz neuronal', 'Identidad', 'Conectores']
+    const grupos = ['Inteligencia', 'Personaje y avisos', 'Dictado (micrófono)', 'Voz neuronal', 'Identidad', 'Conectores', 'Visión (ojos del Compañero)']
     const GRUPO_CONECTORES = 5
     volver.addEventListener('click', () => {
       if (this.grupo === null) this.alVolver()
@@ -598,7 +662,8 @@ export class VistaAjustes {
       this.seccion('Dictado (micrófono)', ...secDictado),
       this.seccion('Voz neuronal (leer en voz alta)', ...secVoz),
       this.seccion('Identidad', ...secIdentidad),
-      this.seccion('Conectores · cofre cifrado', ...this.seccionConectores())
+      this.seccion('Conectores · cofre cifrado', ...this.seccionConectores()),
+      this.seccion('Visión · ojos del Compañero', ...this.seccionVision())
     ]
     secciones[GRUPO_CONECTORES]!.classList.add('ajustes-conectores')
     // Todas las secciones siguen en la página (lo que cambies en una no se pierde al ir a otra), pero solo se ve
@@ -606,7 +671,7 @@ export class VistaAjustes {
     secciones.forEach((sec, i) => (sec.hidden = this.grupo !== i))
     if (this.grupo === null) {
       const lista = el('div', 'ajustes-grupos')
-      const iconos = ['chip', 'conejo', 'micro', 'altavoz', 'sombrero', 'candado'] as const
+      const iconos = ['chip', 'conejo', 'micro', 'altavoz', 'sombrero', 'candado', 'ojo'] as const
       const resumen = this.resumenes(b)
       grupos.forEach((nombre, i) => {
         const g = el('button', 'ajustes-grupo')

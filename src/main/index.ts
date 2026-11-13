@@ -80,6 +80,8 @@ import { OcrDemo } from './pantalla/ocr-demo'
 import { cargarImagenElectron, crearDepsOcrReales } from './pantalla/ocr-electron'
 import { ServicioFormula } from './pantalla/formula'
 import { VentanaOrbe } from './ventana'
+import { registrarVision } from './vision/ipc'
+import { ServicioVision } from './vision/servicio'
 
 const modoHumo = process.argv.includes('--smoke')
 // Con --real, la prueba de humo habla con Claude de verdad (gasta unos céntimos de tu plan).
@@ -364,6 +366,18 @@ app.whenReady().then(async () => {
       : []
   )
   registrarVistaPdf(() => orbe.ventana.webContents, [join(datos, 'informes'), join(datos, 'ecc')])
+  const vision = new ServicioVision({
+    config: config.vision,
+    clave: () => {
+      const c = cofre.leer('vision.clave')
+      return typeof c === 'string' ? c : config.vision.clave || undefined
+    },
+    archivoConsentimiento: modoHumo ? null : join(datos, 'consentimientos.json'),
+    archivoUso: modoHumo ? null : join(datos, 'vision-uso.json'),
+    rutaCli: config.rutaCli,
+    cwd: join(datos, 'vision-cli')
+  })
+  registrarVision(() => orbe.ventana.webContents, vision, () => fuente.ventana())
   const nombresAgentes = (): string[] => new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre)
   const registro = crearRegistro(config, sistema, [
     ...gmail,
