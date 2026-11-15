@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process'
 import { access, readFile, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 import { shell } from 'electron'
 import { CatalogoAplicaciones, leerAppsTienda, leerConfigApps, type ConfigApps, type DepsCatalogo } from './aplicaciones'
 import type { DepsAbrirUrl } from './herramientas/abrir-url'
@@ -26,6 +26,8 @@ function rutaPowerShell(): string {
 }
 
 function listarAppsTienda(): Promise<Array<{ nombre: string; appId: string }>> {
+  // En macOS las apps de la App Store son .app normales y ya salen de las carpetas de aplicaciones.
+  if (process.platform !== 'win32') return Promise.resolve([])
   return new Promise((resolver) => {
     execFile(
       rutaPowerShell(),
@@ -60,16 +62,22 @@ function abrirTienda(appId: string): Promise<void> {
 
 async function abrirRuta(ruta: string): Promise<void> {
   const error = await shell.openPath(ruta)
-  if (error) throw new Error(`Windows no pudo abrirla: ${error}`)
+  if (error) throw new Error(`El sistema no pudo abrirla: ${error}`)
 }
 
-/** Las carpetas «Programas» del menú Inicio: la del usuario primero, que gana si un nombre se repite. */
-function carpetasInicio(): string[] {
-  const rutas = [
-    process.env['APPDATA'] && join(process.env['APPDATA'], 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
-    process.env['ProgramData'] && join(process.env['ProgramData'], 'Microsoft', 'Windows', 'Start Menu', 'Programs')
-  ]
-  return rutas.filter((r): r is string => typeof r === 'string')
+/**
+ * Dónde están las aplicaciones: en Windows, las carpetas «Programas» del menú Inicio; en macOS, las carpetas de
+ * aplicaciones (las de Apple viven en /System/Applications desde macOS 10.15). La del usuario primero: gana si un nombre se repite.
+ */
+export function carpetasInicio(plataforma: NodeJS.Platform = process.platform, entorno: NodeJS.ProcessEnv = process.env): string[] {
+  const rutas =
+    plataforma === 'darwin'
+      ? [entorno['HOME'] && posix.join(entorno['HOME'], 'Applications'), '/Applications', '/System/Applications']
+      : [
+          entorno['APPDATA'] && win32.join(entorno['APPDATA'], 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+          entorno['ProgramData'] && win32.join(entorno['ProgramData'], 'Microsoft', 'Windows', 'Start Menu', 'Programs')
+        ]
+  return rutas.filter((r): r is string => typeof r === 'string' && r !== '')
 }
 
 export function crearDepsSistema(datosApp: string): DepsSistema {

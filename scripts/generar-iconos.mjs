@@ -131,4 +131,10 @@ writeFileSync(join(CARPETA, 'icon.png'), imagenes.find((i) => i.tam === 256).png
 // Bandeja: 32 px (Windows lo reduce a 16 o lo usa tal cual con pantallas de alta densidad), sin resplandor.
 writeFileSync(join(CARPETA, 'tray.png'), codificarPng(32, dibujar(32, 0.92, 0)))
 
+// macOS: el icono de la app tiene que medir al menos 512 px (electron-builder lo convierte a .icns), y la barra de menús
+// mide 18 puntos: tray-mac.png y su doble para pantallas Retina (Electron elige la @2x solo).
+writeFileSync(join(CARPETA, 'icon-mac.png'), codificarPng(1024, dibujar(1024, 0.74, 0.5)))
+writeFileSync(join(CARPETA, 'tray-mac.png'), codificarPng(18, dibujar(18, 0.92, 0)))
+writeFileSync(join(CARPETA, 'tray-mac@2x.png'), codificarPng(36, dibujar(36, 0.92, 0)))
+
 console.log('Iconos generados en', CARPETA)

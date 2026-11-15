@@ -1,6 +1,6 @@
 {
   "name": "orbe",
-  "version": "1.24.2",
+  "version": "1.24.3",
   "description": "Asistente de escritorio flotante con orbe de shaders y chat con Claude",
   "private": true,
   "main": "./out/main/index.js",
@@ -15,6 +15,7 @@
     "humo:real": "electron-vite build && electron . --smoke --real",
     "probar-uia": "node scripts/probar-uia.mjs",
     "iconos": "node scripts/generar-iconos.mjs",
+    "dist:mac": "sh scripts/compilar-helper-mac.sh && electron-vite build && electron-builder --mac --publish never",
     "dist:dir": "electron-vite build && electron-builder --win --dir",
     "fondos": "electron scripts/preparar-fondos.cjs",
     "galeria": "node scripts/galeria/fotos.mjs",

@@ -616,6 +616,8 @@ export type ResultadoConfig = { ok: true } | { ok: false; error: string }
 export type OrdenApp = 'nueva-conversacion'
 
 export interface ApiOrbe {
+  /** `process.platform` del proceso que muestra la interfaz ('win32', 'darwin'…): cambia textos y atajos. */
+  plataforma: string
   /** El puntero está sobre una zona que debe recibir el ratón (el centro del personaje o el panel abierto). */
   ratonInteractivo(dentro: boolean): void
   alternar(): void

@@ -31,7 +31,7 @@ export class Cofre {
 
   private cargar(): Secretos {
     if (this.datos) return this.datos
-    if (!this.cifrador.disponible()) throw new Error('El cifrado de Windows no está disponible en este equipo.')
+    if (!this.cifrador.disponible()) throw new Error('El cifrado del sistema (DPAPI en Windows, Llavero en macOS) no está disponible en este equipo.')
     if (!existsSync(this.ruta)) {
       this.datos = {}
       return this.datos

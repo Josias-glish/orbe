@@ -1,3 +1,5 @@
+import { SO } from '../sistema'
+
 /** `preparando`: se ha pulsado y Windows está abriendo el micrófono (puede tardar varios segundos). */
 export type EstadoDictado = 'reposo' | 'preparando' | 'grabando' | 'transcribiendo'
 
@@ -16,7 +18,9 @@ const MIN_BYTES = 1000
 export function mensajeDeMicrofono(error: unknown): string {
   const nombre = error instanceof DOMException ? error.name : ''
   if (nombre === 'NotAllowedError' || nombre === 'SecurityError') {
-    return 'No tengo permiso para usar el micrófono. Actívalo en Configuración de Windows → Privacidad y seguridad → Micrófono (y deja que las aplicaciones de escritorio lo usen).'
+    return SO.nombre === 'macOS'
+      ? 'No tengo permiso para usar el micrófono. Actívalo en Ajustes del Sistema → Privacidad y seguridad → Micrófono → Orbe.'
+      : 'No tengo permiso para usar el micrófono. Actívalo en Configuración de Windows → Privacidad y seguridad → Micrófono (y deja que las aplicaciones de escritorio lo usen).'
   }
   if (nombre === 'NotFoundError' || nombre === 'OverconstrainedError') return 'No encuentro ningún micrófono conectado.'
   if (nombre === 'NotReadableError') return 'El micrófono está siendo usado por otra aplicación.'

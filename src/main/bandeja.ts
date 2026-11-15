@@ -15,7 +15,7 @@ export interface EstadoBandeja {
   visible: boolean
   /** Hay una respuesta o una tarea en curso: solo entonces se ofrece «Detener». */
   hayTurno?: boolean
-  /** Solo se ofrece «Iniciar con Windows» en la app instalada: en desarrollo registraría electron.exe. */
+  /** Solo se ofrece «Abrir al iniciar sesión» en la app instalada: en desarrollo registraría electron.exe. */
   inicioDisponible: boolean
   iniciaConWindows: boolean
   alCambiarInicio(valor: boolean): void
@@ -33,7 +33,7 @@ export function plantillaBandeja(acciones: AccionesBandeja, estado: EstadoBandej
   ]
   if (estado.inicioDisponible) {
     plantilla.push({
-      label: 'Iniciar con Windows',
+      label: 'Abrir al iniciar sesión',
       type: 'checkbox',
       checked: estado.iniciaConWindows,
       click: (item) => estado.alCambiarInicio(item.checked)
@@ -69,7 +69,8 @@ export function crearBandeja(
   carpetaRecursos: string,
   hayTurno: () => boolean = () => false
 ): Tray | null {
-  const imagen = nativeImage.createFromPath(join(carpetaRecursos, 'tray.png'))
+  // En macOS, el icono de la barra de menús mide 18 puntos (tray-mac@2x.png se elige solo en pantallas Retina).
+  const imagen = nativeImage.createFromPath(join(carpetaRecursos, process.platform === 'darwin' ? 'tray-mac.png' : 'tray.png'))
   if (imagen.isEmpty()) {
     console.warn('[orbe] No se encontró el icono de la bandeja; Orbe seguirá sin él.')
     return null

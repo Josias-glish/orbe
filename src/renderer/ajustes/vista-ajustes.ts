@@ -4,6 +4,7 @@ import type { Apariencia, ClaveNueva, ConfigVista, PeticionConfig } from '../../
 import { SECRETOS, type DefinicionSecreto, type EstadoCofre, type ResultadoCofre } from '../../shared/cofre'
 import { detallePantalla, type EstadoVision } from '../../shared/vision'
 import { crearIcono } from '../chat/contexto-ui'
+import { SO } from '../sistema'
 
 type Proveedor = 'cli' | 'api' | 'openai'
 
@@ -180,7 +181,7 @@ export class VistaAjustes {
       `${quien}${b.modelo ? ` · ${b.modelo}` : ''}`,
       `${figura} · avisos de Claude Code ${b.eventos ? 'activados' : 'apagados'}`,
       b.dictado.url ? `${host(b.dictado.url)} · ${b.dictado.modelo}` : 'Sin configurar',
-      b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : 'Voces de Windows',
+      b.voz.url ? `${host(b.voz.url)} · ${b.voz.voz || b.voz.modelo}` : `Voces de ${SO.nombre}`,
       b.identidad.id === 'orbe' ? 'Orbe (cercano, de tú)' : `${perfilDe(b.identidad).nombre} · trata de «${perfilDe(b.identidad).trato}»`,
       this.resumenCofre(),
       !this.vision || this.vision.proveedor === 'ninguno' ? 'Apagada' : `${this.vision.proveedor} · ${this.vision.activa ? 'lista' : (this.vision.motivo ?? '')}`
@@ -214,7 +215,7 @@ export class VistaAjustes {
       el(
         'p',
         'memoria-nota',
-        'Se cifran con el cifrado de Windows (DPAPI), ligado a tu usuario, en cofre.bin. Orbe nunca los enseña, ni aquí ni en el chat, ni los manda al modelo. Si los copiaste, el portapapeles se vacía al guardar.'
+        (SO.nombre === 'macOS' ? 'Se cifran con el Llavero de macOS, ligado a tu usuario, en cofre.bin.' : 'Se cifran con el cifrado de Windows (DPAPI), ligado a tu usuario, en cofre.bin.') + ' Orbe nunca los enseña, ni aquí ni en el chat, ni los manda al modelo. Si los copiaste, el portapapeles se vacía al guardar.'
       )
     )
     return hijos
@@ -533,7 +534,7 @@ export class VistaAjustes {
 
     // --- Voz neuronal ---
     const idVoz = b.voz.url || b.voz.modelo ? detectarPreajuste(PREAJUSTES_VOZ, b.voz.url, 'openai') : 'ninguno'
-    const voz = this.selector([{ id: 'ninguno', nombre: 'Sin configurar (voces de Windows)' }, ...PREAJUSTES_VOZ], idVoz, (nuevo) => {
+    const voz = this.selector([{ id: 'ninguno', nombre: `Sin configurar (voces de ${SO.nombre})` }, ...PREAJUSTES_VOZ], idVoz, (nuevo) => {
       if (nuevo === 'ninguno') {
         b.voz = { url: '', modelo: '', voz: '', clave: v.voz.tieneClave ? null : undefined }
       } else {

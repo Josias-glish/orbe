@@ -35,19 +35,19 @@ describe('plantillaBandeja', () => {
       'Nueva conversación',
       'Leer la pantalla',
       '---',
-      'Iniciar con Windows',
+      'Abrir al iniciar sesión',
       'Salir'
     ])
   })
 
   it('sin la app instalada no ofrece iniciar con Windows', () => {
-    expect(etiquetas(plantillaBandeja(acciones(), estado({ inicioDisponible: false })))).not.toContain('Iniciar con Windows')
+    expect(etiquetas(plantillaBandeja(acciones(), estado({ inicioDisponible: false })))).not.toContain('Abrir al iniciar sesión')
   })
 
   it('la casilla refleja el estado y avisa al cambiarla', () => {
     const alCambiarInicio = vi.fn()
     const plantilla = plantillaBandeja(acciones(), estado({ iniciaConWindows: true, alCambiarInicio }))
-    const item = plantilla.find((i) => i.label === 'Iniciar con Windows')!
+    const item = plantilla.find((i) => i.label === 'Abrir al iniciar sesión')!
     expect(item.type).toBe('checkbox')
     expect(item.checked).toBe(true)
     ;(item.click as (i: { checked: boolean }) => void)({ checked: false })

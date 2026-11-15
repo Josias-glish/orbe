@@ -179,7 +179,7 @@ describe('ServicioPantalla: poco texto, vacío y ventanas que no se dejan leer',
 
   it('una ventana restringida explica que puede ser un programa de administrador', async () => {
     const r = await servicio(fuente({ ventana: { ...VENTANA, restringida: true }, contenido: null })).leer()
-    expect(r.lectura.avisos[0]).toMatch(/administrador/)
+    expect(r.lectura.avisos[0]).toMatch(process.platform === 'darwin' ? /Accesibilidad/ : /administrador/)
   })
 
   it('sin ninguna ventana que leer, falla con un error claro', async () => {

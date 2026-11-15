@@ -83,14 +83,14 @@ export function crearAbrirAplicacion(catalogo: CatalogoAplicaciones, lanzador: L
           throw new Error(`Hay varias aplicaciones que encajan con «${e.nombre}»: ${r.candidatas.join(', ')}. Pregúntale al usuario cuál quiere abrir.`)
         case 'ninguna':
           throw new Error(
-            `No encuentro ninguna aplicación llamada «${e.nombre}» en el menú Inicio.` +
+            `No encuentro ninguna aplicación llamada «${e.nombre}» en el menú Inicio ni en las carpetas de aplicaciones.` +
               (r.sugerencias.length > 0 ? ` Parecidas: ${r.sugerencias.join(', ')}.` : '') +
               ' Si no está instalada, díselo al usuario.'
           )
         case 'una': {
           if (!lanzador.ventanas) {
             await lanzar(r.entrada, lanzador)
-            return { texto: `Pedí a Windows que abriera «${r.entrada.nombre}». No puedes ver ni controlar la aplicación.` }
+            return { texto: `Pedí al sistema que abriera «${r.entrada.nombre}». No puedes ver ni controlar la aplicación.` }
           }
           const antes = new Set((await lanzador.ventanas().catch(() => [])).map((x) => x.hwnd))
           await lanzar(r.entrada, lanzador)
@@ -98,7 +98,7 @@ export function crearAbrirAplicacion(catalogo: CatalogoAplicaciones, lanzador: L
           return {
             texto: titulo
               ? `«${r.entrada.nombre}» está abierta (ventana «${titulo}»). Mírala con pc_ver si tienes que usarla.`
-              : `Pedí a Windows que abriera «${r.entrada.nombre}», pero en 10 s no apareció su ventana: puede seguir cargando. ` +
+              : `Pedí al sistema que abriera «${r.entrada.nombre}», pero en 10 s no apareció su ventana: puede seguir cargando. ` +
                 'Antes de decir que no se abrió, vuelve a mirar con pc_ventanas o pregúntale al usuario.'
           }
         }

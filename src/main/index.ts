@@ -36,6 +36,7 @@ import { registrarUso } from './uso/ipc'
 import { ProveedorDemo } from './chat/proveedor-demo'
 import type { ServicioChat } from './chat/servicio'
 import { leerArchivosEnv, resolverConfig } from './entorno'
+import { completarPathMac } from './path-mac'
 import { ServicioFondos, carpetaTieneImagenes, elegirCarpetaFondos } from './fondos'
 import { procesarConElectron } from './fondos-electron'
 import { prepararFondosDeMentira, procesarDeMentira } from './fondos-demo'
@@ -120,12 +121,13 @@ function rutasEnv(): string[] {
   return rutas
 }
 
-/** Carpeta del lector de pantalla (PowerShell + C#): fuera del asar al empaquetar. */
+/** Carpeta del lector de pantalla (PowerShell + C# en Windows, `mac/orbe-helper` en macOS): fuera del asar al empaquetar. */
 function carpetaHelper(): string {
   return app.isPackaged ? join(process.resourcesPath, 'helper') : join(app.getAppPath(), 'helper')
 }
 
 app.whenReady().then(async () => {
+  completarPathMac()
   const lectura = leerArchivosEnv(rutasEnv())
   const config = resolverConfig(lectura.valores)
   for (const aviso of config.avisos) console.warn('[orbe]', aviso)

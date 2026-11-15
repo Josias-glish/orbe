@@ -546,7 +546,7 @@ describe('abrir_aplicacion', () => {
     const t = montarHerramientas(MENU)
     const r = await t.usar('abrir_aplicacion', { nombre: 'Spotify' })
     expect(r).toMatchObject({ esError: false })
-    expect(r.contenido).toMatch(/Pedí a Windows que abriera «Spotify»/)
+    expect(r.contenido).toMatch(/Pedí al sistema que abriera «Spotify»/)
     expect(t.lanzadas).toEqual([`ruta:${join(USUARIO, 'Spotify.lnk')}`])
     expect(t.acciones.map((a) => [a.estado, a.titulo])).toEqual([
       ['en_curso', 'Abriendo: Spotify'],
@@ -675,5 +675,39 @@ describe('el ejecutor y AccionProhibida', () => {
     expect(r.contenido).toBe('PROHIBIDO: Eso es la configuración del sistema. No lo intentes de otra manera: detén la tarea y pídele al usuario que lo haga él mismo.')
     expect(acciones.map((a) => a.estado)).toEqual(['en_curso', 'denegada'])
     expect(acciones[1].resultado).toBe('Eso es la configuración del sistema.')
+  })
+})
+
+describe('catálogo en macOS (carpetas .app)', () => {
+  const MAC: Montaje = {
+    carpetas: {
+      [USUARIO]: ['Spotify.app/', 'Calculator.app/', 'Terminal.app/', 'Utilities/', 'Keychain Access.app/'],
+      [join(USUARIO, 'Utilities')]: ['Activity Monitor.app/', 'Disk Utility.app/', 'Uninstall Foo.app/'],
+      [COMUN]: ['System Settings.app/', 'Notes.app/']
+    },
+    archivos: ['/Applications/Mi Editor.app', '/Applications/iTerm.app'],
+    config: { alias: { editor: '/Applications/Mi Editor.app', 'mi term': '/Applications/iTerm.app' }, excluir: [] }
+  }
+
+  it('cada .app es una aplicación, sin entrar en ella, y se abre por su ruta', async () => {
+    const { cat } = catalogo(MAC)
+    expect(await cat.resolver('Spotify')).toMatchObject({ tipo: 'una', entrada: { origen: 'atajo', ruta: join(USUARIO, 'Spotify.app') } })
+    // El Finder la muestra en español, pero la carpeta se llama en inglés.
+    expect(await cat.resolver('calculadora')).toMatchObject({ tipo: 'una', entrada: { nombre: 'Calculator' } })
+    expect(await cat.resolver('notas')).toMatchObject({ tipo: 'una', entrada: { nombre: 'Notes' } })
+    expect(await cat.resolver('uninstall foo')).toMatchObject({ tipo: 'ninguna' })
+  })
+
+  it('no abre terminales, herramientas de administración, llaveros ni los ajustes del sistema', async () => {
+    const { cat } = catalogo(MAC)
+    for (const n of ['Terminal', 'Activity Monitor', 'Disk Utility', 'Keychain Access', 'System Settings', 'Ajustes del Sistema', 'Monitor de Actividad']) {
+      expect(await cat.resolver(n), n).toMatchObject({ tipo: 'prohibida' })
+    }
+  })
+
+  it('un alias puede apuntar a una .app que exista, salvo si es una consola', async () => {
+    const { cat } = catalogo(MAC)
+    expect(await cat.resolver('editor')).toMatchObject({ tipo: 'una', entrada: { origen: 'ruta', ruta: '/Applications/Mi Editor.app', nombre: 'Mi Editor' } })
+    expect(await cat.resolver('mi term')).toMatchObject({ tipo: 'prohibida' })
   })
 })

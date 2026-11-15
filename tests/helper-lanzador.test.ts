@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const spawn = vi.fn(() => ({ fake: true }))
 vi.mock('node:child_process', () => ({ spawn }))
 
-const { lanzadorPowerShell } = await import('../src/main/pantalla/helper-uia')
+const { lanzadorDelSistema, lanzadorPowerShell } = await import('../src/main/pantalla/helper-uia')
 
 describe('lanzadorPowerShell', () => {
   beforeEach(() => spawn.mockClear())
@@ -35,5 +35,21 @@ describe('lanzadorPowerShell', () => {
     ])
     expect(String(args[5]).replace(/\//g, '\\')).toBe('C:\\orbe\\helper\\uia-helper.ps1')
     expect(opciones).toMatchObject({ windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+  })
+})
+
+describe('lanzadorDelSistema', () => {
+  beforeEach(() => spawn.mockClear())
+
+  it('en macOS lanza el binario Swift con el pid de Orbe, sin PowerShell', () => {
+    lanzadorDelSistema('/Applications/Orbe.app/Contents/Resources/helper', 'darwin')({ pidOrbe: 77, cacheDir: '/tmp/x' })
+    const [ejecutable, args] = spawn.mock.calls[0] as unknown as [string, string[]]
+    expect(ejecutable.replace(/\\/g, '/')).toBe('/Applications/Orbe.app/Contents/Resources/helper/mac/orbe-helper')
+    expect(args).toEqual(['servidor', '--pid', '77'])
+  })
+
+  it('en Windows sigue usando PowerShell', () => {
+    lanzadorDelSistema('C:\\orbe\\helper', 'win32')({ pidOrbe: 1, cacheDir: 'C:\\c' })
+    expect(String((spawn.mock.calls[0] as unknown as [string])[0])).toMatch(/powershell\.exe$/)
   })
 })

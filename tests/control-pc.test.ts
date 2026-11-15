@@ -50,7 +50,7 @@ describe('Control del PC: seguridad', () => {
     expect(motivoBloqueo({ proceso: 'WindowsTerminal', titulo: '' })).toBeTruthy()
     expect(motivoBloqueo({ proceso: 'KeePassXC', titulo: '' })).toBeTruthy()
     expect(motivoBloqueo({ proceso: 'chrome', titulo: 'Bancolombia - Sucursal Virtual' })).toMatch(/bancos/)
-    expect(motivoBloqueo({ proceso: 'notepad', titulo: 'x', restringida: true })).toMatch(/administrador/)
+    expect(motivoBloqueo({ proceso: 'notepad', titulo: 'x', restringida: true })).toMatch(process.platform === 'darwin' ? /Accesibilidad/ : /administrador/)
     expect(motivoBloqueo({ proceso: 'notepad', titulo: 'Sin título' })).toBeUndefined()
   })
 
@@ -60,6 +60,9 @@ describe('Control del PC: seguridad', () => {
     expect(parsearTeclas('Win+R')).toBeNull()
     expect(teclasConEfecto(parsearTeclas('Alt+F4')!)).toBe(true)
     expect(teclasConEfecto(parsearTeclas('Ctrl+S')!)).toBe(false)
+    expect(teclasConEfecto(parsearTeclas('Ctrl+Q')!)).toBe(true) // en macOS es ⌘Q: cierra la app
+    expect(motivoBloqueo({ proceso: 'Terminal', titulo: 'zsh', url: null, restringida: false })).toMatch(/bloqueada/)
+    expect(motivoBloqueo({ proceso: 'keychain access', titulo: 'Llavero', url: null, restringida: false })).toMatch(/bloqueada/)
   })
 
   it('el permiso va por app y, sin regla propia, toma el general', () => {

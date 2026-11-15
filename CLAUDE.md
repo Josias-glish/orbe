@@ -57,6 +57,7 @@ npm run typecheck      # tipos (main y renderer)
 npm test               # vitest
 npm run humo           # prueba de humo: arranca Orbe en modo demo, recorre la interfaz y guarda capturas en humo/
 npm run dist           # instaladores de Windows en dist/
+npm run dist:mac       # en un Mac: ayudante Swift + .dmg/.zip (CI lo hace en macos-latest)
 ```
 
 Antes de dar algo por terminado: `npm run typecheck`, `npm test` y, si tocas la interfaz, `npm run humo` (revisa las
@@ -243,6 +244,19 @@ vision-uso.json, ojos.ts con desktopCapturer de UNA ventana sin ocultar Orbe, ip
 `shared/vision.ts` valida el JSON del prompt C.1. Consentimiento único en consentimientos.json (`vision.version`), no
 depende del proveedor. Decisión del usuario: sin perfil «contenido» ni botón en Métricas (publicaciones con Claude in
 Chrome). Gafas 3D: la pantalla LED se coloca delante del punto más saliente del cristal (rejilla de rayos).
+
+v1.24.3 (**instalador de macOS**, rama `claude/instalador-mac`, sale de `claude/etapa-13-vision`; Windows sin cambios):
+`helper/mac/main.swift` es el ayudante nativo (mismo protocolo JSON por líneas que el de PowerShell/C#: lector,
+`ocr <ruta>` con Vision y todas las ops del control del PC con AX + CGEvent; «hwnd» = CGWindowID, el de
+`desktopCapturer`; coordenadas en **puntos**, por eso `pc/marco.ts` y `pc/captura-ventana.ts` no usan
+`screenToDipRect` en darwin). Se compila con `scripts/compilar-helper-mac.sh` (universal, firma ad hoc) y se prueba con
+`scripts/probar-helper-mac.sh` (CI). `lanzadorDelSistema` y `ordenOcr` eligen por plataforma; `completarPathMac` toma
+el PATH del shell de inicio (apps abiertas desde Finder); catálogo de apps `.app`; textos por sistema en
+`shared/sistema.ts` (`textosSistema`). En el control del PC, Ctrl → ⌘ (Ctrl+Q pide permiso) y se bloquean Terminal,
+Llavero, Ajustes del Sistema, etc. `electron-builder.yml` `mac`: dmg+zip arm64/x64, `identity: '-'`, sin notarizar,
+`LSUIElement`. CI y release tienen trabajo `macos-latest` (la release adjunta los .dmg con `gh release upload`).
+Sin verificar en un Mac real: todo el ayudante (no hay Mac en el equipo del usuario: lo prueba un amigo), la firma ad
+hoc de electron-builder, «Abrir al iniciar sesión» sin firma y el borde/visión con varias pantallas Retina.
 
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·

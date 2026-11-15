@@ -1,6 +1,6 @@
 # Orbe
 
-Asistente de escritorio flotante para Windows 11. Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
+Asistente de escritorio flotante para Windows 11 (y macOS, en pruebas). Un orbe fluido (shaders WebGL) siempre visible en una esquina que se abre como panel de chat con Claude y, solo cuando se lo pides, entiende lo que tienes en pantalla.
 
 > Versión 1.3: un **conejo en 3D** con 20 expresiones en sus gafas y sonidos (o el personaje dibujado con 20 diseños, o uno tuyo de Rive), avisos de Claude Code y otras herramientas, chat con Claude (o con otras IA, también Gemini de Google AI Studio), **texto de imágenes sin pantallazo** (OCR de Windows en tu equipo), **fórmulas y química resueltas desde una imagen** (con las fórmulas bien escritas), lectura de pantalla por texto y por captura, memoria, panel redimensionable, fondos, voz, bandeja del sistema, instalador de Windows y un **modo agente** que además de responder puede buscar en internet y abrir páginas y aplicaciones (ver «Modo agente»).
 
@@ -17,6 +17,21 @@ En la sección **Releases** del repositorio (o en «Artifacts» de cada ejecuci�
 - Se instala solo para tu usuario (sin permisos de administrador) y crea accesos directos.
 - Para configurarlo, crea el archivo `%APPDATA%\orbe\.env` (copia `.env.example` y cambia lo que quieras). Todo es opcional.
 - Para hablar con Claude necesitas el **CLI de Claude** con la sesión iniciada, o una API key (ver más abajo).
+
+### macOS (en pruebas, sin firmar)
+
+| Archivo | Qué es |
+|---|---|
+| `Orbe-<versión>-mac-arm64.dmg` | Para Mac con **Apple Silicon** (M1, M2, M3, M4…). Ábrelo y arrastra Orbe a Aplicaciones. |
+| `Orbe-<versión>-mac-x64.dmg` | Para Mac con **Intel**. |
+| `Orbe-<versión>-mac-<arq>.zip` | La app comprimida, por si el .dmg da problemas. |
+
+- Hace falta **macOS 12 o posterior** (lo exige Electron 44; no verificado en macOS 12).
+- La app **no está firmada ni notarizada** (eso exige una cuenta de Apple Developer de pago). La primera vez macOS dirá que no puede comprobarla: cierra el aviso, ve a **Ajustes del Sistema → Privacidad y seguridad**, baja hasta «Se bloqueó Orbe» y pulsa **Abrir igualmente** (https://support.apple.com/102445).
+- Permisos que pide (Ajustes del Sistema → Privacidad y seguridad): **Accesibilidad** (leer el texto de otras ventanas y el control del PC), **Grabación de pantalla** (capturas, «pc_mirar» y los ojos de visión) y **Micrófono** (dictado). Tras cada actualización, si algo deja de funcionar, desactiva y vuelve a activar Orbe en Accesibilidad: con firma ad hoc, macOS puede tratar cada versión como otra app.
+- Orbe vive en la **barra de menús** (arriba a la derecha) y no sale en el Dock. Los atajos son ⌘⇧Espacio (panel) y ⌘⇧⌥Espacio (leer pantalla). En el control del PC, Ctrl se pulsa como ⌘.
+- La configuración y los datos van en `~/Library/Application Support/orbe/` (el equivalente de `%APPDATA%\orbe`); el cofre cifra con el **Llavero de macOS**.
+- El texto de pantalla y el OCR los hace un ayudante nativo (`helper/mac/orbe-helper`, Swift: Accesibilidad y Vision, en el propio Mac). Para compilarlo en un Mac: `npm run dist:mac`.
 
 ## Bandeja del sistema
 Orbe deja un icono junto al reloj: clic para **mostrar u ocultar**, clic derecho para el menú (abrir el chat, nueva conversación, leer la pantalla, **Iniciar con Windows** —solo en la versión instalada— y **Salir**). Cerrar el panel no cierra Orbe: se sale desde ahí.

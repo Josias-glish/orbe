@@ -216,7 +216,7 @@ export function crearHerramientasPc(pc: ControlPc): Herramienta[] {
     }),
     definirHerramienta<{ teclas: string }>({
       nombre: 'pc_teclas',
-      descripcion: 'RESPALDO: pulsa una tecla o combinación en la ventana («Ctrl+S», «Enter», «AvPág»). Supr y Alt+F4 piden permiso.',
+      descripcion: 'RESPALDO: pulsa una tecla o combinación en la ventana («Ctrl+S», «Enter», «AvPág»). Supr y Alt+F4 piden permiso.' + (process.platform === 'darwin' ? ' En este Mac, Ctrl se pulsa como ⌘ (Ctrl+C = ⌘C) y Ctrl+Q cierra la app.' : ''),
       esquema: crearEsquema(camposTeclas),
       ...control,
       validar: (entrada) => {

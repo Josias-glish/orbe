@@ -10,15 +10,8 @@ files:
   - out/**
   - package.json
 
-# Fuera del asar: el lector de pantalla (PowerShell + C#) se ejecuta desde disco, y el icono de la bandeja.
+# Fuera del asar, en los dos sistemas. El lector de pantalla y el icono de la bandeja van en win/mac.
 extraResources:
-  - from: helper
-    to: helper
-    filter:
-      - '*.cs'
-      - '*.ps1'
-  - from: resources/tray.png
-    to: tray.png
   # El script con el que Claude Code (por sus hooks) y otras herramientas avisan a Orbe.
   - from: resources/conectores
     to: conectores
@@ -42,6 +35,15 @@ win:
     - target: zip
       arch: x64
   icon: resources/icon.ico
+  # El lector de pantalla y el control del PC (PowerShell + C#) se ejecutan desde disco.
+  extraResources:
+    - from: helper
+      to: helper
+      filter:
+        - '*.cs'
+        - '*.ps1'
+    - from: resources/tray.png
+      to: tray.png
   artifactName: Orbe-${version}-win.${ext}
   # Sin certificado de firma: Windows SmartScreen avisará de «editor desconocido» al instalar.
   signAndEditExecutable: true
@@ -62,3 +64,34 @@ portable:
   artifactName: Orbe-Portable-${version}.${ext}
   # Nombre de la carpeta de %TEMP% donde se descomprime al abrirse (tarda unos segundos).
   unpackDirName: Orbe
+
+# macOS (Apple Silicon e Intel por separado): Orbe-<versión>-mac-arm64.dmg / -x64.dmg y sus .zip.
+# Sin cuenta de Apple Developer: firma ad hoc («-») y sin notarizar, así que Gatekeeper pide «Abrir igualmente»
+# en Ajustes del Sistema → Privacidad y seguridad la primera vez.
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  icon: resources/icon-mac.png
+  category: public.app-category.productivity
+  artifactName: Orbe-${version}-mac-${arch}.${ext}
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    # Como en Windows (sin botón en la barra de tareas): sin icono en el Dock; Orbe vive en la barra de menús.
+    LSUIElement: true
+    NSMicrophoneUsageDescription: Orbe usa el micrófono solo mientras dictas un mensaje.
+  # El ayudante nativo (Accesibilidad, Vision y entrada simulada), compilado con scripts/compilar-helper-mac.sh.
+  extraResources:
+    - from: helper/mac/orbe-helper
+      to: helper/mac/orbe-helper
+    - from: resources/tray-mac.png
+      to: tray-mac.png
+    - from: resources/tray-mac@2x.png
+      to: tray-mac@2x.png
+
+dmg:
+  artifactName: Orbe-${version}-mac-${arch}.${ext}
