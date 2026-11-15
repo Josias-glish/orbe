@@ -56,7 +56,10 @@ jobs:
       - run: sh scripts/compilar-helper-mac.sh
       - name: El ayudante responde y lee texto
         run: sh scripts/probar-helper-mac.sh
+      # En una PR, electron-builder no firma; la firma ad hoc no usa secretos y sin ella la app no abre en Apple Silicon.
       - run: npx electron-vite build && npx electron-builder --mac --publish never
+        env:
+          CSC_FOR_PULL_REQUEST: 'true'
       - uses: actions/upload-artifact@v4
         with:
           name: orbe-instaladores-mac
