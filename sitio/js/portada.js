@@ -31,32 +31,40 @@ if (raiz.classList.contains('mueve')) {
   }
 }
 
-// Encuadre del conejo en cada tramo, en fracciones de la ventana: x (0 = centro), alto, base (su pie), giro, camY.
+// Encuadre del conejo en cada tramo, en fracciones de la ventana: x (0 = centro), alto, base (su pie), giro, camY
+// y picado (cámara por encima o por debajo, en radianes). Tomas con nombre: en «Lo que hace» se acerca a las
+// gafas; al pasar a «Conectores» da una vuelta entera (de ahí el V sumado al giro); en «Sus datos» baja al orbe
+// del pecho y en «Descarga» lo mira desde abajo.
+const V = Math.PI * 2
 const POSES = {
   ancha: [
     { x: 0, alto: 0.84, base: -0.06, giro: 0, camY: 0 },
     { x: 0.23, alto: 0.74, base: 0.02, giro: -0.42, camY: 0.02 },
-    { x: 0.25, alto: 0.94, base: -0.16, giro: -0.28, camY: 0.02 },
-    { x: -0.23, alto: 0.76, base: 0, giro: 0.4, camY: 0 },
-    { x: -0.24, alto: 0.8, base: -0.02, giro: 0.45, camY: 0 },
-    { x: -0.21, alto: 1.14, base: -0.36, giro: 0.3, camY: -0.02 },
-    { x: 0.24, alto: 0.9, base: -0.1, giro: -0.5, camY: 0.03 },
-    { x: 0.22, alto: 0.8, base: 0, giro: -0.22, camY: 0 }
+    { x: 0.28, alto: 1.65, base: -0.27, giro: -0.2, camY: 0 },
+    { x: -0.25, alto: 0.78, base: 0, giro: V + 0.36, camY: 0 },
+    { x: 0.24, alto: 0.82, base: -0.04, giro: V - 0.36, camY: 0.01 },
+    { x: -0.23, alto: 0.76, base: 0, giro: V + 0.4, camY: 0 },
+    { x: -0.24, alto: 0.8, base: -0.02, giro: V + 0.45, camY: 0 },
+    { x: -0.21, alto: 1.14, base: -0.36, giro: V + 0.3, camY: -0.02 },
+    { x: 0.27, alto: 2.2, base: 0.07, giro: V - 0.15, camY: 0, picado: 0.15 },
+    { x: 0.22, alto: 1.1, base: -0.06, giro: V - 0.1, camY: 0, picado: -0.45 }
   ],
   estrecha: [
     { x: 0, alto: 0.5, base: 0.4, giro: 0, camY: 0 },
     { x: 0, alto: 0.42, base: 0.52, giro: -0.3, camY: 0 },
-    { x: 0, alto: 0.5, base: 0.44, giro: 0.24, camY: 0 },
-    { x: 0, alto: 0.42, base: 0.52, giro: -0.2, camY: 0 },
-    { x: 0, alto: 0.42, base: 0.52, giro: 0.32, camY: 0 },
-    { x: 0, alto: 0.56, base: 0.4, giro: 0.2, camY: 0 },
-    { x: 0, alto: 0.44, base: 0.5, giro: -0.34, camY: 0 },
-    { x: 0, alto: 0.42, base: 0.52, giro: 0, camY: 0 }
+    { x: 0, alto: 0.68, base: 0.51, giro: 0.1, camY: 0 },
+    { x: 0, alto: 0.4, base: 0.54, giro: V - 0.24, camY: 0 },
+    { x: 0, alto: 0.44, base: 0.5, giro: V + 0.2, camY: 0 },
+    { x: 0, alto: 0.42, base: 0.52, giro: V - 0.2, camY: 0 },
+    { x: 0, alto: 0.42, base: 0.52, giro: V + 0.32, camY: 0 },
+    { x: 0, alto: 0.56, base: 0.4, giro: V + 0.2, camY: 0 },
+    { x: 0, alto: 0.7, base: 0.71, giro: V - 0.1, camY: 0, picado: 0.1 },
+    { x: 0, alto: 0.46, base: 0.5, giro: V, camY: 0, picado: -0.3 }
   ]
 }
 
 const suave = (p) => p * p * (3 - 2 * p)
-const mezclar = (a, b, f) => Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * f]))
+const mezclar = (a, b, f) => Object.fromEntries(['x', 'alto', 'base', 'giro', 'camY', 'picado'].map((k) => [k, (a[k] ?? 0) + ((b[k] ?? 0) - (a[k] ?? 0)) * f]))
 
 function hayWebGL() {
   try {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Orbe · Un asistente que vive en su escritorio</title>
-  <meta name="description" content="Orbe es un asistente de escritorio para Windows, de uso personal. Un conejo 3D vive en una esquina de la pantalla y abre un chat. Se instala en su ordenador: sin servidores propios ni cuentas.">
+  <meta name="description" content="Orbe es un asistente de escritorio para Windows, de uso personal. Un conejo 3D vive en una esquina de la pantalla: conversa, maneja sus aplicaciones, recuerda y trabaja en segundo plano. Se instala en su ordenador: sin servidores propios ni cuentas.">
   <meta name="theme-color" content="#0a0a0b">
   <link rel="icon" href="assets/icono.svg" type="image/svg+xml">
   <link rel="preload" href="fuentes/unbounded-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -78,36 +78,68 @@
       <div class="texto">
         <p class="capitulo"><span>02</span> Lo que hace</p>
         <h2 id="t-hace">Ve su pantalla y hace tareas por usted</h2>
-        <p>Orbe no solo conversa. Tiene un modo agente: actúa en su ordenador, y solo con los permisos que usted le da.</p>
+        <p>Orbe no solo conversa. Actúa en su ordenador, y solo con los permisos que usted le da. Un atajo lo detiene todo al instante.</p>
         <h3>Lo que ya hace</h3>
         <ul class="leds">
           <li>Lee lo que hay en su pantalla cuando usted se lo pide. También el texto de las imágenes.</li>
-          <li>Abre aplicaciones y páginas web.</li>
-          <li>Busca en la web.</li>
-          <li>Ejecuta tareas programadas en segundo plano y le avisa cuando termina.</li>
+          <li>Maneja las aplicaciones de Windows: hace clic y escribe por usted. Nunca escribe contraseñas, y se detiene en cuanto usted toca el ratón o el teclado.</li>
+          <li>Antes de una tarea de varios pasos le propone un plan, y espera a que usted lo apruebe.</li>
+          <li>Busca en la web y lee las páginas que encuentra.</li>
+          <li>Trabaja en segundo plano: tareas programadas y avisos cuando llega un correo o aparece un archivo.</li>
           <li>Lo escucha y le responde por voz.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="tramo a-la-derecha" id="conectores" data-estado="leyendo" aria-labelledby="t-conectores">
+      <div class="texto">
+        <p class="capitulo"><span>03</span> Conectores</p>
+        <h2 id="t-conectores">Trabaja con lo que usted ya usa</h2>
+        <p>Cada conexión es opcional y la activa usted. Las claves se guardan cifradas en su ordenador.</p>
+        <ul class="logos">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M0,0H11.377V11.372H0ZM12.623,0H24V11.372H12.623ZM0,12.623H11.377V24H0Zm12.623,0H24V24H12.623"/></svg><strong>Windows</strong><span>Vive en su escritorio y maneja sus aplicaciones.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg><strong>Claude</strong><span>El modelo por defecto, con su suscripción o con la API de Anthropic.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/></svg><strong>Gemini</strong><span>Y cualquier otro modelo con API compatible con OpenAI.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg><strong>Gmail</strong><span>Busca, lee y redacta borradores. No envía.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"/></svg><strong>Instagram</strong><span>Lee su perfil, sus publicaciones y sus métricas. No publica.</span></li>
+          <li><img src="assets/composio.png" width="28" height="28" alt=""><strong>Composio</strong><span>Cientos de aplicaciones más. Antes de escribir en una, pregunta.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><strong>GitHub</strong><span>El código y las descargas están allí.</span></li>
+        </ul>
+        <p class="nota">Los nombres y logotipos pertenecen a sus dueños. Orbe es un proyecto independiente: no está afiliado a esas empresas ni cuenta con su respaldo.</p>
+      </div>
+    </section>
+
+    <section class="tramo" id="memoria" data-estado="respondiendo" aria-labelledby="t-memoria">
+      <div class="texto">
+        <p class="capitulo"><span>04</span> Memoria y agentes</p>
+        <h2 id="t-memoria">Recuerda lo que usted le cuenta y reparte el trabajo</h2>
+        <ul class="leds">
+          <li>Guarda sus recuerdos en archivos de su ordenador y los encuentra cuando hacen falta.</li>
+          <li>Cuando usted lo corrige, le propone aprender de eso. Usted decide si lo guarda.</li>
+          <li>Tiene agentes con nombre: Contenido, Correo, Investigador y Ventas.</li>
+          <li>Investiga un tema a fondo y le entrega un informe con sus fuentes, también en PDF.</li>
         </ul>
       </div>
     </section>
 
     <section class="tramo a-la-derecha" id="en-desarrollo" data-estado="pensando" aria-labelledby="t-desarrollo">
       <div class="texto">
-        <p class="capitulo"><span>03</span> En desarrollo</p>
+        <p class="capitulo"><span>05</span> En desarrollo</p>
         <h2 id="t-desarrollo">Lo que viene</h2>
         <p>Voy a ser claro: esto todavía no está en Orbe. Está en desarrollo.</p>
         <h3>En desarrollo</h3>
         <ul class="leds apagados rejilla">
-          <li>Conexión con más herramientas, por ejemplo a través de Zapier.</li>
-          <li>Más tareas automatizadas entre esas herramientas.</li>
-          <li>Piezas visuales creadas con Claude Design.</li>
-          <li>Interacción con la pantalla, no solo lectura.</li>
+          <li>Un compañero que funciona con un modelo local, sin conexión.</li>
+          <li>Un navegador propio, separado del suyo.</li>
+          <li>Un asistente de primer arranque, para que lo use cualquier persona.</li>
+          <li>Voz manos libres.</li>
         </ul>
       </div>
     </section>
 
     <section class="tramo a-la-derecha" id="gmail" data-estado="leyendo" aria-labelledby="t-gmail">
       <div class="texto">
-        <p class="capitulo"><span>04</span> Gmail</p>
+        <p class="capitulo"><span>06</span> Gmail</p>
         <h2 id="t-gmail">Con Gmail, solo si usted lo conecta</h2>
         <p>La integración es opcional. La activa usted con el inicio de sesión de Google, y Orbe pide dos permisos: <code>gmail.readonly</code> para leer y <code>gmail.compose</code> para crear borradores.</p>
         <h3>Lo que hace</h3>
@@ -120,7 +152,7 @@
 
     <section class="tramo a-la-derecha" id="borradores" data-estado="respondiendo" aria-labelledby="t-borradores">
       <div class="texto">
-        <p class="capitulo"><span>05</span> Borradores</p>
+        <p class="capitulo"><span>07</span> Borradores</p>
         <h2 id="t-borradores">Él redacta. Usted revisa y envía.</h2>
         <p>Los borradores se quedan en su Gmail. Usted los revisa y los envía desde allí.</p>
         <h3>Lo que no hace</h3>
@@ -135,7 +167,7 @@
 
     <section class="tramo" id="privacidad" data-estado="pensando" aria-labelledby="t-privacidad">
       <div class="texto">
-        <p class="capitulo"><span>06</span> Sus datos</p>
+        <p class="capitulo"><span>08</span> Sus datos</p>
         <h2 id="t-privacidad">Como desarrollador, no recibo ningún dato suyo</h2>
         <dl class="ficha">
           <div>
@@ -145,6 +177,10 @@
           <div>
             <dt>Qué sale de su ordenador</dt>
             <dd>El texto de los correos que usted pide leer: sin adjuntos y hasta 8000 caracteres por correo. Se envía al proveedor de IA que tenga configurado en Orbe, por defecto Claude de Anthropic, y solo para responderle.</dd>
+          </div>
+          <div>
+            <dt>Qué más puede salir</dt>
+            <dd>Solo si usted lo activa: capturas de una ventana, para la visión opcional, y lo que pida hacer en las aplicaciones conectadas por Composio.</dd>
           </div>
           <div>
             <dt>Cómo se revoca</dt>
@@ -157,7 +193,7 @@
 
     <section class="tramo" id="descarga" data-estado="actuando" aria-labelledby="t-descarga">
       <div class="texto">
-        <p class="capitulo"><span>07</span> Descarga</p>
+        <p class="capitulo"><span>09</span> Descarga</p>
         <h2 id="t-descarga">Llévese a Orbe a su escritorio</h2>
         <p>Es gratis, es para Windows y se ofrece tal cual, sin garantía. La descarga está en el repositorio de GitHub.</p>
         <p class="acciones">
@@ -193,7 +229,7 @@
       <a href="https://github.com/Josias-glish/orbe">GitHub</a>
       <a href="mailto:josiasvillamarin4@gmail.com">josiasvillamarin4@gmail.com</a>
     </nav>
-    <p class="pie-fecha">Última actualización: <time datetime="2026-11-09">9 de noviembre de 2026</time></p>
+    <p class="pie-fecha">Última actualización: <time datetime="2026-11-14">14 de noviembre de 2026</time></p>
   </footer>
 </body>
 </html>

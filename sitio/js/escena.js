@@ -333,7 +333,7 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
   let t = 0
   let estado = 'reposo'
   const post = { cabeza: [0, 0], oI: [0, 0], oD: [0, 0], apertura: 1, curva: 0, orbe: 1 }
-  const poseMeta = { x: 0, alto: 0.8, base: 0, giro: 0, camY: 0 }
+  const poseMeta = { x: 0, alto: 0.8, base: 0, giro: 0, camY: 0, picado: 0 }
   const pose = { ...poseMeta }
   let poseLista = false
   const puntero = { x: 0, y: 0, cuando: -1e9 }
@@ -395,7 +395,8 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
     pivote.position.set(x, y, 0)
     pivote.scale.setScalar(escala)
     pivote.rotation.y = pose.giro + Math.sin(t * 0.5) * 0.03
-    camara.position.set(0, pose.camY * altoVisible, DISTANCIA)
+    // picado: la cámara sube (positivo) o baja (negativo) en arco, sin dejar de mirar al centro.
+    camara.position.set(0, pose.camY * altoVisible + Math.sin(pose.picado) * DISTANCIA, Math.cos(pose.picado) * DISTANCIA)
     camara.lookAt(0, 0, 0)
 
     // Mirada: el cursor si se movió hace poco; si no, lo que pida el estado o un paseo tranquilo.
@@ -559,7 +560,7 @@ export async function crearEscena(lienzo, { base = './', alAvanzar = () => {}, c
   fijarCalidad(nivel)
 
   return {
-    /** Encuadre objetivo, en fracciones de la ventana: x (centro), alto (del conejo), base (su pie), giro, camY. */
+    /** Encuadre objetivo, en fracciones de la ventana: x (centro), alto (del conejo), base (su pie), giro, camY, picado. */
     pose(p) { Object.assign(poseMeta, p) },
     estado(id) {
       if (!POSTURA[id] || id === estado) return
