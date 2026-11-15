@@ -50,7 +50,7 @@ describe('Control del PC: seguridad', () => {
     expect(motivoBloqueo({ proceso: 'WindowsTerminal', titulo: '' })).toBeTruthy()
     expect(motivoBloqueo({ proceso: 'KeePassXC', titulo: '' })).toBeTruthy()
     expect(motivoBloqueo({ proceso: 'chrome', titulo: 'Bancolombia - Sucursal Virtual' })).toMatch(/bancos/)
-    expect(motivoBloqueo({ proceso: 'notepad', titulo: 'x', restringida: true })).toMatch(/administrador/)
+    expect(motivoBloqueo({ proceso: 'notepad', titulo: 'x', restringida: true })).toMatch(process.platform === 'darwin' ? /Accesibilidad/ : /administrador/)
     expect(motivoBloqueo({ proceso: 'notepad', titulo: 'Sin título' })).toBeUndefined()
   })
 

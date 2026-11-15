@@ -431,15 +431,16 @@ export class CatalogoAplicaciones {
       return { tipo: 'prohibida', motivo: 'El alias apunta a un archivo que no es un programa (.exe o .app) ni un acceso directo (.lnk).' }
     }
     if (!(await this.deps.existeArchivo(destino))) return { tipo: 'ninguna', sugerencias: [] }
+    // Separando por \ y /: en macOS, basename no parte las rutas de Windows (y viceversa no hace falta).
+    const nombre = (destino.split(/[\\/]/).pop() ?? destino).slice(0, -extension.length)
     let motivo: string | undefined
-    if (extension === '.app') motivo = motivoNombreProhibido(basename(destino, extension))
+    if (extension === '.app') motivo = motivoNombreProhibido(nombre)
     else if (extension === '.exe') motivo = motivoDestinoProhibido(destino)
     else {
       const atajo = this.leerAtajoSeguro(destino)
       motivo = atajo === null || atajo.destino === '' ? MOTIVO_SIN_DESTINO : motivoDestinoProhibido(atajo.destino, atajo.argumentos)
     }
     if (motivo) return { tipo: 'prohibida', motivo }
-    const nombre = basename(destino, extension)
     return { tipo: 'una', entrada: { nombre, clave: normalizar(nombre), origen: 'ruta', ruta: destino } }
   }
 }
