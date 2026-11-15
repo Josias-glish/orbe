@@ -12,6 +12,16 @@ import { EXTENSIONES_OCR, LADO_MAX_OCR, MAX_BYTES_ARCHIVO, extensionAdmitida, in
 
 const TIEMPO_OCR_MS = 45_000
 
+/**
+ * Qué se ejecuta para reconocer el texto: en macOS el helper Swift (Vision), en Windows `ocr.ps1` (Windows.Media.Ocr).
+ * Los dos escriben la misma línea JSON, que lee `interpretarSalidaOcr`.
+ */
+export function ordenOcr(carpetaHelper: string, ruta: string, plataforma: NodeJS.Platform = process.platform): [string, string[]] {
+  if (plataforma === 'darwin') return [join(carpetaHelper, 'mac', 'orbe-helper'), ['ocr', ruta]]
+  const ps = join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  return [ps, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(carpetaHelper, 'ocr.ps1'), '-Ruta', ruta]]
+}
+
 /** Reduce si hace falta (el OCR de Windows tiene un máximo por lado) y nunca agranda. */
 function ajustar(img: NativeImage): NativeImage {
   const { width, height } = img.getSize()
@@ -100,19 +110,23 @@ export function crearDepsOcrReales(opciones: {
       const fuente = fuentes.find((f) => f.id.startsWith(`window:${objetivo.hwnd}:`))
       if (!fuente || fuente.thumbnail.isEmpty()) {
         throw new ErrorChat(
-          crearError('ocr_sin_imagen', { mensaje: 'Windows no me ha dado la imagen de esa ventana (¿está minimizada?). Prueba con el portapapeles o un archivo.' })
+          crearError('ocr_sin_imagen', {
+            mensaje:
+              process.platform === 'darwin'
+                ? 'macOS no me ha dado la imagen de esa ventana (¿está minimizada o le falta a Orbe el permiso de Grabación de pantalla?). Prueba con el portapapeles o un archivo.'
+                : 'Windows no me ha dado la imagen de esa ventana (¿está minimizada?). Prueba con el portapapeles o un archivo.'
+          })
         )
       }
       return copiaTemporal(fuente.thumbnail, objetivo.aplicacion)
     },
 
     reconocer(ruta) {
-      const ps = join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-      const script = join(opciones.carpetaHelper, 'ocr.ps1')
+      const [ejecutable, args] = ordenOcr(opciones.carpetaHelper, ruta)
       return new Promise((resolver, rechazar) => {
         execFile(
-          ps,
-          ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Ruta', ruta],
+          ejecutable,
+          args,
           { timeout: TIEMPO_OCR_MS, windowsHide: true, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8' },
           (error, stdout) => {
             try {

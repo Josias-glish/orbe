@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ErrorChat } from '../src/main/chat/errores'
@@ -110,23 +110,33 @@ describe('argumentosCli con memoria', () => {
 
 describe('buscarRutaCli', () => {
   const existe = (...rutas: string[]) => (r: string) => rutas.includes(r)
-  const exe = join('C:\\npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
+  // Rutas de Windows con `win32`: así estas pruebas valen igual en el CI de macOS.
+  const exe = win32.join('C:\\npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
 
   it('usa el .exe real que hay junto al shim de npm', () => {
-    expect(buscarRutaCli(['C:\\npm\\claude', 'C:\\npm\\claude.cmd'], existe(exe))).toBe(exe)
+    expect(buscarRutaCli(['C:\\npm\\claude', 'C:\\npm\\claude.cmd'], existe(exe), {}, 'win32')).toBe(exe)
   })
 
   it('acepta directamente un .exe que aparezca en la salida de where', () => {
-    expect(buscarRutaCli(['D:\\bin\\claude.exe'], existe('D:\\bin\\claude.exe'))).toBe('D:\\bin\\claude.exe')
+    expect(buscarRutaCli(['D:\\bin\\claude.exe'], existe('D:\\bin\\claude.exe'), {}, 'win32')).toBe('D:\\bin\\claude.exe')
   })
 
   it('prueba la instalación nativa en el perfil del usuario', () => {
-    const nativa = join('C:\\Users\\yo', '.local', 'bin', 'claude.exe')
-    expect(buscarRutaCli([], existe(nativa), { USERPROFILE: 'C:\\Users\\yo' })).toBe(nativa)
+    const nativa = win32.join('C:\\Users\\yo', '.local', 'bin', 'claude.exe')
+    expect(buscarRutaCli([], existe(nativa), { USERPROFILE: 'C:\\Users\\yo' }, 'win32')).toBe(nativa)
   })
 
   it('devuelve null si no encuentra nada', () => {
-    expect(buscarRutaCli(['C:\\npm\\claude.cmd'], existe(), {})).toBeNull()
+    expect(buscarRutaCli(['C:\\npm\\claude.cmd'], existe(), {}, 'win32')).toBeNull()
+  })
+
+  it('en macOS acepta lo que diga which, sin .exe', () => {
+    expect(buscarRutaCli(['/opt/homebrew/bin/claude'], existe('/opt/homebrew/bin/claude'), {}, 'darwin')).toBe('/opt/homebrew/bin/claude')
+  })
+
+  it('en macOS prueba el instalador nativo aunque el PATH no lo tenga (app abierta desde el Finder)', () => {
+    expect(buscarRutaCli([], existe('/Users/yo/.local/bin/claude'), { HOME: '/Users/yo' }, 'darwin')).toBe('/Users/yo/.local/bin/claude')
+    expect(buscarRutaCli([], existe(), { HOME: '/Users/yo' }, 'darwin')).toBeNull()
   })
 })
 

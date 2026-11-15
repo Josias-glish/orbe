@@ -1,5 +1,6 @@
 import type { OrigenTextoImagen } from '../../shared/tipos'
 import { registrarMenu } from './menus'
+import { SO } from '../sistema'
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(etiqueta)
@@ -13,7 +14,7 @@ export type ModoImagen = 'texto' | 'formula'
 
 const OPCIONES: Array<{ origen: OrigenTextoImagen; titulo: string; ayuda: string }> = [
   { origen: 'ventana', titulo: 'De la ventana', ayuda: 'La que estabas usando. Sin pantallazo: Orbe no se oculta.' },
-  { origen: 'portapapeles', titulo: 'Del portapapeles', ayuda: 'Copia antes una imagen (clic derecho → Copiar imagen, o Win+Mayús+S).' },
+  { origen: 'portapapeles', titulo: 'Del portapapeles', ayuda: `Copia antes una imagen (clic derecho → Copiar imagen, o ${SO.recorte}).` },
   { origen: 'archivo', titulo: 'De un archivo…', ayuda: 'PNG, JPG, BMP, GIF o TIFF.' }
 ]
 
@@ -21,7 +22,7 @@ const MODOS: Record<ModoImagen, { boton: string; titulo: string; nota: string }>
   texto: {
     boton: 'Texto',
     titulo: 'Leer el texto de una imagen',
-    nota: 'Lo reconoce Windows en tu equipo: solo viaja el texto, y solo si envías el mensaje.'
+    nota: `Lo reconoce ${SO.nombre} en tu equipo: solo viaja el texto, y solo si envías el mensaje.`
   },
   formula: {
     boton: 'Fórmula o química',

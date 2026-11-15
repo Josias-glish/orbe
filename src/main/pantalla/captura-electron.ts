@@ -40,7 +40,9 @@ export function crearDepsReales(ventana: VentanaOrbe, ventanaObjetivo: () => Pro
         ])
         const rect = objetivo?.rect
         if (rectUtil(rect)) {
-          const dip = screen.screenToDipRect(null, { x: rect.x, y: rect.y, width: rect.ancho, height: rect.alto })
+          const fisico = { x: rect.x, y: rect.y, width: rect.ancho, height: rect.alto }
+          // En macOS el helper ya da puntos (las mismas unidades que Electron); en Windows son píxeles físicos.
+          const dip = process.platform === 'darwin' ? fisico : screen.screenToDipRect(null, fisico)
           return screen.getDisplayMatching(dip)
         }
       } catch {

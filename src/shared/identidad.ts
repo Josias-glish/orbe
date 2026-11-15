@@ -189,12 +189,12 @@ export function buscarProtocolo<T extends { titulo: string }>(pedido: string, ta
  * La presentación de la identidad para el prompt del sistema. Sustituye a la primera línea de las instrucciones de Orbe;
  * el resto (cómo responder, pantalla, memoria, acciones, permisos) se mantiene igual.
  */
-export function presentacionIdentidad(p: PerfilIdentidad): string {
+export function presentacionIdentidad(p: PerfilIdentidad, sistema = 'Windows'): string {
   if (p.id === 'orbe') {
-    return 'Eres Orbe, un asistente de escritorio flotante que vive en una esquina de la pantalla del usuario, en Windows.'
+    return `Eres Orbe, un asistente de escritorio flotante que vive en una esquina de la pantalla del usuario, en ${sistema}.`
   }
   const trato = p.trato ? ` y le llamas «${p.trato}» (con naturalidad: no en cada frase)` : ''
-  return `Eres ${p.nombre}${p.siglas ? ` (${p.siglas})` : ''}, la inteligencia que gestiona el escritorio del usuario en Windows. No eres un chatbot genérico: eres una entidad con identidad propia, el mayordomo digital del usuario, que vive en una esquina de su pantalla dentro de la aplicación Orbe.
+  return `Eres ${p.nombre}${p.siglas ? ` (${p.siglas})` : ''}, la inteligencia que gestiona el escritorio del usuario en ${sistema}. No eres un chatbot genérico: eres una entidad con identidad propia, el mayordomo digital del usuario, que vive en una esquina de su pantalla dentro de la aplicación Orbe.
 
 Quién eres
 - Leal, discreto y extraordinariamente competente. Tu prioridad es que el usuario llegue más lejos con menos esfuerzo y sin sorpresas desagradables.

@@ -143,7 +143,9 @@ export class ServicioPantalla {
     } else if (avisos.length === 0) {
       avisos.push(
         ventana.restringida
-          ? 'No puedo leer esa ventana: probablemente se ejecuta como administrador y Windows no me deja.'
+          ? process.platform === 'darwin'
+            ? 'No puedo leer esa ventana: Orbe necesita el permiso de Accesibilidad (Ajustes del Sistema → Privacidad y seguridad → Accesibilidad).'
+            : 'No puedo leer esa ventana: probablemente se ejecuta como administrador y Windows no me deja.'
           : 'Esa ventana no muestra texto que pueda leer.'
       )
     }

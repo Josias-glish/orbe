@@ -53,3 +53,27 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Orbe $etiqueta" \
             --generate-notes
+
+  # macOS: se adjunta a la misma release cuando el trabajo de Windows ya la creó (las pruebas ya pasaron allí).
+  instalador-mac:
+    runs-on: macos-latest
+    needs: instalador
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: sh scripts/compilar-helper-mac.sh
+      - name: El ayudante responde y lee texto
+        run: sh scripts/probar-helper-mac.sh
+      - run: npx electron-vite build && npx electron-builder --mac --publish never
+      - name: Adjuntar los instaladores de macOS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          etiqueta="$GITHUB_REF_NAME"
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then etiqueta="v$(node -p "require('./package.json').version")"; fi
+          gh release upload "$etiqueta" dist/Orbe-*-mac-*.dmg dist/Orbe-*-mac-*.zip --clobber

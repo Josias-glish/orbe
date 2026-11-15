@@ -10,6 +10,7 @@ import type { OcrDemo } from './pantalla/ocr-demo'
 import type { BusActividad } from './conectores/actividad'
 import type { FuenteDemo } from './pantalla/fuente-demo'
 import type { VentanaOrbe } from './ventana'
+import { textosSistema } from '../shared/sistema'
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
@@ -1239,7 +1240,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('activa la lectura con las voces de Windows', prefsJarvis.activa === true && prefsJarvis.motor === 'windows', prefsJarvis)
     comprobar('grave y pausado', prefsJarvis.tono === 0.7 && prefsJarvis.velocidad === 0.9, prefsJarvis)
     if ((v.voces as number) > 0) comprobar('elige una voz masculina de Windows', /raul|pablo|jorge|david|mark/i.test(String(prefsJarvis.voz)), prefsJarvis.voz)
-    comprobar('el menú deja elegir la voz de Windows', !(await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
+    comprobar('el menú deja elegir la voz de Windows', !(await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de ${textosSistema(process.platform).nombre}"]').disabled`)))
     comprobar('pulsar «Estilo Jarvis» no cierra el menú', !(await js<boolean>(`document.getElementById('voz-menu').hidden`)))
     await capturar('10h-jarvis')
     comprobar('probar la voz (al elegir el estilo) habló con Windows y no con la neuronal', (await js<string[]>(`window.__dicho`)).length > dichosAntes && (await js<number>(`window.__reproducidos`)) === 0)
@@ -1247,7 +1248,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     // Y si se elige la voz neuronal, esa es la que lee
     await js(`(() => { const s = document.querySelector('#voz-menu select[aria-label="Motor de voz"]'); s.value = 'neuronal'; s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
     await esperar(300)
-    comprobar('el menú muestra la voz neuronal elegida y deshabilita lo de Windows', (await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de Windows"]').disabled`)))
+    comprobar('el menú muestra la voz neuronal elegida y deshabilita lo de Windows', (await js<boolean>(`document.querySelector('#voz-menu select[aria-label="Voz de ${textosSistema(process.platform).nombre}"]').disabled`)))
     await js(`document.body.click()`)
     const antesAudio = await js<number>(`window.__reproducidos`)
     const dichosNeuronal = (await js<string[]>(`window.__dicho`)).length

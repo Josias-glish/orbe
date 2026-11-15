@@ -90,7 +90,18 @@ registrarNombres('Es una consola de comandos, y no abro consolas ni terminales.'
   'bash',
   'wsl',
   'ubuntu',
-  'git bash'
+  'git bash',
+  // macOS
+  'iterm',
+  'iterm2',
+  'warp',
+  'alacritty',
+  'ghostty',
+  'editor de scripts',
+  'script editor',
+  'automator',
+  'atajos',
+  'shortcuts'
 ])
 registrarNombres('Es una herramienta de administración del sistema, y no la abro.', [
   'regedit',
@@ -101,9 +112,26 @@ registrarNombres('Es una herramienta de administración del sistema, y no la abr
   'configuración del sistema',
   'administración de equipos',
   'directiva de seguridad local',
-  'servicios'
+  'servicios',
+  // macOS
+  'monitor de actividad',
+  'activity monitor',
+  'utilidad de discos',
+  'disk utility',
+  'acceso a llaveros',
+  'keychain access',
+  'utilidad de directorios',
+  'directory utility',
+  'asistente de migración',
+  'migration assistant',
+  'asistente boot camp',
+  'boot camp assistant'
 ])
-registrarNombres('Es la configuración del sistema, y no cambio ajustes de Windows.', [
+registrarNombres('Es la configuración del sistema, y no cambio ajustes del sistema.', [
+  'ajustes del sistema',
+  'system settings',
+  'preferencias del sistema',
+  'system preferences',
   'configuración',
   'configuración de windows',
   'settings',
@@ -158,7 +186,7 @@ const APPID_PROHIBIDOS = ['windowsterminal', 'immersivecontrolpanel', 'microsoft
 
 const MOTIVO_CONSOLA = 'Ese acceso directo abre una consola, un intérprete de comandos o una herramienta de administración, y no los abro.'
 const MOTIVO_SCRIPT = 'Ese acceso directo ejecuta un script o un instalador, y no los abro.'
-const MOTIVO_CONFIG = 'Ese acceso directo abre la configuración del sistema, y no cambio ajustes de Windows.'
+const MOTIVO_CONFIG = 'Ese acceso directo abre la configuración del sistema, y no cambio ajustes del sistema.'
 const MOTIVO_SIN_DESTINO = 'No puedo comprobar qué abre ese acceso directo, así que no lo abro.'
 
 /** Si el nombre que pidió el modelo es el de una consola o herramienta del sistema: por qué no se abre. */
@@ -205,7 +233,20 @@ const SINONIMOS: string[][] = [
   ['herramienta recortes', 'herramienta de recortes', 'recortes', 'snipping tool'],
   ['grabadora de sonido', 'grabadora de voz', 'sound recorder'],
   ['notas rapidas', 'notas adhesivas', 'sticky notes'],
-  ['tienda', 'microsoft store', 'tienda de microsoft'],
+  ['tienda', 'microsoft store', 'tienda de microsoft', 'app store'],
+  // macOS: las carpetas .app tienen el nombre en inglés aunque el Finder las muestre en español.
+  ['notas', 'notes'],
+  ['vista previa', 'preview'],
+  ['musica', 'music'],
+  ['mensajes', 'messages'],
+  ['recordatorios', 'reminders'],
+  ['contactos', 'contacts'],
+  ['mapas', 'maps'],
+  ['libros', 'books'],
+  ['buscador', 'finder'],
+  ['editor de textos', 'textedit'],
+  ['captura de pantalla', 'screenshot'],
+  ['grabadora de notas de voz', 'notas de voz', 'voice memos'],
   ['reproductor multimedia', 'media player'],
   ['el tiempo', 'clima', 'weather'],
   ['noticias', 'news'],
@@ -232,7 +273,7 @@ const SIN_DESTINO_PERMITIDOS = new Set(['file explorer', 'explorador de archivos
 const APPID_VALIDO = /^[A-Za-z0-9._-]+![A-Za-z0-9._!-]+$/
 
 function esRutaLocalAbsoluta(texto: string): boolean {
-  return /^[a-zA-Z]:[\\/]/.test(texto)
+  return /^[a-zA-Z]:[\\/]/.test(texto) || (texto.startsWith('/') && !texto.startsWith('//'))
 }
 
 /**
@@ -302,6 +343,14 @@ export class CatalogoAplicaciones {
       const hijos = await this.deps.listarDirectorio(carpeta).catch(() => [])
       for (const h of hijos) {
         const ruta = join(carpeta, h.nombre)
+        // macOS: cada aplicación es una carpeta «Nombre.app» (o un enlace a ella); no se entra en ella.
+        if (extname(h.nombre).toLowerCase() === '.app') {
+          const nombre = basename(h.nombre, extname(h.nombre))
+          if (NO_ES_APLICACION.test(nombre)) continue
+          const motivo = motivoNombreProhibido(nombre)
+          lista.push({ nombre, clave: normalizar(nombre), origen: 'atajo', ruta, ...(motivo ? { prohibida: motivo } : {}) })
+          continue
+        }
         if (h.esCarpeta) {
           if (profundidad < PROFUNDIDAD_MAX) await recorrer(ruta, profundidad + 1)
           continue
@@ -378,12 +427,13 @@ export class CatalogoAplicaciones {
       return e.prohibida ? { tipo: 'prohibida', motivo: e.prohibida } : { tipo: 'una', entrada: e }
     }
     const extension = extname(destino).toLowerCase()
-    if (extension !== '.exe' && extension !== '.lnk') {
-      return { tipo: 'prohibida', motivo: 'El alias apunta a un archivo que no es un programa (.exe) ni un acceso directo (.lnk).' }
+    if (extension !== '.exe' && extension !== '.lnk' && extension !== '.app') {
+      return { tipo: 'prohibida', motivo: 'El alias apunta a un archivo que no es un programa (.exe o .app) ni un acceso directo (.lnk).' }
     }
     if (!(await this.deps.existeArchivo(destino))) return { tipo: 'ninguna', sugerencias: [] }
     let motivo: string | undefined
-    if (extension === '.exe') motivo = motivoDestinoProhibido(destino)
+    if (extension === '.app') motivo = motivoNombreProhibido(basename(destino, extension))
+    else if (extension === '.exe') motivo = motivoDestinoProhibido(destino)
     else {
       const atajo = this.leerAtajoSeguro(destino)
       motivo = atajo === null || atajo.destino === '' ? MOTIVO_SIN_DESTINO : motivoDestinoProhibido(atajo.destino, atajo.argumentos)

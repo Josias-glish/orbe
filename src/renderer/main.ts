@@ -10,6 +10,14 @@ import { MenuPersonaje } from './personaje/menu-personaje'
 import { Personaje } from './personaje/personaje'
 import { Sonidos, type Sonido } from './personaje/sonidos'
 import { disenoPorId } from '../shared/disenos'
+import { SO } from './sistema'
+
+// index.html trae los atajos de Windows; en macOS se escriben con ⌘ (el atajo es CommandOrControl).
+if (SO.nombre === 'macOS') {
+  const ayuda = document.querySelector('.vacio-ayuda')
+  if (ayuda) ayuda.innerHTML = `Escribe tu pregunta abajo.<br />Pulsa <kbd>${SO.atajoPanel}</kbd> para abrir o cerrar el panel.`
+  document.getElementById('leer')?.setAttribute('title', `Leer la pantalla y adjuntarla a tu próximo mensaje (${SO.atajoLeer})`)
+}
 
 const UMBRAL_ARRASTRE = 4
 /** Elementos que reciben sus propios clics: no deben iniciar un arrastre de la ventana. */

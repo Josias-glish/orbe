@@ -1,6 +1,7 @@
 import { modoAutoActivo } from '../modo-auto'
 import { join } from 'node:path'
 import { perfilDe, presentacionIdentidad } from '../../shared/identidad'
+import { textosSistema } from '../../shared/sistema'
 import type { InfoChat } from '../../shared/tipos'
 import type { RegistroHerramientas } from '../agente/registro'
 import { leerReglas } from '../agente/reglas'
@@ -53,7 +54,7 @@ export function crearProveedor(
       agente.agentes = () => almacen.definiciones(disponibles, agente.busquedaCli === true)
     }
   }
-  const identidad = presentacionIdentidad(perfilDe(config.identidad))
+  const identidad = presentacionIdentidad(perfilDe(config.identidad), textosSistema(process.platform).nombre)
   if (config.proveedor === 'api') {
     return new ProveedorApi({ apiKey: config.apiKey, modelo: config.modelo, esfuerzo: config.esfuerzo, memoria, identidad, agente })
   }

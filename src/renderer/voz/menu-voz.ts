@@ -1,6 +1,7 @@
 import type { InfoVoz } from '../../shared/tipos'
 import { registrarMenu } from '../chat/menus'
 import { LectorVoz, TONO_MAX, TONO_MIN, VELOCIDAD_MAX, VELOCIDAD_MIN, type MotorVoz } from './lector'
+import { SO } from '../sistema'
 
 function el<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase?: string, texto?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(etiqueta)
@@ -77,7 +78,7 @@ export class MenuVoz {
     jarvis.type = 'button'
     jarvis.title = neuronal
       ? 'Voz neuronal grave, serena y elegante, a un ritmo pausado'
-      : 'Voz masculina de Windows, grave y pausada (con una clave de voz neuronal suena mucho más natural)'
+      : `Voz masculina de ${SO.nombre}, grave y pausada (con una clave de voz neuronal suena mucho más natural)`
     jarvis.disabled = !this.lector.disponible
     jarvis.addEventListener('click', () => {
       this.lector.aplicarEstiloJarvis(neuronal)
@@ -104,7 +105,7 @@ export class MenuVoz {
       const motor = el('select', 'voz-selector')
       motor.setAttribute('aria-label', 'Motor de voz')
       for (const [valor, texto] of [
-        ['windows', 'Voces de Windows (gratis, sin conexión)'],
+        ['windows', `Voces de ${SO.nombre} (gratis, sin conexión)`],
         ['neuronal', `Voz neuronal «${this.info?.vozNeuronal ?? ''}» (más natural, con tu clave)`]
       ] as const) {
         const opcion = el('option', undefined, texto)
@@ -118,13 +119,13 @@ export class MenuVoz {
       })
       filaMotor.append(el('span', undefined, 'Motor de voz'), motor)
       hijos.push(filaMotor)
-      if (usaNeuronal) hijos.push(el('p', 'memoria-nota', 'Con la voz neuronal, el texto de las respuestas viaja al servicio de voz. Los ajustes de voz de Windows de abajo no se aplican.'))
+      if (usaNeuronal) hijos.push(el('p', 'memoria-nota', `Con la voz neuronal, el texto de las respuestas viaja al servicio de voz. Los ajustes de voz de ${SO.nombre} de abajo no se aplican.`))
     }
 
     const voces = this.lector.voces()
     const filaVoz = el('label', 'fondo-visibilidad')
     const selector = el('select', 'voz-selector')
-    selector.setAttribute('aria-label', 'Voz de Windows')
+    selector.setAttribute('aria-label', `Voz de ${SO.nombre}`)
     const elegida = voces.find((v) => v.voiceURI === prefs.voz) ?? voces.find((v) => v.lang.toLowerCase().startsWith('es'))
     for (const v of voces) {
       const opcion = el('option', undefined, `${v.name} (${v.lang})`)
@@ -134,7 +135,7 @@ export class MenuVoz {
     }
     selector.disabled = voces.length === 0 || usaNeuronal
     selector.addEventListener('change', () => this.lector.fijarPrefs({ voz: selector.value }))
-    filaVoz.append(el('span', undefined, 'Voz de Windows'), selector)
+    filaVoz.append(el('span', undefined, `Voz de ${SO.nombre}`), selector)
 
     const filaVelocidad = el('label', 'fondo-visibilidad')
     const etiquetaVelocidad = el('span', undefined, `Velocidad: ${prefs.velocidad.toFixed(1)}×`)
@@ -158,7 +159,7 @@ export class MenuVoz {
     tono.step = '1'
     tono.value = String(Math.round(prefs.tono * 10))
     tono.disabled = usaNeuronal
-    tono.setAttribute('aria-label', 'Tono de la voz de Windows')
+    tono.setAttribute('aria-label', `Tono de la voz de ${SO.nombre}`)
     tono.addEventListener('input', () => (etiquetaTono.textContent = `Tono: ${(Number(tono.value) / 10).toFixed(1)} (más bajo = más grave)`))
     tono.addEventListener('change', () => this.lector.fijarPrefs({ tono: Number(tono.value) / 10 }))
     filaTono.append(etiquetaTono, tono)

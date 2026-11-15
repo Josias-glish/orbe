@@ -21,6 +21,7 @@ function suscribir<T>(canal: string, cb: (valor: T) => void): () => void {
 }
 
 const api: ApiOrbe = {
+  plataforma: process.platform,
   alternar: () => ipcRenderer.send(CANALES.alternar),
   ratonInteractivo: (dentro) => ipcRenderer.send(CANALES.ratonInteractivo, dentro === true),
   arrastreInicio: (x, y) => ipcRenderer.send(CANALES.arrastreInicio, x, y),

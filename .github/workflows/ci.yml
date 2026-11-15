@@ -40,3 +40,28 @@ jobs:
             dist/Orbe-*-win.zip
           if-no-files-found: error
           retention-days: 30
+
+  # macOS (Apple Silicon): pruebas, el ayudante nativo en Swift y los .dmg/.zip sin firmar, para descargar igual.
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: sh scripts/compilar-helper-mac.sh
+      - name: El ayudante responde y lee texto
+        run: sh scripts/probar-helper-mac.sh
+      - run: npx electron-vite build && npx electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbe-instaladores-mac
+          path: |
+            dist/Orbe-*-mac-*.dmg
+            dist/Orbe-*-mac-*.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -9,6 +9,9 @@ export class ErrorChat extends Error {
   }
 }
 
+/** Los avisos que dependen del sistema (permisos, paquetes de idioma) dicen dónde arreglarlo en el que corre Orbe. */
+const MAC = process.platform === 'darwin'
+
 interface Plantilla {
   titulo: string
   mensaje: string
@@ -76,7 +79,9 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
   lector_no_disponible: {
     titulo: 'No puedo leer la pantalla',
     mensaje:
-      'El lector de pantalla de Windows no está disponible. Reinicia Orbe y, si sigue igual, mira los detalles técnicos.',
+      MAC
+        ? 'El lector de pantalla no está disponible. Comprueba que Orbe tiene el permiso de Accesibilidad (Ajustes del Sistema → Privacidad y seguridad → Accesibilidad), reinicia Orbe y, si sigue igual, mira los detalles técnicos.'
+        : 'El lector de pantalla de Windows no está disponible. Reinicia Orbe y, si sigue igual, mira los detalles técnicos.',
     reintentable: true
   },
   sin_ventana: {
@@ -88,7 +93,9 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
   ocr_no_disponible: {
     titulo: 'No he podido reconocer el texto',
     mensaje:
-      'El reconocimiento de texto de Windows no está disponible o ha fallado. Comprueba que tienes instalado el paquete de idioma con «Reconocimiento óptico de caracteres» (Configuración → Hora e idioma → Idioma y región).',
+      MAC
+        ? 'El reconocimiento de texto de macOS no está disponible o ha fallado. Reinicia Orbe y, si sigue igual, mira los detalles técnicos.'
+        : 'El reconocimiento de texto de Windows no está disponible o ha fallado. Comprueba que tienes instalado el paquete de idioma con «Reconocimiento óptico de caracteres» (Configuración → Hora e idioma → Idioma y región).',
     reintentable: true
   },
   ocr_sin_imagen: {
@@ -103,7 +110,9 @@ const PLANTILLAS: Record<CodigoError, Plantilla> = {
   },
   captura_no_disponible: {
     titulo: 'No he podido hacer la captura',
-    mensaje: 'Windows no me ha dejado capturar la pantalla. Inténtalo de nuevo; si sigue igual, mira los detalles técnicos.',
+    mensaje: MAC
+      ? 'macOS no me ha dejado capturar la pantalla. Dale a Orbe el permiso de Grabación de pantalla (Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla y audio del sistema) y reinicia Orbe.'
+      : 'Windows no me ha dejado capturar la pantalla. Inténtalo de nuevo; si sigue igual, mira los detalles técnicos.',
     reintentable: true
   },
   desconocido: {

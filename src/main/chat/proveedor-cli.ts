@@ -1,6 +1,6 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 import type { MotivoFin } from '../../shared/tipos'
 import type { EjecutorHerramientas } from '../agente/ejecutor'
 import { ServidorMcp, type ManejadorMcp, type RespuestaHerramienta } from '../agente/servidor-mcp'
@@ -92,42 +92,54 @@ export function argumentosCli(modelo: string, esfuerzo: Esfuerzo, prompt: string
 }
 
 /**
- * Busca claude.exe. Con npm, `where claude` devuelve un .cmd; el ejecutable real está en
- * node_modules/@anthropic-ai/claude-code/bin junto a él. Se lanza el .exe directamente para no
- * depender de un shell.
+ * Busca el CLI de Claude. En Windows, con npm, `where claude` devuelve un .cmd; el ejecutable real está en
+ * node_modules/@anthropic-ai/claude-code/bin junto a él, y se lanza el .exe directamente para no depender de un shell.
+ * En macOS, `which` ya da algo ejecutable: el binario del instalador nativo o el enlace de npm (con su `#!/usr/bin/env node`).
  */
 export function buscarRutaCli(
   salidaWhere: string[],
   existe: (ruta: string) => boolean = existsSync,
-  entorno: NodeJS.ProcessEnv = process.env
+  entorno: NodeJS.ProcessEnv = process.env,
+  plataforma: NodeJS.Platform = process.platform
 ): string | null {
+  if (plataforma !== 'win32') {
+    const inicio = entorno['HOME']
+    const candidatas = [
+      ...salidaWhere,
+      ...(inicio ? [posix.join(inicio, '.local', 'bin', 'claude'), posix.join(inicio, '.claude', 'local', 'claude')] : []),
+      '/opt/homebrew/bin/claude',
+      '/usr/local/bin/claude'
+    ]
+    return candidatas.find((c) => existe(c)) ?? null
+  }
   for (const candidata of salidaWhere) {
     if (/\.exe$/i.test(candidata) && existe(candidata)) return candidata
-    const junto = join(dirname(candidata), 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
+    const junto = win32.join(win32.dirname(candidata), 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
     if (existe(junto)) return junto
   }
   const inicio = entorno['USERPROFILE']
   if (inicio) {
-    const nativa = join(inicio, '.local', 'bin', 'claude.exe')
+    const nativa = win32.join(inicio, '.local', 'bin', 'claude.exe')
     if (existe(nativa)) return nativa
   }
   return null
 }
 
 export function resolverRutaCli(rutaConfigurada?: string): string | null {
+  const windows = process.platform === 'win32'
   if (rutaConfigurada) {
-    if (/\.exe$/i.test(rutaConfigurada)) return existsSync(rutaConfigurada) ? rutaConfigurada : null
+    if (!windows || /\.exe$/i.test(rutaConfigurada)) return existsSync(rutaConfigurada) ? rutaConfigurada : null
     // Si apuntan al shim (.cmd/.ps1), buscamos el .exe que hay a su lado.
     return buscarRutaCli([rutaConfigurada])
   }
   let salida: string[] = []
   try {
-    salida = execFileSync('where', ['claude'], { encoding: 'utf8', windowsHide: true, timeout: 5000 })
+    salida = execFileSync(windows ? 'where' : 'which', windows ? ['claude'] : ['-a', 'claude'], { encoding: 'utf8', windowsHide: true, timeout: 5000 })
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean)
   } catch {
-    // `where` falla si no hay ninguna coincidencia.
+    // `where` y `which` fallan si no hay ninguna coincidencia.
   }
   return buscarRutaCli(salida)
 }

@@ -64,7 +64,10 @@ const PROCESOS_BLOQUEADOS = new Set([
   ...DESTINOS_PROHIBIDOS,
   'powershell_ise', 'windowsterminal', 'openconsole', 'conhost', 'mintty', 'regedit', 'regedt32',
   'sechealthui', 'securityhealthhost', 'securityhealthsystray', 'systemsettings', 'consent', 'credentialuibroker', 'logonui',
-  'keepass', 'keepassxc', '1password', 'bitwarden', 'lastpass', 'dashlane', 'enpass', 'roboform', 'nordpass', 'proton pass',
+  // macOS (nombre del ejecutable): consolas, ajustes, llavero, administración y el diálogo de contraseña del sistema.
+  'terminal', 'iterm2', 'stable', 'alacritty', 'ghostty', 'kitty', 'script editor', 'automator', 'shortcuts', 'system settings',
+  'system preferences', 'keychain access', 'passwords', 'securityagent', 'activity monitor', 'disk utility', 'directory utility',
+  'keepass', 'keepassxc', '1password', '1password 7', 'bitwarden', 'lastpass', 'dashlane', 'enpass', 'roboform', 'nordpass', 'proton pass',
   'orbe'
 ])
 
@@ -74,9 +77,13 @@ const DELICADA =
 
 /** Si esa ventana no se puede controlar, por qué (en español, terminado en punto). */
 export function motivoBloqueo(v: Pick<VentanaPc, 'proceso' | 'titulo' | 'url' | 'restringida'>): string | undefined {
-  if (PROCESOS_BLOQUEADOS.has(v.proceso.toLowerCase())) return `«${v.proceso}» está bloqueada para el control del PC (consolas, administración, contraseñas, seguridad de Windows u Orbe).`
+  if (PROCESOS_BLOQUEADOS.has(v.proceso.toLowerCase())) return `«${v.proceso}» está bloqueada para el control del PC (consolas, administración, contraseñas, seguridad del sistema u Orbe).`
   if (DELICADA.test(`${v.titulo} ${v.url ?? ''}`)) return 'Es una página o app de bancos, pagos o contraseñas: ahí no actúo; hazlo tú.'
-  if (v.restringida) return 'Es una ventana de administrador: Windows no deja que Orbe la controle.'
+  if (v.restringida) {
+    return process.platform === 'darwin'
+      ? 'Orbe aún no tiene el permiso de Accesibilidad: Ajustes del Sistema → Privacidad y seguridad → Accesibilidad → activa Orbe.'
+      : 'Es una ventana de administrador: Windows no deja que Orbe la controle.'
+  }
   return undefined
 }
 
@@ -105,9 +112,9 @@ export function parsearTeclas(combo: string): number[] | null {
   return vks
 }
 
-/** Teclas que pueden borrar o cerrar (Supr, Alt+F4): se confirman salvo en modo auto. Enter no pregunta. */
+/** Teclas que pueden borrar o cerrar (Supr, Alt+F4; en macOS Ctrl pasa a ⌘, así que Ctrl+Q cierra la app): se confirman salvo en modo auto. Enter no pregunta. */
 export function teclasConEfecto(vks: readonly number[]): boolean {
-  return vks.includes(0x2e) || (vks.includes(0x12) && vks.includes(0x73))
+  return vks.includes(0x2e) || (vks.includes(0x12) && vks.includes(0x73)) || (vks.includes(0x11) && vks.includes(0x51))
 }
 
 /** Pagos y compras: se confirman incluso en modo auto. */

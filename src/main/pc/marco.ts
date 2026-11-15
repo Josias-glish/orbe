@@ -23,7 +23,11 @@ export function crearMarco(nombre: string): MarcoPc {
   let conMarco = false
   let conSenal: ReturnType<typeof setTimeout> | null = null
 
-  const dip = (r: RectPc): Rectangle => screen.screenToDipRect(null, { x: r.x, y: r.y, width: r.ancho, height: r.alto })
+  // En macOS el helper ya da puntos (las unidades de Electron) y screenToDipRect no existe.
+  const dip = (r: RectPc): Rectangle => {
+    const zona = { x: r.x, y: r.y, width: r.ancho, height: r.alto }
+    return process.platform === 'darwin' ? zona : screen.screenToDipRect(null, zona)
+  }
 
   const preparar = (r: RectPc | null | undefined): { ventana: BrowserWindow; zona: Rectangle } => {
     const zona = (r ? screen.getDisplayMatching(dip(r)) : screen.getPrimaryDisplay()).bounds

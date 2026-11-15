@@ -56,8 +56,18 @@ export function lanzadorPowerShell(carpetaHelper: string): LanzadorHelper {
     )
 }
 
+/** macOS: el binario Swift `helper/mac/orbe-helper` (Accesibilidad + Vision) con el mismo protocolo. No usa caché. */
+export function lanzadorMac(carpetaHelper: string): LanzadorHelper {
+  return ({ pidOrbe }) => spawn(join(carpetaHelper, 'mac', 'orbe-helper'), ['servidor', '--pid', String(pidOrbe)], { stdio: ['pipe', 'pipe', 'pipe'] })
+}
+
+/** El lanzador de este sistema: PowerShell en Windows, el binario Swift en macOS. */
+export function lanzadorDelSistema(carpetaHelper: string, plataforma: NodeJS.Platform = process.platform): LanzadorHelper {
+  return plataforma === 'darwin' ? lanzadorMac(carpetaHelper) : lanzadorPowerShell(carpetaHelper)
+}
+
 /**
- * Cliente del lector de pantalla: un proceso PowerShell persistente que habla JSON por líneas.
+ * Cliente del lector de pantalla: un proceso persistente (PowerShell en Windows, Swift en macOS) que habla JSON por líneas.
  * Si el proceso muere, se vuelve a lanzar en la siguiente petición.
  */
 export class ClienteHelper {
@@ -92,7 +102,7 @@ export class ClienteHelper {
     return new Promise<void>((resolver, rechazar) => {
       const lanzador =
         this.opciones.lanzador ??
-        (this.opciones.carpetaHelper ? lanzadorPowerShell(this.opciones.carpetaHelper) : null)
+        (this.opciones.carpetaHelper ? lanzadorDelSistema(this.opciones.carpetaHelper) : null)
       if (!lanzador) {
         rechazar(new ErrorHelper('No se indicó dónde está el lector de pantalla.'))
         return
@@ -152,7 +162,7 @@ export class ClienteHelper {
       hijo.stdin?.on('error', () => undefined)
       hijo.on('error', (e) => {
         clearTimeout(temporizador)
-        rechazar(new ErrorHelper(`No se pudo iniciar PowerShell: ${e.message}`))
+        rechazar(new ErrorHelper(`No se pudo iniciar el lector de pantalla: ${e.message}`))
         this.alSalir(hijo)
       })
       hijo.on('exit', (codigo) => {
