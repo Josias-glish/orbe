@@ -1,3 +1,6 @@
+import { spawn } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+
 /**
  * La «voz» del Compañero: Llama 3.2 en Ollama, solo en 127.0.0.1, sin herramientas. Recibe texto (nunca la imagen) y
  * decide si comenta. Prompt C.2 de COMPANERO-Y-CONFIGURACION.md, con dos añadidos pedidos por el usuario el 12-nov:
@@ -104,4 +107,36 @@ export async function pedirOllama(o: { url: string; modelo: string; sistema: str
   if (!r.ok) throw new Error(`Ollama respondió ${r.status}`)
   const d = (await r.json()) as { message?: { content?: string } }
   return d.message?.content ?? ''
+}
+
+type Lanzar = typeof spawn
+
+/**
+ * La voz con Haiku por el CLI de Claude (ORBE_COMPANERO_CEREBRO=haiku, decisión del usuario del 15-nov: «por ahora,
+ * para mí solo»). Usa su suscripción, sin claves, sin herramientas, sin MCP, sin sus ajustes ni sesión guardada. A
+ * diferencia de Ollama, el texto de la actividad (app, título, web) sí sale a los servidores de Anthropic.
+ */
+export async function pedirHaiku(o: { rutaCli: string; cwd: string; sistema: string; mensaje: string; modelo?: string; lanzar?: Lanzar }): Promise<string> {
+  mkdirSync(o.cwd, { recursive: true })
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const v of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_PLUGIN_DIRS']) delete env[v]
+  const args = ['-p', '--output-format', 'json', '--model', o.modelo || 'haiku', '--system-prompt', o.sistema, '--setting-sources', '', '--strict-mcp-config', '--tools', '', '--no-session-persistence']
+  const hijo = (o.lanzar ?? spawn)(o.rutaCli, args, { cwd: o.cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const salida = await new Promise<string>((resolver, rechazar) => {
+    let texto = ''
+    const fin = setTimeout(() => (hijo.kill(), rechazar(new Error('Haiku tardó demasiado.'))), 90_000)
+    hijo.stdout?.setEncoding('utf8')
+    hijo.stdout?.on('data', (t: string) => (texto += t))
+    hijo.on('error', (e) => (clearTimeout(fin), rechazar(e)))
+    hijo.on('close', () => (clearTimeout(fin), resolver(texto)))
+    hijo.stdin?.end(o.mensaje)
+  })
+  let r: { result?: unknown; is_error?: unknown } | null = null
+  try {
+    r = JSON.parse(salida.trim()) as { result?: unknown; is_error?: unknown }
+  } catch {
+    // salida cortada o no JSON: se trata como sin respuesta
+  }
+  if (!r || r.is_error === true || typeof r.result !== 'string') throw new Error(`Haiku no respondió: ${String(r?.result ?? 'sin respuesta').slice(0, 200)}`)
+  return r.result
 }

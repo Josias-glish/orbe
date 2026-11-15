@@ -73,6 +73,8 @@ export const BUSQUEDAS_MAX_POR_DEFECTO = 5
 
 export interface ConfigCompanero {
   activo: boolean
+  /** Quién decide los comentarios: Llama en Ollama (local, por defecto) o Haiku por el CLI de Claude (tu suscripción). */
+  cerebro: 'ollama' | 'haiku'
   /** Ollama, solo en 127.0.0.1 (API nativa, sin /v1). */
   url: string
   modelo: string
@@ -231,8 +233,11 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     avisos.push(`ORBE_LOCAL_URL="${urlLocal}" no es local (solo http://127.0.0.1:<puerto>); uso http://127.0.0.1:11434.`)
     urlLocal = 'http://127.0.0.1:11434'
   }
+  const cerebro = leer('ORBE_COMPANERO_CEREBRO').toLowerCase()
+  if (cerebro && cerebro !== 'ollama' && cerebro !== 'haiku') avisos.push(`ORBE_COMPANERO_CEREBRO="${cerebro}" no es válido (ollama o haiku); uso ollama.`)
   const companero: ConfigCompanero = {
     activo: leer('ORBE_COMPANERO') === '1',
+    cerebro: cerebro === 'haiku' ? 'haiku' : 'ollama',
     url: urlLocal,
     modelo: leer('ORBE_LOCAL_MODELO') || 'llama3.2',
     privacidad: privacidad === 'equilibrada' ? 'equilibrada' : 'estricta',

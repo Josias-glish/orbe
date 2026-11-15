@@ -336,7 +336,9 @@ llamadas, correo y mensajería, bancos y gestores de contraseñas, con el panel 
 (15 viendo un vídeo) y el doble si ignoras dos seguidos; nunca repite. **Modo película**: con VLC, YouTube, Netflix…
 saca el título de la ventana, da datos de rodaje sin spoilers y el bocadillo se va antes. Con
 `ORBE_COMPANERO_PRIVACIDAD=equilibrada` comprueba **solo el título** de la obra en Wikipedia; con `estricta` (por
-defecto) no sale nada del PC. `ORBE_COMPANERO_VOZ=1` lo dice además en voz alta (nunca en modo película).
+defecto) no sale nada del PC. **`ORBE_COMPANERO_CEREBRO=haiku`** cambia Llama por Haiku con el CLI de Claude y tu
+suscripción (sin herramientas ni MCP): responde en pocos segundos en vez de casi un minuto, pero entonces la app, el
+título de la ventana y la web **sí salen a Anthropic** (la imagen de los ojos sigue necesitando su propio permiso). `ORBE_COMPANERO_VOZ=1` lo dice además en voz alta (nunca en modo película).
 
 **Ojos** (`ORBE_COMPANERO_OJOS=1`, opcional): usa la visión de arriba cuando cambias de actividad, con 2 min entre
 imágenes, nunca a batería y, con Ollama, solo si quedan 8 GB de RAM libres. Si `VISION_PROVIDER` está en la nube

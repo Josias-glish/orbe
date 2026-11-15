@@ -85,7 +85,7 @@ import { registrarVision } from './vision/ipc'
 import { capturarVentana } from './vision/ojos'
 import { mostrarBocadillo, registrarCompanero } from './companero/ipc'
 import { Companero } from './companero/servicio'
-import { pedirOllama } from './companero/voz'
+import { pedirHaiku, pedirOllama } from './companero/voz'
 import { fichaWikipedia } from './companero/wikipedia'
 import { ProveedorConmutable, registrarPrivado } from './chat/privado'
 import { ProveedorOpenai } from './chat/proveedor-openai'
@@ -406,7 +406,12 @@ app.whenReady().then(async () => {
             }
           : null,
         wikipedia: (t) => fichaWikipedia(t),
-        modelo: (sistema, mensaje) => pedirOllama({ url: cc.url, modelo: cc.modelo, sistema, mensaje }),
+        modelo: (sistema, mensaje) => {
+          if (cc.cerebro === 'ollama') return pedirOllama({ url: cc.url, modelo: cc.modelo, sistema, mensaje })
+          const rutaCli = resolverRutaCli(config.rutaCli || undefined)
+          if (!rutaCli) throw new Error('No encuentro el CLI de Claude para el Compañero.')
+          return pedirHaiku({ rutaCli, cwd: join(datos, 'companero-cli'), sistema, mensaje })
+        },
         mostrar: (c) => mostrarBocadillo(orbe, c),
         ocupado: () => orbe.estaExpandido || !orbe.estaVisible,
         enBateria: () => powerMonitor.isOnBatteryPower()

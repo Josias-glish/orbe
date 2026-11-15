@@ -71,7 +71,7 @@ describe('Companero', () => {
     const wikipedia = vi.fn(async () => 'Interstellar es una película de 2014.')
     const dir = mkdtempSync(join(tmpdir(), 'orbe-companero-'))
     const c = new Companero({
-      config: { activo: true, url: 'http://127.0.0.1:11434', modelo: 'llama3.2', privacidad: 'equilibrada', intervalo: 20, maxHora: 4, silencio: '', ojos: false, ojosNube: false, voz: false },
+      config: { activo: true, url: 'http://127.0.0.1:11434', modelo: 'llama3.2', privacidad: 'equilibrada', intervalo: 20, maxHora: 4, silencio: '', ojos: false, ojosNube: false, voz: false, cerebro: 'ollama' },
       perfil: { nombre: 'Orbe', formal: false, trato: '' },
       archivo: join(dir, 'companero.json'),
       ventana: async () => v,
@@ -98,7 +98,7 @@ describe('Companero', () => {
   })
 
   it('estricta no sale a Wikipedia; nunca mira bancos', async () => {
-    const a = crear({ config: { activo: true, url: '', modelo: '', privacidad: 'estricta', intervalo: 20, maxHora: 4, silencio: '', ojos: false, ojosNube: false, voz: false } })
+    const a = crear({ config: { activo: true, url: '', modelo: '', privacidad: 'estricta', intervalo: 20, maxHora: 4, silencio: '', ojos: false, ojosNube: false, voz: false, cerebro: 'ollama' } })
     await a.c.vuelta()
     await a.c.vuelta()
     expect(a.wikipedia).not.toHaveBeenCalled()

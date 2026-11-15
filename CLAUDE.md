@@ -269,6 +269,10 @@ para ojos en la nube: `consentimientos.json` `companero` (por proveedor), `Servi
 `ORBE_COMPANERO_OJOS(_NUBE)=1`; con Ollama local, ojos solo con ≥ 8 GB libres. «🔒 Privado»: `chat/privado.ts`
 `ProveedorConmutable` (CLI/API ↔ `ProveedorOpenai` a `<ORBE_LOCAL_URL>/v1`, sin agente), IPC `privado:info|fijar`; en
 privado `registrarChat` no usa la memoria. Prueba real: `ORBE_PRUEBA_REAL=1 npm test -- tests/integracion/ollama-real`.
+v1.25.1: `ORBE_COMPANERO_CEREBRO=haiku` (decisión del usuario del 15-nov, «por ahora, para mí solo»): `pedirHaiku` en
+voz.ts (`claude -p --output-format json --model haiku --tools "" --strict-mcp-config --setting-sources ""`, sin claves
+del entorno, cwd `companero-cli`). Real: 3–6 s por comentario frente a ~50 s de Llama 3.2 en su PC; pasa los 3 casos de
+`tests/integracion/haiku-real`. Privado sigue siendo solo Ollama.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 

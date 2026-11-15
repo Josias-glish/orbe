@@ -73,3 +73,38 @@ describe('ojos del Compañero en la nube', () => {
     expect(guardado.companero.proveedor).toBe('claude-cli')
   })
 })
+
+describe('cerebro del Compañero', () => {
+  it('ORBE_COMPANERO_CEREBRO elige Haiku; un valor raro avisa y deja Ollama', () => {
+    expect(resolverConfig({ ORBE_COMPANERO_CEREBRO: 'haiku' }, {}).companero.cerebro).toBe('haiku')
+    const c = resolverConfig({ ORBE_COMPANERO_CEREBRO: 'gpt' }, {})
+    expect(c.companero.cerebro).toBe('ollama')
+    expect(c.avisos.join(' ')).toContain('ORBE_COMPANERO_CEREBRO')
+  })
+
+  it('Haiku va por el CLI sin herramientas, sin MCP y sin claves del entorno', async () => {
+    const { EventEmitter } = await import('node:events')
+    const { PassThrough } = await import('node:stream')
+    const { pedirHaiku } = await import('../src/main/companero/voz')
+    let visto: { args: string[]; env: NodeJS.ProcessEnv; entrada: string } | null = null
+    const lanzar = ((_ruta: string, args: string[], op: { env: NodeJS.ProcessEnv }) => {
+      const hijo = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stdin: new PassThrough(), kill: vi.fn() })
+      let entrada = ''
+      hijo.stdin.on('data', (d) => (entrada += String(d)))
+      hijo.stdin.on('end', () => {
+        visto = { args, env: op.env, entrada }
+        hijo.stdout.end(JSON.stringify({ result: '{"comentar":false}', is_error: false }))
+        hijo.stdout.on('end', () => hijo.emit('close', 0))
+        hijo.stdout.resume()
+      })
+      return hijo
+    }) as never
+    process.env['ANTHROPIC_API_KEY'] = 'no-debe-pasar'
+    const r = await pedirHaiku({ rutaCli: 'claude', cwd: mkdtempSync(join(tmpdir(), 'orbe-h-')), sistema: 'S', mensaje: 'ACTIVIDAD', lanzar })
+    delete process.env['ANTHROPIC_API_KEY']
+    expect(r).toBe('{"comentar":false}')
+    expect(visto!.args).toEqual(expect.arrayContaining(['--model', 'haiku', '--tools', '', '--strict-mcp-config', '--no-session-persistence']))
+    expect(visto!.env['ANTHROPIC_API_KEY']).toBeUndefined()
+    expect(visto!.entrada).toBe('ACTIVIDAD')
+  })
+})
