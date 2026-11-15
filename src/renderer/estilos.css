@@ -190,6 +190,10 @@ input {
 .chip-modelo[hidden] {
   display: none;
 }
+.chip-privado {
+  color: var(--cian);
+  border-color: currentColor;
+}
 
 .boton-icono {
   display: grid;
@@ -2815,5 +2819,82 @@ select.memoria-campo option {
 @media (prefers-reduced-motion: reduce) {
   .pdf-hoja {
     transition: none;
+  }
+}
+
+/* ---- Bocadillo del Compañero (Etapa 14): al otro lado del personaje, con la ventana plegada ---- */
+.bocadillo {
+  position: absolute;
+  width: 296px;
+  max-height: 140px;
+  padding: 10px 12px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-borde);
+  background: var(--panel-fondo);
+  color: var(--texto);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: bocadillo-entra 220ms ease-out;
+}
+.bocadillo[hidden],
+.expandido .bocadillo {
+  display: none;
+}
+.ancla-derecha .bocadillo {
+  right: 12px;
+}
+.ancla-izquierda .bocadillo {
+  left: 12px;
+}
+.ancla-abajo .bocadillo {
+  bottom: calc(var(--caja-orbe) - 6px);
+}
+.ancla-arriba .bocadillo {
+  top: calc(var(--caja-orbe) - 6px);
+}
+.bocadillo.pelicula {
+  font-size: 12px;
+  opacity: 0.92;
+}
+.bocadillo-texto {
+  margin: 0 0 8px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+.bocadillo-acciones {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.bocadillo-acciones button {
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.bocadillo-acciones button:hover {
+  color: var(--texto);
+  border-color: var(--cian);
+}
+.bocadillo-acciones button:focus-visible {
+  outline: 2px solid var(--cian);
+  outline-offset: 1px;
+}
+@keyframes bocadillo-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bocadillo {
+    animation: none;
   }
 }

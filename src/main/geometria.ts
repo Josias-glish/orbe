@@ -14,6 +14,8 @@ export const TAM_COLAPSADO = { width: 150, height: 150 }
  */
 export const TAM_EXPANDIDO = { width: 380, height: 654 }
 export const MARGEN_ESQUINA = 16
+/** Ventana con el bocadillo del Compañero: el personaje en su esquina y el globo encima o debajo. */
+export const TAM_BOCADILLO = { width: 320, height: 300 }
 
 /** Lo que la ventana expandida mide de más que el panel: la parte del personaje (654 - 520). */
 export const ALTO_EXTRA_ORBE = 134
@@ -80,7 +82,11 @@ export function disposicionExpandida(
   area: Rect,
   panel: TamPanel = TAM_PANEL_POR_DEFECTO
 ): DisposicionExpandida {
-  const tam = tamVentanaExpandida(limitarPanel(panel, area))
+  return anclarEn(colapsado, area, tamVentanaExpandida(limitarPanel(panel, area)))
+}
+
+/** Una ventana de tamaño `tam` que deja el orbe donde está y crece hacia el centro del área de trabajo. */
+export function anclarEn(colapsado: Rect, area: Rect, tam: { width: number; height: number }): DisposicionExpandida {
   const centroX = colapsado.x + colapsado.width / 2
   const centroY = colapsado.y + colapsado.height / 2
   const enMitadDerecha = centroX > area.x + area.width / 2

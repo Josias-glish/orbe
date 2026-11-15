@@ -49,9 +49,16 @@ export function registrarChat(
   proveedor: ProveedorChat,
   info: InfoChat,
   reserva?: ReservaContexto,
-  memoria?: MemoriaChat,
-  contador?: ContadorUso
+  memoriaChat?: MemoriaChat,
+  contador?: ContadorUso,
+  /** «🔒 Privado»: esa conversación no pasa por la memoria (ni se guarda ni viaja luego como «conversación anterior»). */
+  privado: () => boolean = () => false
 ): ServicioChat {
+  const memoria = {
+    get actual(): MemoriaChat | undefined {
+      return privado() ? undefined : memoriaChat
+    }
+  }
   const propia = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => e.sender === ventana.webContents
   /** Turno en curso que lleva contexto de pantalla: si falla, ese contexto vuelve a la reserva. */
   let turnoConContexto: { id: string; consumido: Consumido } | null = null
@@ -78,8 +85,8 @@ export function registrarChat(
       } else if (evento.tipo === 'accion') {
         turnoRegistrado.separar = true
       } else if (evento.tipo === 'fin') {
-        memoria?.turnoCompletado(turnoRegistrado.usuario, turnoRegistrado.respuesta)
-        if (turnoRegistrado.conHistorial) memoria?.confirmarHistorialUsado()
+        memoria.actual?.turnoCompletado(turnoRegistrado.usuario, turnoRegistrado.respuesta)
+        if (turnoRegistrado.conHistorial) memoria.actual?.confirmarHistorialUsado()
         turnoRegistrado = null
       } else if (evento.tipo === 'error') {
         turnoRegistrado = null
@@ -104,8 +111,8 @@ export function registrarChat(
     const consumido = quiereContexto ? (reserva?.consumir() ?? null) : null
 
     // «Recuerda que…»: lo guarda la aplicación (no el modelo) y se lo cuenta al modelo con una nota.
-    const captura = memoria?.capturar(texto) ?? null
-    const historialPrevio = memoria?.tomarHistorialPrevio() ?? undefined
+    const captura = memoria.actual?.capturar(texto) ?? null
+    const historialPrevio = memoria.actual?.tomarHistorialPrevio() ?? undefined
 
     const resultado = servicio.iniciar(peticion, consumido?.contexto, { historialPrevio, notaApp: captura?.nota })
     if (!resultado.ok) {
@@ -131,13 +138,13 @@ export function registrarChat(
   ipcMain.handle(CANALES.chatNueva, (e) => {
     if (!propia(e)) return
     servicio.nueva()
-    memoria?.nuevaConversacion()
+    memoria.actual?.nuevaConversacion()
     turnoRegistrado = null
   })
-  ipcMain.handle(CANALES.historialListar, (e) => (propia(e) ? (memoria?.historial?.() ?? []) : []))
+  ipcMain.handle(CANALES.historialListar, (e) => (propia(e) ? (memoria.actual?.historial?.() ?? []) : []))
   ipcMain.handle(CANALES.historialAbrir, (e, id: unknown) => {
-    if (!propia(e) || typeof id !== 'string' || !memoria) return null
-    const mensajes = memoria.abrirHistorial?.(id) ?? null
+    if (!propia(e) || typeof id !== 'string' || !memoria.actual) return null
+    const mensajes = memoria.actual.abrirHistorial?.(id) ?? null
     if (mensajes) {
       servicio.nueva()
       turnoRegistrado = null

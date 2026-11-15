@@ -71,6 +71,25 @@ export const ESFUERZOS: readonly Esfuerzo[] = NIVELES_ESFUERZO
 export const PASOS_AGENTE_POR_DEFECTO = 15
 export const BUSQUEDAS_MAX_POR_DEFECTO = 5
 
+export interface ConfigCompanero {
+  activo: boolean
+  /** Ollama, solo en 127.0.0.1 (API nativa, sin /v1). */
+  url: string
+  modelo: string
+  /** estricta = nada sale del PC · equilibrada = solo el título de la obra se consulta en Wikipedia. */
+  privacidad: 'estricta' | 'equilibrada'
+  intervalo: number
+  maxHora: number
+  /** «22:00-07:00» o vacío. */
+  silencio: string
+  /** Usar la capa de visión (VISION_PROVIDER) cuando cambia lo que haces. */
+  ojos: boolean
+  /** Con VISION_PROVIDER en la nube, los ojos además necesitan esto y un segundo permiso en pantalla. */
+  ojosNube: boolean
+  /** Decir los comentarios en voz alta (nunca en modo película). */
+  voz: boolean
+}
+
 export interface Config {
   proveedor: 'cli' | 'api' | 'openai'
   modelo: string
@@ -133,6 +152,8 @@ export interface Config {
   identidad: ConfigIdentidad
   /** Los «ojos» del Compañero (VISION_*). La clave nunca sale del proceso principal; la del cofre manda. */
   vision: { proveedor: ProveedorVision; modelo: string; baseUrl: string; maxDia: number; clave: string }
+  /** Compañero (Etapa 14): comenta solo lo que haces, con un modelo local de Ollama y sin herramientas. */
+  companero: ConfigCompanero
   avisos: string[]
 }
 
@@ -191,6 +212,36 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
   if (visionLeido) {
     if ((PROVEEDORES as readonly string[]).includes(visionLeido)) visionProveedor = visionLeido as ProveedorVision
     else avisos.push(`VISION_PROVIDER="${visionLeido}" no es válido (${PROVEEDORES.join(', ')}); la visión queda apagada.`)
+  }
+  const entero = (nombre: string, def: number, min: number, max: number): number => {
+    const v = leer(nombre)
+    if (!v) return def
+    const n = Number(v)
+    if (Number.isInteger(n) && n >= min && n <= max) return n
+    avisos.push(`${nombre}="${v}" no es válido (de ${min} a ${max}); uso ${def}.`)
+    return def
+  }
+  const privacidad = leer('ORBE_COMPANERO_PRIVACIDAD').toLowerCase()
+  const silencio = leer('ORBE_COMPANERO_SILENCIO') || '22:00-07:00'
+  if (privacidad && privacidad !== 'estricta' && privacidad !== 'equilibrada') avisos.push(`ORBE_COMPANERO_PRIVACIDAD="${privacidad}" no es válido (estricta o equilibrada); uso estricta.`)
+  if (silencio !== 'no' && !/^\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(silencio)) avisos.push(`ORBE_COMPANERO_SILENCIO="${silencio}" no es válido (como 22:00-07:00, o «no»).`)
+  // Ollama solo en este PC (nunca OLLAMA_HOST=0.0.0.0 ni otra máquina): lo que ve el Compañero no sale de aquí.
+  let urlLocal = (leer('ORBE_LOCAL_URL') || 'http://127.0.0.1:11434').replace(/\/+$/, '').replace(/\/v1$/, '')
+  if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(urlLocal)) {
+    avisos.push(`ORBE_LOCAL_URL="${urlLocal}" no es local (solo http://127.0.0.1:<puerto>); uso http://127.0.0.1:11434.`)
+    urlLocal = 'http://127.0.0.1:11434'
+  }
+  const companero: ConfigCompanero = {
+    activo: leer('ORBE_COMPANERO') === '1',
+    url: urlLocal,
+    modelo: leer('ORBE_LOCAL_MODELO') || 'llama3.2',
+    privacidad: privacidad === 'equilibrada' ? 'equilibrada' : 'estricta',
+    intervalo: entero('ORBE_COMPANERO_INTERVALO', 20, 10, 120),
+    maxHora: entero('ORBE_COMPANERO_MAX_HORA', 4, 0, 12),
+    silencio: /^\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(silencio) ? silencio : '',
+    ojos: leer('ORBE_COMPANERO_OJOS') === '1',
+    ojosNube: leer('ORBE_COMPANERO_OJOS_NUBE') === '1',
+    voz: leer('ORBE_COMPANERO_VOZ') === '1'
   }
   let visionMax = 50
   const visionMaxLeido = leer('VISION_MAX_DIA')
@@ -376,6 +427,7 @@ export function resolverConfig(delEnv: Record<string, string>, proceso: NodeJS.P
     modelo3d: leer('ORBE_MODELO_3D'),
     eventos: { activo: eventosActivo, puerto: puertoEventos },
     vision: { proveedor: visionProveedor, modelo: leer('VISION_MODEL') || MODELO_VISION[visionProveedor], baseUrl: leer('VISION_BASE_URL'), maxDia: visionMax, clave: leer('VISION_API_KEY') },
+    companero,
     identidad: { id: identidadId, nombre: leer('ORBE_IDENTIDAD_NOMBRE'), trato: leer('ORBE_TRATO') },
     avisos
   }

@@ -56,7 +56,7 @@
 | P4 | **Investigación proactiva**: vigila temas que te interesan y te avisa con un resumen | dots | ✔ v1.22.0 (plantilla «Vigilar un tema»; no repite lo ya contado) | 11 |
 | P5 | **Ponerse al día al encender** (lo que no se pudo hacer con el portátil apagado) | Adaptación propia (sin 24/7) | ✔ v1.21.0 (recupera ≤12 h; lo demás se anota y avisa) | 11 |
 | P6 | Parte de situación diario | Atlas | ✔ | — |
-| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✗ | 14 |
+| P7 | Compañero proactivo que comenta lo que haces | Petición del usuario | ✔ v1.25.0 (Llama 3.2 en Ollama, sin herramientas; bocadillo [Profundizar] [Esto no] [✕], modo película, filtros; «🔒 Privado» en el panel) | 14 |
 
 ## 5. Investigación profunda
 
@@ -101,7 +101,7 @@
 | S2 | Registro de actividad con secretos tachados | Copilot, dots | ✔ | — |
 | S3 | Solo skills propias; nada de catálogos de terceros | Lección de OpenClaw (341 maliciosas) | — | 9 |
 | S4 | `file://` bloqueado en el código del navegador; dominios sensibles bloqueados | Lección de Comet | — | 15 |
-| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | ✔ v1.24.0 (una sola vez, vale para cualquier proveedor) | 13 |
+| S5 | Consentimiento explícito para lo que sale del PC (visión) | Decisión del 12-nov | ✔ v1.24.0 (una sola vez, vale para cualquier proveedor) · v1.25.0 segundo permiso, por proveedor, para que el Compañero mande capturas a la nube | 13, 14 |
 | S6 | Exportar y borrar todos mis datos | Petición del usuario (otras personas) | ✗ | 16 |
 
 ## Resumen

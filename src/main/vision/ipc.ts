@@ -13,6 +13,7 @@ export function registrarVision(chat: () => WebContents, vision: ServicioVision,
   const propia = (e: Electron.IpcMainInvokeEvent): boolean => e.sender === chat()
   ipcMain.handle(CANALES.visionEstado, (e) => (propia(e) ? vision.estado() : null))
   ipcMain.handle(CANALES.visionConsentir, (e) => (propia(e) ? vision.consentir() : null))
+  ipcMain.handle(CANALES.visionConsentirCompanero, (e) => (propia(e) ? vision.consentirCompanero() : null))
   ipcMain.handle(CANALES.visionProbar, async (e): Promise<ResultadoOjos | null> => {
     if (!propia(e)) return null
     try {

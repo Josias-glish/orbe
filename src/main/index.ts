@@ -1,5 +1,5 @@
-import { perfilDe } from '../shared/identidad'
-import { app, ipcMain, Notification, type Tray } from 'electron'
+import { perfilDe, presentacionIdentidad } from '../shared/identidad'
+import { app, ipcMain, Notification, powerMonitor, type Tray } from 'electron'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
@@ -45,7 +45,7 @@ import { ejecutarHumo } from './humo'
 import { nivelInicial, registrarPotencia } from './potencia'
 import { modoAutoActivo, registrarModoAuto } from './modo-auto'
 import { crearCapturaVentana } from './pc/captura-ventana'
-import { userInfo } from 'node:os'
+import { freemem, userInfo } from 'node:os'
 import { BaseOrbe, leerJson, type ResultadoBusqueda, type TipoDoc } from './datos/base'
 import { documentosIndice } from './datos/fuentes'
 import { AlmacenConversacion } from './memoria/conversacion'
@@ -82,6 +82,13 @@ import { cargarImagenElectron, crearDepsOcrReales } from './pantalla/ocr-electro
 import { ServicioFormula } from './pantalla/formula'
 import { VentanaOrbe } from './ventana'
 import { registrarVision } from './vision/ipc'
+import { capturarVentana } from './vision/ojos'
+import { mostrarBocadillo, registrarCompanero } from './companero/ipc'
+import { Companero } from './companero/servicio'
+import { pedirOllama } from './companero/voz'
+import { fichaWikipedia } from './companero/wikipedia'
+import { ProveedorConmutable, registrarPrivado } from './chat/privado'
+import { ProveedorOpenai } from './chat/proveedor-openai'
 import { ServicioVision } from './vision/servicio'
 
 const modoHumo = process.argv.includes('--smoke')
@@ -377,9 +384,36 @@ app.whenReady().then(async () => {
     archivoConsentimiento: modoHumo ? null : join(datos, 'consentimientos.json'),
     archivoUso: modoHumo ? null : join(datos, 'vision-uso.json'),
     rutaCli: resolverRutaCli(config.rutaCli || undefined) ?? undefined,
-    cwd: join(datos, 'vision-cli')
+    cwd: join(datos, 'vision-cli'),
+    companeroNube: config.companero.ojos && config.companero.ojosNube
   })
   registrarVision(() => orbe.ventana.webContents, vision, () => fuente.ventana())
+  // Compañero (Etapa 14): voz local en Ollama, sin herramientas; los ojos son la capa de visión (con su permiso único).
+  const cc = config.companero
+  const companero = modoHumo
+    ? null
+    : new Companero({
+        config: cc,
+        perfil: perfilDe(config.identidad),
+        archivo: join(datos, 'companero.json'),
+        ventana: () => fuente.ventana(),
+        ojos: cc.ojos
+          ? async (v) => {
+              // Con poca RAM libre, dos modelos a la vez no caben (A.5): solo texto.
+              if (!vision.ojosCompanero() || (vision.estado().companero === 'local' && freemem() < 8 * 1024 ** 3)) return null
+              const jpeg = await capturarVentana(v)
+              return jpeg ? vision.describirPantalla(jpeg) : null
+            }
+          : null,
+        wikipedia: (t) => fichaWikipedia(t),
+        modelo: (sistema, mensaje) => pedirOllama({ url: cc.url, modelo: cc.modelo, sistema, mensaje }),
+        mostrar: (c) => mostrarBocadillo(orbe, c),
+        ocupado: () => orbe.estaExpandido || !orbe.estaVisible,
+        enBateria: () => powerMonitor.isOnBatteryPower()
+      })
+  registrarCompanero(orbe, () => companero)
+  companero?.iniciar()
+  app.once('will-quit', () => companero?.detener())
   const nombresAgentes = (): string[] => new AlmacenAgentes(join(datos, 'agentes')).listar().map((a) => a.nombre)
   const registro = crearRegistro(config, sistema, [
     ...gmail,
@@ -408,8 +442,14 @@ app.whenReady().then(async () => {
   if (!modoHumo && config.agente.activo && config.proveedor !== 'cli') {
     setTimeout(() => void sistema.catalogo.cargar().catch(() => {}), 20_000).unref()
   }
-  const proveedor =
-    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, bloquePrompt, registro)
+  // «🔒 Privado»: el mismo Ollama local del Compañero por su API compatible con OpenAI, sin herramientas ni memoria.
+  const proveedor = new ProveedorConmutable(
+    modoHumo && !humoReal ? new ProveedorDemo() : crearProveedor(config, datos, bloquePrompt, registro),
+    modoHumo && !humoReal
+      ? new ProveedorDemo()
+      : new ProveedorOpenai({ url: `${config.companero.url}/v1`, clave: '', modelo: config.companero.modelo, identidad: presentacionIdentidad(perfilDe(config.identidad)) })
+  )
+  registrarPrivado(orbe.ventana, proveedor)
   const info =
     modoHumo && !humoReal
       ? { proveedor: 'cli' as const, modelo: 'demo', modeloLegible: 'Demo', agente: true, identidad: config.identidad }
@@ -541,7 +581,8 @@ app.whenReady().then(async () => {
       emitir: pantalla.emitir
     },
     memoria,
-    contadorUso
+    contadorUso,
+    () => proveedor.privado
   )
 
   // Detener todo (N7): el atajo y la bandeja cortan la respuesta del chat y las tareas de fondo a la vez.

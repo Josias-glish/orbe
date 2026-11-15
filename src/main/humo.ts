@@ -845,6 +845,23 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       orbe.establecerExpandido(false)
       await esperar(500)
       await capturar('12b-aviso-plegado')
+      // Compañero: el bocadillo crece desde el personaje plegado y ✕ lo devuelve a su tamaño
+      const { mostrarBocadillo } = await import('./companero/ipc')
+      orbe.ventana.blur()
+      await esperar(200)
+      // Sin otra app que lo reciba, Windows puede no quitarle el foco: entonces la comprobación no dice nada.
+      const conFoco = orbe.ventana.isFocused()
+      comprobar(
+        'el bocadillo del Compañero se muestra',
+        mostrarBocadillo(orbe, { id: 'demo', texto: 'Kip Thorne calculó el agujero negro de la película con ecuaciones reales.', tipo: 'dato_curioso', app: 'VLC', pelicula: false })
+      )
+      await esperar(600)
+      comprobar('con Profundizar, Esto no y ✕', (await textosDe('#bocadillo button')).join('|') === 'Profundizar|Esto no|✕', await textosDe('#bocadillo button'))
+      comprobar('sin robar el foco', conFoco || !orbe.ventana.isFocused())
+      await capturar('14a-bocadillo')
+      await pulsar('#bocadillo button[title="Cerrar"]')
+      await esperar(500)
+      comprobar('✕ lo cierra y la ventana vuelve a ser el personaje', (await js<boolean>(`document.getElementById('bocadillo').hidden`)) && orbe.ventana.getBounds().width <= 152, orbe.ventana.getBounds())
       orbe.establecerExpandido(true)
       await esperar(500)
       await pulsar('#personaje-boton')
@@ -874,6 +891,15 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(600)
     v.mensajes = await contar('.msg')
     comprobar('la orden «nueva conversación» de la bandeja limpia el chat', v.mensajes === 0, v.mensajes)
+    // «🔒 Privado»: el interruptor enseña la etiqueta y lo dice en el chat; al apagarlo, desaparece.
+    await pulsar('#privado-boton')
+    await esperar(500)
+    comprobar('Privado enseña «🔒 Privado»', !(await js<boolean>(`document.getElementById('privado-chip').hidden`)) && (await js<string>(`document.getElementById('privado-boton').getAttribute('aria-pressed')`)) === 'true')
+    comprobar('y avisa de que responde el modelo local', (await textosDe('#mensajes .aviso')).some((t) => t.includes('modelo local')), await textosDe('#mensajes .aviso'))
+    await capturar('14b-privado')
+    await pulsar('#privado-boton')
+    await esperar(500)
+    comprobar('al apagarlo vuelve el cerebro profundo', await js<boolean>(`document.getElementById('privado-chip').hidden`))
   }
 
   /** Configuración (proveedor, claves, dictado y voz), botón de fijar y botón de cerrar. */

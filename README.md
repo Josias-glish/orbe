@@ -325,6 +325,31 @@ lo sensible vuelve vacío. Nunca mira bancos, gestores de contraseñas, ventanas
 imágenes negras (DRM). El permiso se pide **una sola vez** y vale aunque cambies de proveedor. Tope diario
 `VISION_MAX_DIA` (50) y caché por huella. Pruébalo en **Ajustes → Visión**.
 
+### Compañero (comenta lo que haces, en tu PC)
+Apagado por defecto (`ORBE_COMPANERO=1` lo enciende). Es un segundo cerebro, **Llama 3.2 en Ollama** y solo en
+`127.0.0.1` (`ORBE_LOCAL_URL`, `ORBE_LOCAL_MODELO`): no tiene herramientas, solo puede proponer un bocadillo junto al
+personaje con **[Profundizar]** (deja el tema escrito en el chat; lo envías tú), **[Esto no]** (no vuelve a comentar
+ese tipo de cosa en esa app) y **[✕]**. Cada `ORBE_COMPANERO_INTERVALO` s (20) mira la app y el título de la ventana;
+si cambiaste de actividad o llevas 3 min en lo mismo, le pregunta a Llama si vale la pena decir algo. Calla en
+llamadas, correo y mensajería, bancos y gestores de contraseñas, con el panel abierto y en las horas de
+`ORBE_COMPANERO_SILENCIO` (22:00-07:00); como mucho `ORBE_COMPANERO_MAX_HORA` (4) por hora, 10 min entre comentarios
+(15 viendo un vídeo) y el doble si ignoras dos seguidos; nunca repite. **Modo película**: con VLC, YouTube, Netflix…
+saca el título de la ventana, da datos de rodaje sin spoilers y el bocadillo se va antes. Con
+`ORBE_COMPANERO_PRIVACIDAD=equilibrada` comprueba **solo el título** de la obra en Wikipedia; con `estricta` (por
+defecto) no sale nada del PC. `ORBE_COMPANERO_VOZ=1` lo dice además en voz alta (nunca en modo película).
+
+**Ojos** (`ORBE_COMPANERO_OJOS=1`, opcional): usa la visión de arriba cuando cambias de actividad, con 2 min entre
+imágenes, nunca a batería y, con Ollama, solo si quedan 8 GB de RAM libres. Si `VISION_PROVIDER` está en la nube
+(también `claude-cli`), además hace falta `ORBE_COMPANERO_OJOS_NUBE=1` y un **segundo permiso** en Ajustes → Visión
+(«Permitir que el Compañero envíe capturas de mi pantalla a …»), que se vuelve a pedir si cambias de proveedor. Lo que
+ha dicho y lo que silenciaste se guarda en `companero.json`, en la carpeta de datos de Orbe.
+
+**🔒 Privado** (candado de la cabecera del chat): mientras está puesto, lo que escribes va solo a ese mismo Llama local,
+sin herramientas, sin internet y sin memoria (no se guarda ni viaja luego como «conversación anterior»). Cada cambio
+empieza una conversación nueva; Orbe arranca siempre sin él.
+
+Preparación: instala Ollama (https://ollama.com/download) y ejecuta `ollama pull llama3.2` (unos 2 GB).
+
 ### Errores
 Orbe traduce los fallos a mensajes claros, con un botón **Reintentar** cuando tiene sentido y los detalles técnicos plegados:
 sin conexión (el CLI reintenta hasta 10 veces durante minutos; Orbe se rinde tras 3), sesión de Claude sin iniciar, API key no válida, límite de uso (con la hora de reinicio si se conoce), servidores saturados, modelo inexistente, problemas de cuenta, respuesta rechazada por seguridad y tiempo de espera agotado. Si el lector de pantalla falla o no hay ninguna ventana que leer, también lo explica.

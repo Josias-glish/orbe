@@ -3,7 +3,9 @@ import { join } from 'node:path'
 import { CANALES, type EstadoVentana } from '../shared/tipos'
 import { guardarAjustes, leerAjustes } from './ajustes'
 import {
+  TAM_BOCADILLO,
   TAM_COLAPSADO,
+  anclarEn,
   dentroDe,
   disposicionExpandida,
   panelDeVentana,
@@ -19,6 +21,8 @@ import {
 export class VentanaOrbe {
   readonly ventana: BrowserWindow
   private expandido = false
+  /** Plegado, pero con el bocadillo del Compañero a la vista (la ventana crece sin moverse el personaje). */
+  private bocadillo = false
   private ancla: DisposicionExpandida['ancla'] = { horizontal: 'derecha', vertical: 'abajo' }
   /** Rectángulo de la ventana colapsada; es el que se recuerda entre sesiones. */
   private colapsado: Rect
@@ -195,8 +199,28 @@ export class VentanaOrbe {
     else this.ventana.setIgnoreMouseEvents(true, { forward: true })
   }
 
+  /**
+   * Agranda la ventana plegada para el bocadillo (o la devuelve a su tamaño). Nunca da el foco ni mueve el personaje.
+   * Devuelve el ancla, para que el globo se ponga al otro lado; null si no puede (panel abierto u Orbe oculto).
+   */
+  mostrarBocadillo(valor: boolean): DisposicionExpandida['ancla'] | null {
+    if (this.ventana.isDestroyed() || this.expandido) return null
+    if (!valor) {
+      if (this.bocadillo) this.ventana.setBounds(this.colapsado)
+      this.bocadillo = false
+      return this.ancla
+    }
+    if (!this.ventana.isVisible()) return null
+    const d = anclarEn(this.colapsado, this.areaDe(this.colapsado), TAM_BOCADILLO)
+    this.bocadillo = true
+    this.ancla = d.ancla
+    this.ventana.setBounds(d.bounds)
+    return d.ancla
+  }
+
   establecerExpandido(valor: boolean): void {
     if (valor === this.expandido) return
+    this.bocadillo = false
     if (valor) {
       const disposicion = disposicionExpandida(this.colapsado, this.areaDe(this.colapsado), leerAjustes().panel)
       this.ancla = disposicion.ancla
@@ -306,6 +330,8 @@ export class VentanaOrbe {
 
     ipcMain.on(CANALES.arrastreInicio, (evento, x: number, y: number) => {
       if (!propia(evento)) return
+      // Arrastrar con el bocadillo a la vista: primero vuelve a ser solo el personaje.
+      if (this.bocadillo) this.mostrarBocadillo(false)
       const [wx, wy] = this.ventana.getPosition()
       this.arrastre = { dx: x - wx, dy: y - wy }
     })
