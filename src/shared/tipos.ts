@@ -35,6 +35,9 @@ export const CANALES = {
   autoFijar: 'auto:fijar',
   privadoInfo: 'privado:info',
   privadoFijar: 'privado:fijar',
+  actualizacionEstado: 'actualizacion:estado',
+  actualizacionEvento: 'actualizacion:evento',
+  actualizacionInstalar: 'actualizacion:instalar',
   pantallaLeer: 'pantalla:leer',
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
@@ -50,7 +53,6 @@ export const CANALES = {
   configElegirRive: 'config:elegir-rive',
   appOrden: 'app:orden',
   appSalir: 'app:salir',
-  ventanaFijar: 'ventana:fijar',
   configLeer: 'config:leer',
   configGuardar: 'config:guardar',
   vozInfo: 'voz:info',
@@ -102,6 +104,13 @@ export const CANALES = {
   // Métricas de Instagram (solo lectura).
   metricasLeer: 'metricas:leer'
 } as const
+
+/** Versión nueva de Orbe: nada, bajando, lista para instalar, o solo aviso (portable o sin huella en GitHub). */
+export type EstadoActualizacion =
+  | { fase: 'nada' }
+  | { fase: 'descargando'; version: string; progreso: number }
+  | { fase: 'lista'; version: string }
+  | { fase: 'aviso'; version: string; pagina: string }
 
 /** Un comentario del Compañero y hacia dónde crece la ventana (el globo va al otro lado del personaje). */
 export interface BocadilloCompanero {
@@ -658,6 +667,9 @@ export interface ApiOrbe {
   autoFijar(activo: boolean): Promise<boolean>
   privadoInfo(): Promise<boolean>
   privadoFijar(activo: boolean): Promise<boolean>
+  actualizacionEstado(): Promise<EstadoActualizacion>
+  alActualizacion(cb: (e: EstadoActualizacion) => void): () => void
+  actualizacionInstalar(): void
   chatPrecalentar(): void
   alEventoChat(cb: (evento: EventoChat) => void): () => void
 
@@ -679,7 +691,6 @@ export interface ApiOrbe {
   alEventoPantalla(cb: (evento: EventoPantalla) => void): () => void
   alOrdenApp(cb: (orden: OrdenApp) => void): () => void
   /** Fija el panel por encima de las demás ventanas (o lo suelta). Sin argumento, solo dice cómo está. */
-  fijarPanel(fijar?: boolean): Promise<boolean>
   salirDeOrbe(): Promise<void>
   configLeer(): Promise<ConfigVista>
   configGuardar(peticion: PeticionConfig): Promise<ResultadoConfig>

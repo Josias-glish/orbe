@@ -8,7 +8,8 @@ import type {
   InfoChat,
   LecturaPantalla,
   MensajeGuardado,
-  ResultadoEnvio
+  ResultadoEnvio,
+  EstadoActualizacion
 } from '../../shared/tipos'
 import { esPreguntaVisual } from '../../shared/visual'
 import { buscarProtocolo, frases, parteDeSituacion, perfilDe, pideParte, pideProtocolo, type PerfilIdentidad } from '../../shared/identidad'
@@ -92,7 +93,6 @@ export class PanelChat {
   private readonly botonTareas: HTMLButtonElement
   private readonly botonUso: HTMLButtonElement
   private readonly botonAjustes: HTMLButtonElement
-  private readonly botonFijar: HTMLButtonElement
   private readonly lineaEstado: HTMLElement
   private turno: TurnoEnCurso | null = null
   private temporizadorReposo = 0
@@ -144,7 +144,6 @@ export class PanelChat {
       insignia.textContent = String(n)
       this.permisoDeTarea(primero)
     })
-    this.botonFijar = porId('fijar-boton')
     this.lineaEstado = porId('estado-linea')
     this.botonCapturar = porId('capturar')
     // «Investigar a fondo»: deja el encabezado en la caja y el modelo usa investigar_a_fondo (propone el plan antes).
@@ -237,8 +236,6 @@ export class PanelChat {
     marcarChat()
     this.botonAjustes.addEventListener('click', () => void this.alternarAjustes())
     porId('cerrar-boton').addEventListener('click', () => window.orbe.alternar())
-    this.botonFijar.addEventListener('click', () => void this.alternarFijado())
-    void this.mostrarFijado()
     porId('nueva').addEventListener('click', () => void this.nuevaConversacion())
     // Modo auto: el agente solo pide permiso para lo de seguridad (enviar, publicar, borrar, lo peligroso).
     const auto = porId('auto-boton')
@@ -258,6 +255,28 @@ export class PanelChat {
       porId('privado-chip').hidden = !activo
     }
     void window.orbe.privadoInfo().then(pintarPrivado)
+    // Versión nueva: se ve el progreso de la descarga y, al terminar, «Instalar» (cierra Orbe y lo vuelve a abrir).
+    const actualizar = porId('actualizar-boton') as HTMLButtonElement
+    let estadoAct: EstadoActualizacion = { fase: 'nada' }
+    const pintarAct = (e: EstadoActualizacion): void => {
+      estadoAct = e
+      actualizar.hidden = e.fase === 'nada'
+      actualizar.disabled = e.fase === 'descargando'
+      actualizar.textContent =
+        e.fase === 'descargando' ? `Descargando ${e.version}… ${e.progreso} %` : e.fase === 'lista' ? `Instalar ${e.version}` : e.fase === 'aviso' ? `Orbe ${e.version} disponible` : ''
+      actualizar.title =
+        e.fase === 'lista'
+          ? 'Descargada y comprobada (SHA-256). Al pulsar, Orbe se cierra, se instala y vuelve a abrirse.'
+          : e.fase === 'aviso'
+            ? 'Abrir la página de la versión nueva para descargarla'
+            : 'Bajando la versión nueva en segundo plano'
+    }
+    void window.orbe.actualizacionEstado().then(pintarAct)
+    window.orbe.alActualizacion(pintarAct)
+    actualizar.addEventListener('click', () => {
+      if (estadoAct.fase === 'lista') window.orbe.actualizacionInstalar()
+      else if (estadoAct.fase === 'aviso') window.orbe.abrirEnlace(estadoAct.pagina)
+    })
     privado.addEventListener('click', () => {
       const quiere = privado.getAttribute('aria-pressed') !== 'true'
       void this.nuevaConversacion().then(async () => {
@@ -402,30 +421,6 @@ export class PanelChat {
     this.cuerpoPanel.hidden = false
     this.botonTareas.setAttribute('aria-pressed', 'false')
     this.entrada.enfocar()
-  }
-
-  private pintarFijado(fijado: boolean): void {
-    this.botonFijar.setAttribute('aria-pressed', String(fijado))
-    this.botonFijar.title = fijado
-      ? 'Fijado: el panel se queda por encima de las demás ventanas (pulsa para soltarlo)'
-      : 'Suelto: otras ventanas pueden taparlo (pulsa para fijarlo encima)'
-  }
-
-  private async mostrarFijado(): Promise<void> {
-    try {
-      this.pintarFijado(await window.orbe.fijarPanel())
-    } catch {
-      // sin el dato, el botón se queda como está
-    }
-  }
-
-  private async alternarFijado(): Promise<void> {
-    try {
-      const ahora = this.botonFijar.getAttribute('aria-pressed') === 'true'
-      this.pintarFijado(await window.orbe.fijarPanel(!ahora))
-    } catch {
-      // no se pudo cambiar: el botón conserva su estado
-    }
   }
 
   // -------------------------------------------------------------------------------------------

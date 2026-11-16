@@ -273,6 +273,14 @@ v1.25.1: `ORBE_COMPANERO_CEREBRO=haiku` (decisión del usuario del 15-nov, «por
 voz.ts (`claude -p --output-format json --model haiku --tools "" --strict-mcp-config --setting-sources ""`, sin claves
 del entorno, cwd `companero-cli`). Real: 3–6 s por comentario frente a ~50 s de Llama 3.2 en su PC; pasa los 3 casos de
 `tests/integracion/haiku-real`. Privado sigue siendo solo Ollama.
+v1.26.0 (rama `claude/actualizaciones`, sale de la Etapa 14; adelanta parte de la 16): `main/actualizacion.ts`
+`Actualizador` (GitHub `/releases/latest`, `leerRelease` elige `Orbe-Setup-X.exe` o el .dmg por arch y exige `digest`
+sha256; descarga en streaming a `temp/orbe-actualizacion` con progreso cada 5 %; `instalar` lanza `/S --force-run` y
+`/allusers` si `execPath` está en Program Files, y sale). IPC `actualizacion:estado|evento|instalar`, chip
+`#actualizar-boton` en la cabecera, bandeja «Instalar actualización X», notificación. Solo con `app.isPackaged`.
+Comprobado en su PC: `/S --force-run` reinstala y reabre Orbe (~90 s); tenía dos copias (1.24.2 en Program Files y
+1.25.1 por usuario) y el instalador silencioso dejó una sola en Program Files. Sin botón de fijar (decisión del usuario,
+15-nov): la ventana siempre está en 'screen-saver'; se quitaron `ventana:fijar`, `fijarPanel` y `ajustes.fijada`.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 

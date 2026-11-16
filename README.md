@@ -63,7 +63,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 ```
 
 ## Controles
-- **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y avisos, Dictado, Voz, Identidad y Conectores). En la cabecera solo quedan la potencia, conversación nueva, la chincheta y cerrar.
+- **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y avisos, Dictado, Voz, Identidad y Conectores). En la cabecera quedan el modo auto, «🔒 Privado», el historial, la potencia, conversación nueva y cerrar.
 - **Doble clic** en el personaje: abrir o cerrar el chat (también **Ctrl + Mayús + Espacio** o la bandeja). Un **clic** solo lo hace jugar (salta, saluda, baila…), así no se abre el chat por tocarlo sin querer. **Esc** cierra el panel.
 - **Solo se toca el centro del personaje**: en Windows y macOS, el resto de su cuadro (las esquinas y los lados transparentes) deja pasar los clics a lo que haya debajo, así no tapa pestañas ni botones de otras aplicaciones. Con el panel abierto, igual: solo el panel y el centro del personaje reciben el ratón.
 - **Arrastrar** el personaje desde su centro (o la cabecera del panel): moverlo. Recuerda su última posición.
@@ -78,7 +78,7 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 - El **altavoz** de la barra lateral abre el menú de **voz**: leer las respuestas en voz alta, «Estilo Jarvis», motor, voz, velocidad y tono.
 - El **micrófono** junto al campo de texto **dicta**: púlsalo, habla y vuelve a pulsarlo (máximo 60 s; **Esc** cancela). El texto se añade al campo para que lo revises; en el menú de voz puedes activar que se envíe solo.
 - El botón de los **controles deslizantes** abre la **configuración**: elegir quién responde (CLI de Claude, API de Anthropic u otra IA compatible con OpenAI), el dictado y la voz neuronal, sin tocar el `.env` a mano.
-- La **chincheta** fija el panel por encima de las demás ventanas (activada por defecto); soltada, otras ventanas pueden taparlo. La **X** cierra el panel y deja a Orbe en la esquina; para salir del todo, usa la bandeja o «Cerrar Orbe por completo» de la configuración.
+- El panel está **siempre por encima** de las demás ventanas. La **X** cierra el panel y deja a Orbe en la esquina; para salir del todo, usa la bandeja o «Cerrar Orbe por completo» de la configuración.
 - **Enter** envía el mensaje; **Mayús + Enter** hace un salto de línea.
 - El botón de enviar se convierte en **Detener** mientras Claude responde.
 - El lápiz de la cabecera empieza una **conversación nueva** (Claude olvida la anterior, y Orbe borra la que tenía guardada).
@@ -375,6 +375,14 @@ Además de conversar, Orbe puede **actuar**: buscar en internet y leer páginas 
 - **Webs permitidas:** con `ORBE_DOMINIOS=wikipedia.org, gob.es` el agente solo abre esas webs y sus subdominios.
 - **Conversaciones largas:** con la API de Claude, la parte antigua se resume sola para no perder el hilo.
 - Está pendiente el navegador controlado (leer páginas, hacer clic y escribir), con sus confirmaciones.
+
+## Actualizaciones
+La app instalada mira la última release de GitHub a los 30 s de arrancar y cada 6 h (API pública, sin cuenta). Si hay
+versión nueva, la descarga sola a la carpeta temporal y comprueba su **SHA-256** con la que publica GitHub (si no coincide,
+la borra). En la cabecera del chat se ve «Descargando 1.x… %» y luego **«Instalar 1.x»**; también sale una notificación
+y la opción en el icono de la bandeja. Al pulsarla, Orbe se cierra, el instalador corre en silencio y Orbe vuelve a
+abrirse (si está en Archivos de programa, Windows pide permiso de administrador). En Mac abre el .dmg; la versión
+portable solo avisa con el enlace. Los datos de `%APPDATA%/orbe` no se tocan.
 
 ## Crear el instalador
 ```bash

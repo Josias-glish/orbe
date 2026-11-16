@@ -35,7 +35,6 @@ export class VentanaOrbe {
    */
   private tamanoFijado: { width: number; height: number } | null = null
   /** El panel abierto se queda por encima de las demás ventanas. El orbe colapsado siempre lo está, para no perderlo. */
-  private fijada = leerAjustes().fijada !== false
 
   constructor(
     private readonly urlRenderer: string | null,
@@ -133,30 +132,16 @@ export class VentanaOrbe {
     return posicionPorDefecto(primaria)
   }
 
-  get estaFijada(): boolean {
-    return this.fijada
-  }
-
-  /** 'screen-saver' lo mantiene por encima de casi todo; suelto, el panel abierto se comporta como una ventana normal. */
+  /** 'screen-saver' lo mantiene por encima de casi todo, plegado o con el panel abierto (decisión del usuario: siempre fijado). */
   private aplicarNivel(): void {
-    if (this.ventana.isDestroyed()) return
-    if (!this.expandido || this.fijada) this.ventana.setAlwaysOnTop(true, 'screen-saver')
-    else this.ventana.setAlwaysOnTop(false)
+    if (!this.ventana.isDestroyed()) this.ventana.setAlwaysOnTop(true, 'screen-saver')
   }
 
-  /** Vuelve a poner Orbe por encima si le toca estarlo (orbe plegado, o panel fijado), sin robar el foco. */
+  /** Vuelve a poner Orbe por encima, sin robar el foco. */
   private reafirmarEncima(): void {
     if (this.ventana.isDestroyed() || !this.ventana.isVisible()) return
-    if (!this.expandido || this.fijada) {
-      this.ventana.setAlwaysOnTop(true, 'screen-saver')
-      this.ventana.moveTop()
-    }
-  }
-
-  fijar(valor: boolean): void {
-    this.fijada = valor
-    guardarAjustes({ fijada: valor })
-    this.aplicarNivel()
+    this.ventana.setAlwaysOnTop(true, 'screen-saver')
+    this.ventana.moveTop()
   }
 
   private estado(): EstadoVentana {
@@ -297,12 +282,6 @@ export class VentanaOrbe {
     // Al cerrar puede quedar un mensaje en vuelo: con la ventana destruida, leer webContents lanza y tumba el proceso.
     const propia = (evento: Electron.IpcMainEvent): boolean =>
       !this.ventana.isDestroyed() && evento.sender === this.ventana.webContents
-
-    ipcMain.handle(CANALES.ventanaFijar, (evento, valor: unknown): boolean => {
-      if (!propia(evento as unknown as Electron.IpcMainEvent)) throw new Error('Remitente no autorizado')
-      if (typeof valor === 'boolean') this.fijar(valor)
-      return this.fijada
-    })
 
     ipcMain.on(CANALES.alternar, (evento) => {
       if (propia(evento)) this.alternar()
