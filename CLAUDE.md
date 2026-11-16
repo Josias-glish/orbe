@@ -286,7 +286,8 @@ v1.26.1: `borrarCopiasAntiguas` (actualizacion.ts): a los 15 s de arrancar la ap
 `QuietUninstallString` de la copia más antigua del otro sitio (HKLM por `Start-Process -Verb RunAs`). El desinstalador
 solo cierra procesos de su carpeta (allowOnlyOneInstallerInstance.nsh:94). `instalar` ya no pasa `/allusers`: en su PC
 el instalador eligió solo dónde instalar. Detección comprobada en su registro (`tests/integracion/copias-real`);
-la desinstalación real, pendiente de que el usuario abra la 1.26.1.
+ciclo real verificado el 15-nov: la 1.26.0 descargó la 1.26.1, el instalador sin /allusers fue a Program Files
+(reutilizó esa ubicación), y la 1.26.1 desinstaló la 1.26.0 por usuario; queda una sola copia y %APPDATA% intacto.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 
