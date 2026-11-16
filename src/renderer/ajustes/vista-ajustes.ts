@@ -86,13 +86,14 @@ interface Borrador {
  * OpenAI), de dónde sale el dictado y qué voz neuronal lee las respuestas. Las claves solo viajan de aquí al proceso
  * principal, que las guarda en el .env: nunca vuelven a la pantalla.
  */
-export type Aparte = 'uso' | 'memoria' | 'voz' | 'fondo'
+export type Aparte = 'uso' | 'memoria' | 'voz' | 'fondo' | 'tutorial'
 /** Secciones que viven fuera de Configuración pero se abren desde su lista. */
 const APARTES: Array<{ que: Aparte; nombre: string; detalle: string; icono: Parameters<typeof crearIcono>[0] }> = [
   { que: 'uso', nombre: 'Consumo', detalle: 'Tokens y dinero gastados', icono: 'consumo' },
   { que: 'memoria', nombre: 'Memoria', detalle: 'Lo que Orbe sabe de ti', icono: 'libro' },
   { que: 'voz', nombre: 'Voz y dictado', detalle: 'Leer en voz alta y enviar al dictar', icono: 'altavoz' },
-  { que: 'fondo', nombre: 'Fondo del chat', detalle: 'Elegir imagen, cambiarla o apagarla', icono: 'imagen' }
+  { que: 'fondo', nombre: 'Fondo del chat', detalle: 'Elegir imagen, cambiarla o apagarla', icono: 'imagen' },
+  { que: 'tutorial', nombre: 'Ver el tutorial', detalle: 'Repasar el panel paso a paso', icono: 'marca' }
 ]
 
 export class VistaAjustes {

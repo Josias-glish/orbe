@@ -28,6 +28,7 @@ import { Dictado, type EstadoDictado } from '../voz/dictado'
 import { LectorVoz, type Sintesis } from '../voz/lector'
 import { ReproductorAudio } from '../voz/reproductor'
 import { MenuVoz } from '../voz/menu-voz'
+import { Tutorial, pideTutorial, tutorialVisto } from './tutorial'
 import { ConfirmacionCaptura, SugerenciaCaptura } from './captura-ui'
 import { MenuTextoImagen, type ModoImagen } from './ocr-ui'
 import { ConfirmacionAccion } from './confirmacion-accion'
@@ -103,6 +104,7 @@ export class PanelChat {
   private inicioLectura = 0
   /** Quién habla (Orbe o una identidad propia como Atlas): lo dice el proceso principal al arrancar. */
   private perfil: PerfilIdentidad = perfilDe({ id: 'orbe', nombre: '', trato: '' })
+  private readonly tutorial: Tutorial
 
   constructor(
     private readonly orbe: Avatar,
@@ -111,6 +113,7 @@ export class PanelChat {
     const porId = <T extends HTMLElement>(id: string): T => raiz.getElementById(id) as T
 
     this.lista = new ListaMensajes(porId('mensajes'))
+    this.tutorial = new Tutorial(porId('panel'), orbe, () => this.entrada.enfocar())
     this.botonEnviar = porId('enviar')
     this.botonLeer = porId('leer')
     this.botonMemoria = porId('memoria-boton')
@@ -122,6 +125,7 @@ export class PanelChat {
       (que) => {
         if (que === 'uso') void this.alternarUso()
         else if (que === 'memoria') void this.alternarMemoria()
+        else if (que === 'tutorial') this.iniciarTutorial()
         else {
           // Voz y fondo son menús sobre el chat: se vuelve a él y se abre el menú de su botón (oculto en la barra).
           this.volverAlChat()
@@ -745,6 +749,10 @@ export class PanelChat {
     if (this.turno) return
     this.sugerenciaDescartada = false
     this.entrada.limpiar()
+    if (pideTutorial(texto)) {
+      this.iniciarTutorial()
+      return
+    }
     const burbuja = this.lista.agregarUsuario(texto)
     // «parte» y «protocolo …» los resuelve la propia identidad, sin gastar una llamada al modelo.
     if (!this.lectura) {
@@ -774,11 +782,22 @@ export class PanelChat {
 
   /** Al abrir el panel: una identidad propia da el parte de situación una vez al día, sin que se lo pidan. */
   alAbrirPanel(): void {
+    // La primera vez que se abre el panel, el recorrido guiado (y ese día sin parte, para no amontonar).
+    if (!tutorialVisto() && !this.turno) {
+      this.iniciarTutorial()
+      return
+    }
     if (this.perfil.id === 'orbe' || this.turno) return
     const hoy = new Date().toDateString()
     if (leerLocal('orbe.parte.dia') === hoy) return
     escribirLocal('orbe.parte.dia', hoy)
     void this.darParte()
+  }
+
+  /** El recorrido guiado sobre el chat (desde cualquier sección, se vuelve primero a la conversación). */
+  iniciarTutorial(): void {
+    this.volverAlChat()
+    this.tutorial.iniciar()
   }
 
   /** El Compañero lo dice en voz alta (ORBE_COMPANERO_VOZ=1), con la voz elegida en el menú de voz. */
