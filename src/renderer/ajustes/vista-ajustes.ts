@@ -398,6 +398,22 @@ export class VistaAjustes {
         })
       )
     }
+    // Segundo permiso (VISION-Y-DATOS.md §2): el Compañero solo manda capturas a la nube si lo aceptas aparte.
+    if (v.companero === 'falta_permiso' && v.consentida) {
+      hijos.push(el('p', 'memoria-nota', `El Compañero puede usar estos ojos mientras trabajas. Cada pocos minutos enviaría una captura de la ventana activa ${donde}.`))
+      acciones.append(
+        boton(`Permitir que el Compañero envíe capturas de mi pantalla a ${v.proveedor}`, 'boton-memoria', () => {
+          void window.orbe.visionConsentirCompanero().then((e) => {
+            this.vision = e
+            this.pintar()
+          })
+        })
+      )
+    } else if (v.companero === 'apagado') {
+      hijos.push(el('p', 'memoria-nota', 'El Compañero no usa estos ojos: están en la nube. Para permitirlo, pon ORBE_COMPANERO_OJOS=1 y ORBE_COMPANERO_OJOS_NUBE=1 en el .env; Orbe te pedirá un segundo permiso.'))
+    } else if (v.companero === 'permitido') {
+      hijos.push(el('p', 'memoria-nota', `El Compañero tiene permiso para enviar capturas a ${v.proveedor}.`))
+    }
     if (v.activa) {
       const probar = boton(this.visionOcupada ? 'Mirando…' : 'Probar con la ventana que usabas', 'boton-memoria', () => {
         this.visionOcupada = true

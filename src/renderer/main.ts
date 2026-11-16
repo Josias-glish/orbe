@@ -10,6 +10,7 @@ import { MenuPersonaje } from './personaje/menu-personaje'
 import { Personaje } from './personaje/personaje'
 import { Sonidos, type Sonido } from './personaje/sonidos'
 import { disenoPorId } from '../shared/disenos'
+import { Bocadillo } from './companero'
 import { SO } from './sistema'
 
 // index.html trae los atajos de Windows; en macOS se escriben con ⌘ (el atajo es CommandOrControl).
@@ -164,6 +165,19 @@ const fondo = new FondoChat(
 )
 void fondo.iniciar()
 
+// Compañero: el bocadillo aparece con el panel plegado; [Profundizar] deja el tema escrito en el chat (no lo envía).
+const bocadillo = new Bocadillo(document.getElementById('bocadillo') as HTMLElement, (texto) => {
+  const entrada = document.getElementById('entrada') as HTMLTextAreaElement
+  entrada.value = texto
+  entrada.dispatchEvent(new Event('input', { bubbles: true }))
+})
+window.orbe.alCompanero(({ comentario, ancla }) => {
+  aplicarEstadoVentana({ expandido: false, ancla })
+  bocadillo.mostrar(comentario)
+  if (comentario.voz) panel.decir(comentario.texto)
+  orbe.expresar(comentario.tipo === 'animo' ? 'feliz' : 'curioso', 2500)
+})
+
 /** Distingue clic de arrastre sobre un elemento: el arrastre mueve la ventana, el clic ejecuta `alClic`. */
 function hacerArrastrable(elemento: HTMLElement, alClic?: () => void, gestos?: { alEmpezar(): void; alSoltar(): void }): void {
   let inicio: { x: number; y: number } | null = null
@@ -252,6 +266,7 @@ function alClicPersonaje(): void {
 
 hacerArrastrable(caja, alClicPersonaje, {
   alEmpezar: () => {
+    bocadillo.cerrar('cerrar')
     orbe.reaccionar('arrastre')
     sonidos.tocar('sorpresa')
   },
@@ -275,7 +290,7 @@ function revisarZona(e: MouseEvent): void {
   const dentro = zonaInteractiva({
     arrastrando: botonesPulsados || caja.classList.contains('arrastrando') || cabecera.classList.contains('arrastrando'),
     sobrePanel: expandido && (objetivo?.closest('#panel') ?? null) !== null,
-    sobreBoton: (objetivo?.closest('#detener-orbe, #actividad-insignia') ?? null) !== null,
+    sobreBoton: (objetivo?.closest('#detener-orbe, #actividad-insignia, #bocadillo') ?? null) !== null,
     enCentro: enCentroPersonaje(e.clientX, e.clientY, caja.getBoundingClientRect())
   })
   if (dentro === interactivo) return
@@ -309,6 +324,7 @@ function aplicarEstadoVentana(estado: EstadoVentana): void {
   if (!estado.expandido && yaAbierto) sonidos.tocar('cerrar')
   yaAbierto = estado.expandido
   if (estado.expandido) {
+    bocadillo.cerrar('cerrar')
     // Abrir el panel es la señal de que se va a usar: se prepara el chat y se deja el cursor listo.
     orbe.reaccionar('abrir')
     sonidos.tocar('abrir')

@@ -250,6 +250,22 @@ export class PanelChat {
     }
     void window.orbe.autoInfo().then(pintarAuto)
     auto.addEventListener('click', () => void window.orbe.autoFijar(auto.getAttribute('aria-pressed') !== 'true').then(pintarAuto))
+    // «🔒 Privado» (A.7): lo eliges tú. Cada cambio empieza conversación nueva; la privada no pasa por la memoria.
+    const privado = porId('privado-boton')
+    const pintarPrivado = (activo: boolean): void => {
+      privado.setAttribute('aria-pressed', String(activo))
+      privado.title = activo ? 'Privado: activado. Responde solo el modelo local de este PC, sin herramientas ni memoria.' : 'Privado: apagado (responde el cerebro profundo)'
+      porId('privado-chip').hidden = !activo
+    }
+    void window.orbe.privadoInfo().then(pintarPrivado)
+    privado.addEventListener('click', () => {
+      const quiere = privado.getAttribute('aria-pressed') !== 'true'
+      void this.nuevaConversacion().then(async () => {
+        const activo = await window.orbe.privadoFijar(quiere)
+        pintarPrivado(activo)
+        this.lista.agregarAviso(activo ? 'Modo privado: hablas solo con el modelo local de tu PC. Sin herramientas, sin internet y sin memoria.' : 'Modo privado apagado: vuelve a responder el cerebro profundo.')
+      })
+    })
 
     // Los enlaces de las respuestas se abren en el navegador, nunca dentro de Orbe.
     porId('mensajes').addEventListener('click', (e) => {
@@ -768,6 +784,13 @@ export class PanelChat {
     if (leerLocal('orbe.parte.dia') === hoy) return
     escribirLocal('orbe.parte.dia', hoy)
     void this.darParte()
+  }
+
+  /** El Compañero lo dice en voz alta (ORBE_COMPANERO_VOZ=1), con la voz elegida en el menú de voz. */
+  decir(texto: string): void {
+    this.lector.empezar()
+    this.lector.anexar(texto)
+    this.lector.terminar()
   }
 
   /** Habla como la identidad: una respuesta local (sin modelo) que se pinta, se lee en voz alta y se acompaña con un gesto. */

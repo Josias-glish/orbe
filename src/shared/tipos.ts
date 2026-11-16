@@ -1,3 +1,4 @@
+import type { AccionBocadillo, ComentarioCompanero } from './companero'
 import type { EstadoVision, ResultadoOjos } from './vision'
 import type { ConfigIdentidad } from './identidad'
 import type { EstadoCofre, ResultadoCofre } from './cofre'
@@ -32,6 +33,8 @@ export const CANALES = {
   potenciaFijar: 'potencia:fijar',
   autoInfo: 'auto:info',
   autoFijar: 'auto:fijar',
+  privadoInfo: 'privado:info',
+  privadoFijar: 'privado:fijar',
   pantallaLeer: 'pantalla:leer',
   pantallaQuitar: 'pantalla:quitar',
   pantallaDescartar: 'pantalla:descartar',
@@ -65,7 +68,10 @@ export const CANALES = {
   pdfAbrir: 'pdf:abrir',
   visionEstado: 'vision:estado',
   visionConsentir: 'vision:consentir',
+  visionConsentirCompanero: 'vision:consentir-companero',
   visionProbar: 'vision:probar',
+  companeroComentario: 'companero:comentario',
+  companeroResponder: 'companero:responder',
   memoriaEstado: 'memoria:estado',
   memoriaGuardar: 'memoria:guardar',
   memoriaActualizar: 'memoria:actualizar',
@@ -96,6 +102,12 @@ export const CANALES = {
   // Métricas de Instagram (solo lectura).
   metricasLeer: 'metricas:leer'
 } as const
+
+/** Un comentario del Compañero y hacia dónde crece la ventana (el globo va al otro lado del personaje). */
+export interface BocadilloCompanero {
+  comentario: ComentarioCompanero
+  ancla: EstadoVentana['ancla']
+}
 
 export interface EstadoVentana {
   expandido: boolean
@@ -644,6 +656,8 @@ export interface ApiOrbe {
   /** El interruptor «Modo auto» del chat: el agente solo pide permiso para lo de seguridad. */
   autoInfo(): Promise<boolean>
   autoFijar(activo: boolean): Promise<boolean>
+  privadoInfo(): Promise<boolean>
+  privadoFijar(activo: boolean): Promise<boolean>
   chatPrecalentar(): void
   alEventoChat(cb: (evento: EventoChat) => void): () => void
 
@@ -719,7 +733,10 @@ export interface ApiOrbe {
   pdfAbrir(ruta: string, modo: 'ver' | 'abrir' | 'carpeta'): Promise<void>
   visionEstado(): Promise<EstadoVision | null>
   visionConsentir(): Promise<EstadoVision | null>
+  visionConsentirCompanero(): Promise<EstadoVision | null>
   visionProbar(): Promise<ResultadoOjos | null>
+  alCompanero(cb: (b: BocadilloCompanero) => void): () => void
+  companeroResponder(id: string, accion: AccionBocadillo): void
   memoriaEstado(): Promise<EstadoMemoria>
   memoriaGuardar(texto: string, forzar?: boolean): Promise<ResultadoMemoria>
   memoriaActualizar(id: string, cambios: CambiosRecuerdo, forzar?: boolean): Promise<ResultadoMemoria>

@@ -47,6 +47,8 @@ export interface DepsVision {
   archivoUso: string | null
   rutaCli?: string
   cwd?: string
+  /** ORBE_COMPANERO_OJOS=1 y ORBE_COMPANERO_OJOS_NUBE=1: el Compañero puede pedir el segundo permiso. */
+  companeroNube?: boolean
   ahora?: () => Date
   pedir?: PeticionVision['pedir']
   lanzar?: PeticionVision['lanzar']
@@ -82,14 +84,35 @@ export class ServicioVision {
     return this.leerJson<{ vision?: { version?: number } }>(this.d.archivoConsentimiento)?.vision?.version === 1
   }
 
-  /** Guarda el consentimiento (sin borrar otros que haya en el archivo). */
-  consentir(): EstadoVision {
+  /** El segundo permiso (VISION-Y-DATOS.md §2): el Compañero manda capturas a ESTE proveedor; si cambia, se pide otra vez. */
+  private consentidaCompanero(): boolean {
+    const c = this.leerJson<{ companero?: { proveedor?: string; version?: number } }>(this.d.archivoConsentimiento)?.companero
+    return c?.version === 1 && c.proveedor === this.d.config.proveedor
+  }
+
+  /** Guarda un consentimiento (sin borrar otros que haya en el archivo). */
+  private guardarConsentimiento(clave: 'vision' | 'companero'): EstadoVision {
     if (this.d.archivoConsentimiento) {
       const previo = this.leerJson<Record<string, unknown>>(this.d.archivoConsentimiento) ?? {}
-      const vision = { proveedor: this.d.config.proveedor, version: 1, fecha: (this.d.ahora?.() ?? new Date()).toISOString() }
-      writeFileSync(this.d.archivoConsentimiento, JSON.stringify({ ...previo, vision }, null, 2), 'utf8')
+      const dato = { proveedor: this.d.config.proveedor, version: 1, fecha: (this.d.ahora?.() ?? new Date()).toISOString() }
+      writeFileSync(this.d.archivoConsentimiento, JSON.stringify({ ...previo, [clave]: dato }, null, 2), 'utf8')
     }
     return this.estado()
+  }
+
+  consentir(): EstadoVision {
+    return this.guardarConsentimiento('vision')
+  }
+
+  /** Solo tiene efecto si el .env lo permite: el botón no puede saltarse ORBE_COMPANERO_OJOS_NUBE. */
+  consentirCompanero(): EstadoVision {
+    return this.d.companeroNube && this.d.config.proveedor !== 'ollama' ? this.guardarConsentimiento('companero') : this.estado()
+  }
+
+  /** ¿Puede el Compañero usar los ojos ahora? Con la nube, solo con el segundo permiso. */
+  ojosCompanero(): boolean {
+    const e = this.estado()
+    return e.activa && (e.companero === 'local' || e.companero === 'permitido')
   }
 
   estado(): EstadoVision {
@@ -99,7 +122,8 @@ export class ServicioVision {
     else if (NUBE.includes(proveedor) && !this.d.clave()) motivo = 'Falta la clave: Configuración → Conectores → Visión.'
     else if (proveedor === 'claude-cli' && !this.d.rutaCli) motivo = 'No encuentro el CLI de Claude.'
     else if (!this.consentida()) motivo = 'Falta tu permiso.'
-    return { proveedor, modelo, activa: !motivo, consentida: this.consentida(), ...(motivo ? { motivo } : {}), usadasHoy: this.usadasHoy(), maxDia }
+    const companero = proveedor === 'ollama' ? 'local' : !this.d.companeroNube ? 'apagado' : this.consentidaCompanero() ? 'permitido' : 'falta_permiso'
+    return { proveedor, modelo, activa: !motivo, consentida: this.consentida(), ...(motivo ? { motivo } : {}), usadasHoy: this.usadasHoy(), maxDia, companero }
   }
 
   /** Describe una imagen ya preparada (JPEG sin metadatos). La misma imagen no se envía dos veces. */

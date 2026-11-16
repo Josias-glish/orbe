@@ -258,6 +258,24 @@ Llavero, Ajustes del Sistema, etc. `electron-builder.yml` `mac`: dmg+zip arm64/x
 Sin verificar en un Mac real: todo el ayudante (no hay Mac en el equipo del usuario: lo prueba un amigo), la firma ad
 hoc de electron-builder, «Abrir al iniciar sesión» sin firma y el borde/visión con varias pantallas Retina.
 
+v1.25.0 (**Etapa 14, compañero local**, rama `claude/etapa-14-companero`, sale de `claude/etapa-13-vision` con el
+instalador de Mac): `main/companero/` — `servicio.ts` (bucle cada `intervalo` s con `fuente.ventana()`; espera una
+vuelta al cambiar de actividad; ojos solo si cambió, 2 min entre imágenes y nunca a batería), `reglas.ts` (llamadas,
+correo/mensajería, vídeo, `tituloObra`, silencio, ritmo, `validarComentario` del prompt C.2), `voz.ts` (prompt C.2 +
+WIKIPEDIA, `pedirOllama` API nativa con `format: json` y `keep_alive 2m`), `wikipedia.ts` (solo el título, modo
+equilibrado), `ipc.ts` (`VentanaOrbe.mostrarBocadillo`: la ventana plegada crece a `TAM_BOCADILLO` sin foco ni mover el
+personaje; `renderer/companero.ts` el globo). `ORBE_LOCAL_URL` se rechaza si no es 127.0.0.1/localhost. Segundo permiso
+para ojos en la nube: `consentimientos.json` `companero` (por proveedor), `ServicioVision.ojosCompanero()`, solo con
+`ORBE_COMPANERO_OJOS(_NUBE)=1`; con Ollama local, ojos solo con ≥ 8 GB libres. «🔒 Privado»: `chat/privado.ts`
+`ProveedorConmutable` (CLI/API ↔ `ProveedorOpenai` a `<ORBE_LOCAL_URL>/v1`, sin agente), IPC `privado:info|fijar`; en
+privado `registrarChat` no usa la memoria. Prueba real: `ORBE_PRUEBA_REAL=1 npm test -- tests/integracion/ollama-real`.
+v1.25.1: `ORBE_COMPANERO_CEREBRO=haiku` (decisión del usuario del 15-nov, «por ahora, para mí solo»): `pedirHaiku` en
+voz.ts (`claude -p --output-format json --model haiku --tools "" --strict-mcp-config --setting-sources ""`, sin claves
+del entorno, cwd `companero-cli`). Real: 3–6 s por comentario frente a ~50 s de Llama 3.2 en su PC; pasa los 3 casos de
+`tests/integracion/haiku-real`. Privado sigue siendo solo Ollama.
+Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
+el grupo Ajustes → Compañero (se configura en el .env).
+
 El plan vigente es el de `docs/investigacion/PROMPT-CONSTRUCCION.md` (Etapas 5–17; la web solo cuando el usuario diga
 «web»): 6 núcleo agéntico · 7 Google ampliado · 8 control del PC · 9 datos y memoria · 10 subagentes del CLI ·
 11 proactividad · 12 investigación profunda · 13 visión · 14 compañero local · 15 navegador · 16 Orbe para otras

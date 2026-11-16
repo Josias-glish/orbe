@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   CANALES,
   type ApiOrbe,
+  type BocadilloCompanero,
   type EstadoVentana,
   type EventoChat,
   type ConfigVista,
@@ -43,6 +44,8 @@ const api: ApiOrbe = {
   potenciaFijar: (nivel) => ipcRenderer.invoke(CANALES.potenciaFijar, nivel),
   autoInfo: () => ipcRenderer.invoke(CANALES.autoInfo),
   autoFijar: (activo) => ipcRenderer.invoke(CANALES.autoFijar, activo),
+  privadoInfo: () => ipcRenderer.invoke(CANALES.privadoInfo),
+  privadoFijar: (activo) => ipcRenderer.invoke(CANALES.privadoFijar, activo),
   chatPrecalentar: () => ipcRenderer.send(CANALES.chatPrecalentar),
   alEventoChat: (cb) => suscribir<EventoChat>(CANALES.chatEvento, cb),
 
@@ -92,7 +95,10 @@ const api: ApiOrbe = {
   pdfAbrir: (ruta, modo) => ipcRenderer.invoke(CANALES.pdfAbrir, ruta, modo),
   visionEstado: () => ipcRenderer.invoke(CANALES.visionEstado),
   visionConsentir: () => ipcRenderer.invoke(CANALES.visionConsentir),
+  visionConsentirCompanero: () => ipcRenderer.invoke(CANALES.visionConsentirCompanero),
   visionProbar: () => ipcRenderer.invoke(CANALES.visionProbar),
+  alCompanero: (cb) => suscribir<BocadilloCompanero>(CANALES.companeroComentario, cb),
+  companeroResponder: (id, accion) => ipcRenderer.send(CANALES.companeroResponder, id, accion),
   memoriaEstado: () => ipcRenderer.invoke(CANALES.memoriaEstado),
   memoriaGuardar: (texto, forzar) => ipcRenderer.invoke(CANALES.memoriaGuardar, texto, forzar),
   memoriaActualizar: (id, cambios, forzar) => ipcRenderer.invoke(CANALES.memoriaActualizar, id, cambios, forzar),

@@ -54,6 +54,11 @@ export interface EstadoVision {
   motivo?: string
   usadasHoy: number
   maxDia: number
+  /**
+   * Los ojos del Compañero: «local» con Ollama; con un proveedor en la nube necesitan ORBE_COMPANERO_OJOS_NUBE=1
+   * («apagado» si no está) y un segundo permiso para ese proveedor («falta_permiso» / «permitido»).
+   */
+  companero: 'local' | 'apagado' | 'falta_permiso' | 'permitido'
 }
 
 export type ResultadoOjos =
