@@ -1,5 +1,6 @@
 import { perfilDe, presentacionIdentidad } from '../shared/identidad'
-import { app, ipcMain, Notification, powerMonitor, type Tray } from 'electron'
+import { app, ipcMain, Notification, powerMonitor, shell, type Tray } from 'electron'
+import { Actualizador, registrarActualizacion } from './actualizacion'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
@@ -602,6 +603,36 @@ app.whenReady().then(async () => {
     { panel: config.atajoPanel, leer: config.atajoLeer, pausa: config.atajoPausa }
   )
 
+  // Actualizaciones: solo en la app instalada (ni en desarrollo ni en humo). Busca a los 30 s y cada 6 h, baja sola la
+  // versión nueva comprobando su SHA-256 y la instala cuando el usuario lo pulsa (cabecera del chat o bandeja).
+  const actualizador = new Actualizador({
+    versionActual: app.getVersion(),
+    plataforma: process.platform,
+    arch: process.arch,
+    portable: Boolean(process.env['PORTABLE_EXECUTABLE_FILE']),
+    carpeta: join(app.getPath('temp'), 'orbe-actualizacion'),
+    emitir: (e) => {
+      if (!orbe.ventana.isDestroyed()) orbe.ventana.webContents.send(CANALES.actualizacionEvento, e)
+    },
+    avisar: (version) => {
+      if (!Notification.isSupported()) return
+      const n = new Notification({ title: `Orbe ${version} está lista`, body: 'Ábreme y pulsa «Instalar» en la cabecera del chat (o en el icono de la bandeja).' })
+      n.on('click', () => {
+        orbe.mostrar()
+        orbe.establecerExpandido(true)
+      })
+      n.show()
+    }
+  })
+  const instalarActualizacion = (): void => {
+    if (actualizador.instalar((ruta) => void shell.openPath(ruta), process.execPath)) app.quit()
+  }
+  registrarActualizacion(orbe.ventana, actualizador, instalarActualizacion)
+  if (app.isPackaged && !modoHumo) {
+    setTimeout(() => void actualizador.comprobar(), 30_000).unref()
+    setInterval(() => void actualizador.comprobar(), 6 * 3_600_000).unref()
+  }
+
   // Icono de la bandeja del sistema (en la prueba de humo no se crea: no debe dejar un icono en la barra del usuario).
   if (!modoHumo) {
     const mostrarPanel = (): void => {
@@ -618,11 +649,13 @@ app.whenReady().then(async () => {
         },
         leerPantalla: () => void pantalla.leerConAtajo(),
         detenerAccion: detenerTodo,
+        instalarActualizacion,
         salir: () => app.quit()
       },
       () => orbe.estaVisible,
       app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-      () => (servicioChat?.hayTurno ?? false) || tareas.ocupado
+      () => (servicioChat?.hayTurno ?? false) || tareas.ocupado,
+      () => (actualizador.estado.fase === 'lista' ? actualizador.estado.version : null)
     )
   }
 

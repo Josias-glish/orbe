@@ -194,6 +194,17 @@ input {
   color: var(--cian);
   border-color: currentColor;
 }
+.chip-actualizar {
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  color: #34d399;
+  border-color: currentColor;
+}
+.chip-actualizar:disabled {
+  cursor: default;
+  color: var(--texto-suave);
+}
 
 .boton-icono {
   display: grid;
@@ -1802,13 +1813,6 @@ input {
 .ajustes .memoria-campo {
   user-select: text;
 }
-#fijar-boton[aria-pressed='false'] {
-  opacity: 0.7;
-}
-#fijar-boton[aria-pressed='false'] svg {
-  transform: rotate(35deg);
-}
-
 /* ---- Texto de imagen (OCR en el equipo) ---- */
 .ocr-menu {
   top: auto;

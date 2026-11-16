@@ -900,6 +900,17 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await pulsar('#privado-boton')
     await esperar(500)
     comprobar('al apagarlo vuelve el cerebro profundo', await js<boolean>(`document.getElementById('privado-chip').hidden`))
+    // Versión nueva: la cabecera enseña el progreso y luego «Instalar» (el estado llega del proceso principal).
+    wc.send(CANALES.actualizacionEvento, { fase: 'descargando', version: '9.9.9', progreso: 45 })
+    await esperar(200)
+    comprobar('la descarga se ve en la cabecera', (await textoDe('#actualizar-boton')) === 'Descargando 9.9.9… 45 %', await textoDe('#actualizar-boton'))
+    wc.send(CANALES.actualizacionEvento, { fase: 'lista', version: '9.9.9' })
+    await esperar(200)
+    comprobar('y después «Instalar»', (await textoDe('#actualizar-boton')) === 'Instalar 9.9.9', await textoDe('#actualizar-boton'))
+    await capturar('14c-actualizacion')
+    wc.send(CANALES.actualizacionEvento, { fase: 'nada' })
+    await esperar(200)
+    comprobar('sin versión nueva no se ve', await js<boolean>(`document.getElementById('actualizar-boton').hidden`))
   }
 
   /** Configuración (proveedor, claves, dictado y voz), botón de fijar y botón de cerrar. */
@@ -1101,15 +1112,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     await esperar(300)
     comprobar('Esc cierra la configuración y no el panel', !(await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && orbe.estaExpandido)
 
-    // Fijar el panel por encima de las demás ventanas
-    comprobar('arranca fijado', (await existe('#fijar-boton[aria-pressed="true"]')) && orbe.ventana.isAlwaysOnTop())
-    await pulsar('#fijar-boton')
-    await esperar(300)
-    comprobar('soltarlo lo baja del nivel de siempre-encima', (await existe('#fijar-boton[aria-pressed="false"]')) && !orbe.ventana.isAlwaysOnTop())
-    await capturar('11d-suelto')
-    await pulsar('#fijar-boton')
-    await esperar(300)
-    comprobar('fijarlo otra vez lo sube', (await existe('#fijar-boton[aria-pressed="true"]')) && orbe.ventana.isAlwaysOnTop())
+    // El panel abierto está siempre por encima (sin botón de fijar, decisión del usuario)
+    comprobar('sin botón de fijar y siempre encima', !(await existe('#fijar-boton')) && orbe.ventana.isAlwaysOnTop())
 
     // El botón de cerrar solo recoge el panel
     await pulsar('#cerrar-boton')

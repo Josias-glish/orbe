@@ -8,6 +8,8 @@ export interface AccionesBandeja {
   leerPantalla(): void
   /** Corta todo lo que esté haciendo el agente: la respuesta del chat y las tareas de fondo. */
   detenerAccion(): void
+  /** Cierra Orbe y ejecuta el instalador ya descargado. */
+  instalarActualizacion?(): void
   salir(): void
 }
 
@@ -19,6 +21,8 @@ export interface EstadoBandeja {
   inicioDisponible: boolean
   iniciaConWindows: boolean
   alCambiarInicio(valor: boolean): void
+  /** Versión nueva ya descargada y comprobada. */
+  actualizacionLista?: string | null
 }
 
 /** El menú de la bandeja, como datos (así se puede probar sin Electron). */
@@ -38,6 +42,9 @@ export function plantillaBandeja(acciones: AccionesBandeja, estado: EstadoBandej
       checked: estado.iniciaConWindows,
       click: (item) => estado.alCambiarInicio(item.checked)
     })
+  }
+  if (estado.actualizacionLista && acciones.instalarActualizacion) {
+    plantilla.push({ label: `Instalar actualización ${estado.actualizacionLista}`, click: acciones.instalarActualizacion })
   }
   plantilla.push({ label: 'Salir', click: acciones.salir })
   return plantilla
@@ -67,7 +74,8 @@ export function crearBandeja(
   acciones: AccionesBandeja,
   estadoVisible: () => boolean,
   carpetaRecursos: string,
-  hayTurno: () => boolean = () => false
+  hayTurno: () => boolean = () => false,
+  actualizacionLista: () => string | null = () => null
 ): Tray | null {
   // En macOS, el icono de la barra de menús mide 18 puntos (tray-mac@2x.png se elige solo en pantallas Retina).
   const imagen = nativeImage.createFromPath(join(carpetaRecursos, process.platform === 'darwin' ? 'tray-mac.png' : 'tray.png'))
@@ -84,7 +92,8 @@ export function crearBandeja(
         hayTurno: hayTurno(),
         inicioDisponible: app.isPackaged,
         iniciaConWindows: iniciaConWindows(),
-        alCambiarInicio: fijarInicioConWindows
+        alCambiarInicio: fijarInicioConWindows,
+        actualizacionLista: actualizacionLista()
       })
     )
   // El menú se rehace al abrirlo para que «Ocultar/Mostrar» y la casilla estén al día.

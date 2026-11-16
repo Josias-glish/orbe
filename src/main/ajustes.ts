@@ -8,8 +8,6 @@ export interface Ajustes {
   posicion?: { x: number; y: number }
   /** Tamaño del panel de chat que eligió el usuario. */
   panel?: { ancho: number; alto: number }
-  /** El panel abierto se queda por encima de las demás ventanas (por defecto sí). */
-  fijada?: boolean
   /** El nivel del marcador de potencia que dejó el usuario (si no, vale ORBE_ESFUERZO). */
   esfuerzo?: NivelEsfuerzo
   /** El interruptor «Modo auto» del chat: el agente solo pide permiso para lo de seguridad. */
