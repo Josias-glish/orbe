@@ -12,5 +12,5 @@
     "lib": ["ES2022"]
   },
   "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*", "electron.vite.config.ts"],
-  "exclude": ["tests/dictado.test.ts"]
+  "exclude": ["tests/dictado.test.ts", "tests/tutorial.test.ts"]
 }

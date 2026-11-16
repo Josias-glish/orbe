@@ -288,6 +288,12 @@ solo cierra procesos de su carpeta (allowOnlyOneInstallerInstance.nsh:94). `inst
 el instalador eligió solo dónde instalar. Detección comprobada en su registro (`tests/integracion/copias-real`);
 ciclo real verificado el 15-nov: la 1.26.0 descargó la 1.26.1, el instalador sin /allusers fue a Program Files
 (reutilizó esa ubicación), y la 1.26.1 desinstaló la 1.26.0 por usuario; queda una sola copia y %APPDATA% intacto.
+v1.27.0 (rama `claude/tutorial`, sale de `claude/actualizaciones`): `renderer/chat/tutorial.ts`, recorrido guiado sobre
+el panel (capa `.tutorial` dentro de #panel, hueco `.tutorial-foco` con box-shadow, bocadillo con Atrás/Siguiente/Saltar,
+Esc y flechas en captura sobre window, Tab atrapado). 15 `PASOS` con selector real (los ocultos se saltan), cara y
+mirada de Orbe por paso. Sale la primera vez en `alAbrirPanel` (localStorage `orbe.tutorial.visto`, ese día sin parte);
+se repite con «tutorial» (`pideTutorial`, sin modelo) o el aparte `tutorial` de Configuración. humo: `pasosTutorial` tras
+el paso 2; `humo:real` marca el visto antes de abrir. `tests/tutorial.test.ts` excluido del typecheck node (usa DOM).
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 

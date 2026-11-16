@@ -63,6 +63,8 @@ npm run probar-uia  # lee la ventana que pongas en primer plano y enseña lo que
 ```
 
 ## Controles
+- **Tutorial**: la primera vez que abres el panel, Orbe te lo enseña paso a paso (oscurece el resto y marca cada botón;
+  flechas para avanzar, Esc para cerrar). Para repetirlo, escribe «tutorial» o pulsa «Ver el tutorial» en la configuración.
 - **Barra lateral** (a la izquierda del panel): **Chat**, **Tareas** (reloj), **Consumo** (gráfico), **Memoria** (libro) y **Personaje** (carita, con expresiones, gestos y actividad); abajo, **Voz** (altavoz), **Fondo** (imagen) y **Configuración** (controles deslizantes, organizada en grupos: Inteligencia, Personaje y avisos, Dictado, Voz, Identidad y Conectores). En la cabecera quedan el modo auto, «🔒 Privado», el historial, la potencia, conversación nueva y cerrar.
 - **Doble clic** en el personaje: abrir o cerrar el chat (también **Ctrl + Mayús + Espacio** o la bandeja). Un **clic** solo lo hace jugar (salta, saluda, baila…), así no se abre el chat por tocarlo sin querer. **Esc** cierra el panel.
 - **Solo se toca el centro del personaje**: en Windows y macOS, el resto de su cuadro (las esquinas y los lados transparentes) deja pasar los clics a lo que haya debajo, así no tapa pestañas ni botones de otras aplicaciones. Con el panel abierto, igual: solo el panel y el centro del personaje reciben el ratón.

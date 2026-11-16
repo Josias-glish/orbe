@@ -97,6 +97,73 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
   }
   const mismos = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 
+  /** El recorrido guiado: sale solo la primera vez, se recorre, se cierra con Esc sin cerrar el panel y se puede repetir. */
+  const pasosTutorial = async (): Promise<void> => {
+    const t: Record<string, unknown> = {}
+    informe.tutorial = t
+    const abierto = (): Promise<boolean> => existe('.tutorial .tutorial-bocadillo')
+    const dentroDelPanel = (): Promise<boolean> =>
+      js(`(() => {
+        const p = document.getElementById('panel').getBoundingClientRect();
+        const b = document.querySelector('.tutorial-bocadillo').getBoundingClientRect();
+        return b.left >= p.left - 0.5 && b.right <= p.right + 0.5 && b.top >= p.top - 0.5 && b.bottom <= p.bottom + 0.5;
+      })()`)
+    const tecla = (key: string): Promise<unknown> =>
+      js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`)
+
+    comprobar('el tutorial aparece solo al abrir el panel la primera vez', await esperarSelector('.tutorial .tutorial-bocadillo', 2500))
+    t.primero = await textoDe('#tutorial-titulo')
+    comprobar('empieza saludando', String(t.primero).includes('Hola'), t.primero)
+    await capturar('2b-tutorial-inicio')
+    const total = Number((await textoDe('.tutorial-cuenta')).split('/')[1])
+    t.total = total
+    comprobar('tiene al menos 10 pasos', total >= 10, total)
+    const titulos: string[] = [String(t.primero)]
+    const fuera: string[] = []
+    for (let i = 1; i < total; i++) {
+      await pulsar('.tutorial-siguiente')
+      await esperar(260)
+      const titulo = await textoDe('#tutorial-titulo')
+      titulos.push(titulo)
+      if (!(await dentroDelPanel())) fuera.push(titulo)
+      if ([1, 2, 4, 8].includes(i)) await capturar(`2b-tutorial-${i + 1}`)
+    }
+    t.titulos = titulos
+    comprobar('cada paso es distinto', new Set(titulos).size === total, titulos)
+    comprobar('el bocadillo no se sale del panel', fuera.length === 0, fuera)
+    comprobar('el último botón dice «Empezar»', (await textoDe('.tutorial-siguiente')) === 'Empezar')
+    await capturar('2b-tutorial-final')
+
+    await pulsar('.tutorial-atras')
+    await esperar(200)
+    comprobar('«Atrás» vuelve al paso anterior', (await textoDe('#tutorial-titulo')) === titulos[total - 2], await textoDe('#tutorial-titulo'))
+    await tecla('ArrowRight')
+    await esperar(200)
+    comprobar('la flecha derecha avanza', (await textoDe('#tutorial-titulo')) === titulos[total - 1])
+    await tecla('Escape')
+    await esperar(250)
+    comprobar('Esc cierra el tutorial y no el panel', !(await abierto()) && orbe.estaExpandido)
+    comprobar('queda marcado como visto', (await js<string | null>(`localStorage.getItem('orbe.tutorial.visto')`)) === '1')
+
+    // Se repite escribiendo «tutorial» (sin mensaje ni llamada al modelo) y «Saltar» lo cierra.
+    await escribirYEnviar('tutorial')
+    await esperar(300)
+    comprobar('«tutorial» lo vuelve a abrir sin mandar nada', (await abierto()) && (await contar('.msg.usuario')) === 0)
+    await pulsar('.tutorial-saltar')
+    await esperar(200)
+    comprobar('«Saltar» lo cierra', !(await abierto()))
+
+    // Y desde la configuración: vuelve al chat y lo abre.
+    await pulsar('#ajustes-boton')
+    await esperar(400)
+    await pulsar('[data-aparte="tutorial"]')
+    await esperar(300)
+    comprobar('«Ver el tutorial» de la configuración lo abre sobre el chat', (await abierto()) && (await js<boolean>(`document.getElementById('ajustes').hidden`)))
+    await tecla('Escape')
+    await esperar(250)
+    comprobar('y se cierra otra vez', !(await abierto()) && orbe.estaExpandido)
+  }
+
   /** Fase 3: lectura de pantalla bajo demanda, ensayada con un lector de mentira (nunca se lee la pantalla real). */
   const pasosPantalla = async ({ fuente, leerConAtajo }: ExtrasHumo): Promise<void> => {
     const p: Record<string, unknown> = {}
@@ -1018,8 +1085,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     comprobar('la configuración se abre y esconde el chat', (await js<boolean>(`document.querySelector('.panel-cuerpo').hidden`)) && (await existe('#ajustes-boton[aria-pressed="true"]')))
     comprobar('tiene las siete secciones (con «Identidad», «Conectores» y «Visión»)', (await textosDe('#ajustes .ajuste-titulo')).length === 7, await textosDe('#ajustes .ajuste-titulo'))
     comprobar('el menú de la configuración ofrece Claude (CLI y API) y otras IA', (await textoDe('#ajustes select[aria-label="Quién responde"]')).includes('Otra IA compatible con OpenAI'))
-    comprobar('la configuración se organiza en 7 grupos más Consumo, Memoria, Voz y Fondo', (await contar('#ajustes .ajustes-grupo[data-grupo]')) === 7 && (await contar('#ajustes .ajustes-grupo[data-aparte]')) === 4)
-    comprobar('los grupos llevan iconos dibujados, no emojis', (await contar('#ajustes .ajustes-grupo-icono svg')) === 11)
+    comprobar('la configuración se organiza en 7 grupos más Consumo, Memoria, Voz, Fondo y Tutorial', (await contar('#ajustes .ajustes-grupo[data-grupo]')) === 7 && (await contar('#ajustes .ajustes-grupo[data-aparte]')) === 5)
+    comprobar('los grupos llevan iconos dibujados, no emojis', (await contar('#ajustes .ajustes-grupo-icono svg')) === 12)
     comprobar('la barra lateral solo deja Chat, Agentes, Tareas, Métricas, Memoria y Configuración', (await js<string[]>(`[...document.querySelectorAll('#carril > button')].filter((b) => b.offsetParent !== null).map((b) => b.id)`)).join() === 'chat-boton,personaje-boton,tareas-boton,metricas-boton,memoria-boton,ajustes-boton')
     await js(`document.querySelector('#ajustes .ajustes-grupo[data-aparte="uso"]').click()`)
     comprobar('«Consumo» se abre desde Configuración', await esperarSelector('#uso:not([hidden])', 2000) && (await js<boolean>(`document.getElementById('ajustes').hidden`)))
@@ -1520,7 +1587,8 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
     informe.webgl = await js('window.__orbeDiagnostico()')
 
     if (real) {
-      // Conversación real: dos turnos para comprobar el streaming y la memoria.
+      // Conversación real: dos turnos para comprobar el streaming y la memoria (sin el tutorial de la primera vez).
+      await js("localStorage.setItem('orbe.tutorial.visto', '1')")
       orbe.establecerExpandido(true)
       await esperar(700)
       informe.cabecera = await js(`document.getElementById('modelo')?.textContent`)
@@ -1557,6 +1625,7 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
         informe.bienvenida = await textoDe('#mensajes .aviso')
         comprobar('avisa de la memoria cargada de Claude', String(informe.bienvenida).includes('He cargado 3 notas'), informe.bienvenida)
       }
+      await pasosTutorial()
 
       // 3. Conversación de ejemplo con streaming
       await escribirYEnviar('Hola, ¿qué puedes hacer por mí?')
