@@ -1,6 +1,6 @@
 import { perfilDe, presentacionIdentidad } from '../shared/identidad'
 import { app, ipcMain, Notification, powerMonitor, shell, type Tray } from 'electron'
-import { Actualizador, registrarActualizacion } from './actualizacion'
+import { Actualizador, borrarCopiasAntiguas, lanzarDesinstalador, leerRegistroOrbe, registrarActualizacion } from './actualizacion'
 import { crearBandeja } from './bandeja'
 import { registrarConfiguracion } from './configuracion'
 import { registrarConectores } from './conectores'
@@ -625,11 +625,32 @@ app.whenReady().then(async () => {
     }
   })
   const instalarActualizacion = (): void => {
-    if (actualizador.instalar((ruta) => void shell.openPath(ruta), process.execPath)) app.quit()
+    if (actualizador.instalar((ruta) => void shell.openPath(ruta))) app.quit()
   }
   registrarActualizacion(orbe.ventana, actualizador, instalarActualizacion)
   if (app.isPackaged && !modoHumo) {
     setTimeout(() => void actualizador.comprobar(), 30_000).unref()
+    // Al arrancar una versión nueva: si la anterior quedó instalada en el otro sitio (todos los usuarios / solo para ti),
+    // se desinstala en silencio. La de todos los usuarios pide el permiso de administrador de Windows.
+    if (process.platform === 'win32' && !process.env['PORTABLE_EXECUTABLE_FILE']) {
+      setTimeout(
+        () =>
+          void borrarCopiasAntiguas({
+            versionActual: app.getVersion(),
+            carpetaActual: dirname(process.execPath),
+            leerRegistro: leerRegistroOrbe,
+            desinstalar: lanzarDesinstalador,
+            avisar: (version, admin) => {
+              if (!Notification.isSupported()) return
+              new Notification({
+                title: `Quitando Orbe ${version}`,
+                body: admin ? 'Es la versión anterior. Windows te pedirá permiso de administrador; tus datos no se tocan.' : 'Es la versión anterior; tus datos no se tocan.'
+              }).show()
+            }
+          }),
+        15_000
+      ).unref()
+    }
     setInterval(() => void actualizador.comprobar(), 6 * 3_600_000).unref()
   }
 

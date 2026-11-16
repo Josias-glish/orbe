@@ -281,6 +281,12 @@ sha256; descarga en streaming a `temp/orbe-actualizacion` con progreso cada 5 %;
 Comprobado en su PC: `/S --force-run` reinstala y reabre Orbe (~90 s); tenía dos copias (1.24.2 en Program Files y
 1.25.1 por usuario) y el instalador silencioso dejó una sola en Program Files. Sin botón de fijar (decisión del usuario,
 15-nov): la ventana siempre está en 'screen-saver'; se quitaron `ventana:fijar`, `fijarPanel` y `ajustes.fijada`.
+v1.26.1: `borrarCopiasAntiguas` (actualizacion.ts): a los 15 s de arrancar la app instalada en Windows lee con
+`reg query` la clave de desinstalación de Orbe (`f1db034b-…`, la misma en HKCU y HKLM) y ejecuta el
+`QuietUninstallString` de la copia más antigua del otro sitio (HKLM por `Start-Process -Verb RunAs`). El desinstalador
+solo cierra procesos de su carpeta (allowOnlyOneInstallerInstance.nsh:94). `instalar` ya no pasa `/allusers`: en su PC
+el instalador eligió solo dónde instalar. Detección comprobada en su registro (`tests/integracion/copias-real`);
+la desinstalación real, pendiente de que el usuario abra la 1.26.1.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 

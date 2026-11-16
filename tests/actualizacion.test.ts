@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ ipcMain: { handle: vi.fn(), on: vi.fn() } }))
 
-import { Actualizador, compararVersiones, leerRelease } from '../src/main/actualizacion'
+import { Actualizador, borrarCopiasAntiguas, compararVersiones, copiasAntiguas, leerCopia, leerRelease, partirOrden } from '../src/main/actualizacion'
 import { plantillaBandeja } from '../src/main/bandeja'
 import type { EstadoActualizacion } from '../src/shared/tipos'
 
@@ -57,7 +57,7 @@ describe('actualizaciones', () => {
     expect(estados.at(-1)).toEqual({ fase: 'nada' })
     expect(avisar).not.toHaveBeenCalled()
     expect(existsSync(join(carpeta, 'Orbe-Setup-1.26.0.exe'))).toBe(false)
-    expect(a.instalar(vi.fn(), 'C:/x', vi.fn() as never)).toBe(false)
+    expect(a.instalar(vi.fn(), vi.fn() as never)).toBe(false)
   })
 
   it('misma versión: nada; portable: solo aviso con enlace', async () => {
@@ -70,15 +70,56 @@ describe('actualizaciones', () => {
     expect(p.pedir).toHaveBeenCalledTimes(1)
   })
 
-  it('instala en silencio y vuelve a abrir; en Archivos de programa, para todos los usuarios', async () => {
+  it('instala en silencio y vuelve a abrir (el instalador decide dónde)', async () => {
     const { a } = crear(release('1.26.0'))
     await a.comprobar()
     const unref = vi.fn()
     const lanzar = vi.fn(() => ({ unref }))
-    expect(a.instalar(vi.fn(), 'C:/Users/yo/AppData/Local/Programs/Orbe/Orbe.exe', lanzar as never)).toBe(true)
+    expect(a.instalar(vi.fn(), lanzar as never)).toBe(true)
     expect((lanzar.mock.calls[0] as unknown[])[1]).toEqual(['/S', '--force-run'])
-    a.instalar(vi.fn(), 'C:/Program Files/Orbe/Orbe.exe', lanzar as never)
-    expect((lanzar.mock.calls[1] as unknown[])[1]).toEqual(['/S', '--force-run', '/allusers'])
     expect(unref).toHaveBeenCalled()
+  })
+})
+
+// Salida real de `reg query` en el PC del usuario (15-nov), con los finales de línea de Windows.
+const REG_TODOS = [
+  'HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\f1db034b-5259-5a30-bd19-fdf7c3750484',
+  '    QuietUninstallString    REG_SZ    "C:\\Program Files\\Orbe\\Uninstall Orbe.exe" /allusers /S',
+  '    DisplayVersion    REG_SZ    1.25.1',
+  ''
+].join('\r\n')
+const REG_MIO = [
+  'HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\f1db034b-5259-5a30-bd19-fdf7c3750484',
+  '    DisplayVersion    REG_SZ    1.26.0',
+  '    QuietUninstallString    REG_SZ    "C:\\Users\\yo\\AppData\\Local\\Programs\\Orbe\\Uninstall Orbe.exe" /currentuser /S',
+  ''
+].join('\r\n')
+const CARPETA_MIA = 'C:\\Users\\yo\\AppData\\Local\\Programs\\Orbe'
+
+describe('borrar la versión anterior', () => {
+  it('lee la copia del registro y parte la orden de desinstalar', () => {
+    expect(leerCopia(REG_TODOS, true)).toEqual({ todos: true, version: '1.25.1', desinstalar: '"C:\\Program Files\\Orbe\\Uninstall Orbe.exe" /allusers /S' })
+    expect(partirOrden('"C:\\Program Files\\Orbe\\Uninstall Orbe.exe" /allusers /S')).toEqual({ exe: 'C:\\Program Files\\Orbe\\Uninstall Orbe.exe', args: ['/allusers', '/S'] })
+    expect(leerCopia('sin nada', false)).toBeNull()
+  })
+
+  it('quita la anterior del otro sitio, con permiso de administrador si es de todos los usuarios', async () => {
+    const desinstalar = vi.fn()
+    const avisar = vi.fn()
+    const leerRegistro = async (raiz: 'HKCU' | 'HKLM') => (raiz === 'HKLM' ? REG_TODOS : REG_MIO)
+    const quitadas = await borrarCopiasAntiguas({ versionActual: '1.26.0', carpetaActual: CARPETA_MIA, leerRegistro, desinstalar, avisar })
+    expect(quitadas.map((c) => c.version)).toEqual(['1.25.1'])
+    expect(desinstalar).toHaveBeenCalledWith('C:\\Program Files\\Orbe\\Uninstall Orbe.exe', ['/allusers', '/S'], true)
+    expect(avisar).toHaveBeenCalledWith('1.25.1', true)
+  })
+
+  it('nunca quita la copia que corre ni una más nueva', async () => {
+    const desinstalar = vi.fn()
+    // Corre la vieja (1.25.1, en Program Files): la 1.26.0 del usuario es más nueva y se queda.
+    await borrarCopiasAntiguas({ versionActual: '1.25.1', carpetaActual: 'C:\\Program Files\\Orbe', leerRegistro: async (r) => (r === 'HKLM' ? REG_TODOS : REG_MIO), desinstalar, avisar: vi.fn() })
+    // Solo hay una copia, la propia.
+    await borrarCopiasAntiguas({ versionActual: '1.26.0', carpetaActual: CARPETA_MIA, leerRegistro: async (r) => (r === 'HKCU' ? REG_MIO : null), desinstalar, avisar: vi.fn() })
+    expect(desinstalar).not.toHaveBeenCalled()
+    expect(copiasAntiguas([{ todos: false, version: '1.0.0', desinstalar: `"${CARPETA_MIA}\\Uninstall Orbe.exe" /S` }], '1.26.0', CARPETA_MIA)).toEqual([])
   })
 })

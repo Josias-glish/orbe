@@ -381,8 +381,12 @@ La app instalada mira la última release de GitHub a los 30 s de arrancar y cada
 versión nueva, la descarga sola a la carpeta temporal y comprueba su **SHA-256** con la que publica GitHub (si no coincide,
 la borra). En la cabecera del chat se ve «Descargando 1.x… %» y luego **«Instalar 1.x»**; también sale una notificación
 y la opción en el icono de la bandeja. Al pulsarla, Orbe se cierra, el instalador corre en silencio y Orbe vuelve a
-abrirse (si está en Archivos de programa, Windows pide permiso de administrador). En Mac abre el .dmg; la versión
-portable solo avisa con el enlace. Los datos de `%APPDATA%/orbe` no se tocan.
+abrirse. En Mac abre el .dmg; la versión portable solo avisa con el enlace. Los datos de `%APPDATA%/orbe` no se tocan.
+
+**La versión anterior se borra sola.** Si al instalar quedan dos copias (una «para todos los usuarios» en Archivos de
+programa y otra «solo para ti»), la nueva, a los 15 s de abrirse, desinstala en silencio la más antigua con su propio
+desinstalador. Para la de todos los usuarios, Windows pide permiso de administrador. Nunca quita la copia abierta ni
+una más nueva.
 
 ## Crear el instalador
 ```bash

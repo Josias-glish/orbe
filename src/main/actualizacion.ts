@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -151,20 +151,110 @@ export class Actualizador {
   }
 
   /**
-   * Windows: el instalador en silencio, que vuelve a abrir Orbe (`--force-run`); si Orbe está en Archivos de programa,
-   * para todos los usuarios (pide permiso de administrador). Devuelve true si hay que salir para dejarle instalar.
+   * Windows: el instalador en silencio, que vuelve a abrir Orbe (`--force-run`). Sin `/allusers`: en el PC del usuario
+   * (15-nov) el instalador eligió él solo dónde instalar sin hacerle caso, y la copia que sobre la quita
+   * `borrarCopiasAntiguas` al arrancar la nueva. Devuelve true si hay que salir para dejarle instalar.
    * macOS: abre el .dmg para arrastrarlo a Aplicaciones.
    */
-  instalar(abrir: (ruta: string) => void, rutaApp: string, lanzar: typeof spawn = spawn): boolean {
+  instalar(abrir: (ruta: string) => void, lanzar: typeof spawn = spawn): boolean {
     if (this.actual.fase !== 'lista' || !this.archivo || !existsSync(this.archivo)) return false
     if (this.d.plataforma === 'darwin') {
       abrir(this.archivo)
       return false
     }
-    const todos = /[\\/]program files( \(x86\))?[\\/]/i.test(rutaApp)
-    lanzar(this.archivo, ['/S', '--force-run', ...(todos ? ['/allusers'] : [])], { detached: true, stdio: 'ignore' }).unref()
+    lanzar(this.archivo, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref()
     return true
   }
+}
+
+/**
+ * La clave de desinstalación de Orbe: electron-builder la deriva del appId y es la misma para la copia «solo para mí»
+ * (HKCU) y la de «todos los usuarios» (HKLM). Comprobado en el registro del usuario el 15-nov.
+ */
+const CLAVE_DESINSTALAR = 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\f1db034b-5259-5a30-bd19-fdf7c3750484'
+
+export interface CopiaInstalada {
+  todos: boolean
+  version: string
+  /** QuietUninstallString: `"…\Uninstall Orbe.exe" /allusers /S`. */
+  desinstalar: string
+}
+
+/** Lee la salida de `reg query` de una clave de desinstalación. */
+export function leerCopia(salida: string, todos: boolean): CopiaInstalada | null {
+  const valor = (n: string): string => new RegExp(`^\\s+${n}\\s+REG_\\w+\\s+(.*?)\\s*$`, 'm').exec(salida)?.[1] ?? ''
+  const version = valor('DisplayVersion')
+  const desinstalar = valor('QuietUninstallString')
+  return /^\d+\.\d+\.\d+$/.test(version) && desinstalar ? { todos, version, desinstalar } : null
+}
+
+/** El ejecutable y sus argumentos de `"C:\…\Uninstall Orbe.exe" /allusers /S`. */
+export function partirOrden(orden: string): { exe: string; args: string[] } | null {
+  const m = /^"([^"]+\.exe)"\s*(.*)$/i.exec(orden.trim())
+  return m ? { exe: m[1]!, args: m[2]!.split(/\s+/).filter(Boolean) } : null
+}
+
+/** Las copias que sobran: más antiguas que la que corre y en otra carpeta (nunca la propia ni una más nueva). */
+export function copiasAntiguas(copias: CopiaInstalada[], versionActual: string, carpetaActual: string): CopiaInstalada[] {
+  const propia = carpetaActual.toLowerCase().replace(/[\\/]+$/, '')
+  return copias.filter((c) => {
+    const exe = partirOrden(c.desinstalar)?.exe.toLowerCase() ?? ''
+    return compararVersiones(c.version, versionActual) < 0 && exe !== '' && !exe.startsWith(`${propia}\\`) && !exe.startsWith(`${propia}/`)
+  })
+}
+
+export interface DepsLimpieza {
+  versionActual: string
+  /** Carpeta de la copia que corre (la de process.execPath). */
+  carpetaActual: string
+  /** `reg query` de la clave en HKCU o HKLM; null si no existe. */
+  leerRegistro(raiz: 'HKCU' | 'HKLM'): Promise<string | null>
+  /** Lanza el desinstalador silencioso; con `admin`, por UAC (la copia de todos los usuarios lo necesita). */
+  desinstalar(exe: string, args: string[], admin: boolean): void
+  avisar(version: string, admin: boolean): void
+}
+
+/**
+ * Al arrancar una versión nueva, quita la anterior si quedó instalada en el otro sitio (todos los usuarios frente a solo
+ * para ti): el instalador de electron-builder solo sustituye la de su mismo sitio. Su desinstalador solo cierra los
+ * procesos de su carpeta (allowOnlyOneInstallerInstance.nsh, línea 94), así que la copia nueva sigue abierta. No toca
+ * %APPDATA%/orbe (deleteAppDataOnUninstall: false).
+ */
+export async function borrarCopiasAntiguas(d: DepsLimpieza): Promise<CopiaInstalada[]> {
+  const copias: CopiaInstalada[] = []
+  for (const raiz of ['HKCU', 'HKLM'] as const) {
+    const salida = await d.leerRegistro(raiz).catch(() => null)
+    const c = salida ? leerCopia(salida, raiz === 'HKLM') : null
+    if (c) copias.push(c)
+  }
+  const sobran = copiasAntiguas(copias, d.versionActual, d.carpetaActual)
+  for (const c of sobran) {
+    const orden = partirOrden(c.desinstalar)
+    if (!orden) continue
+    d.avisar(c.version, c.todos)
+    d.desinstalar(orden.exe, orden.args, c.todos)
+  }
+  return sobran
+}
+
+/** `reg query` de la clave de Orbe (null si no existe). */
+export function leerRegistroOrbe(raiz: 'HKCU' | 'HKLM'): Promise<string | null> {
+  return new Promise((resolver) => {
+    execFile('reg', ['query', `${raiz}\\${CLAVE_DESINSTALAR}`], { windowsHide: true, timeout: 10_000 }, (error, salida) =>
+      resolver(error ? null : salida)
+    )
+  })
+}
+
+/** El desinstalador en silencio; la copia de todos los usuarios, con el permiso de administrador de Windows (UAC). */
+export function lanzarDesinstalador(exe: string, args: string[], admin: boolean): void {
+  if (!admin) {
+    spawn(exe, args, { detached: true, stdio: 'ignore' }).unref()
+    return
+  }
+  const cita = (t: string): string => `'${t.replace(/'/g, "''")}'`
+  const ps = `Start-Process -FilePath ${cita(exe)} -ArgumentList ${args.map(cita).join(',')} -Verb RunAs`
+  spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
 }
 
 /** La cabecera del chat pregunta el estado, recibe los cambios y pide instalar. */
