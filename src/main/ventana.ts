@@ -17,6 +17,9 @@ import {
   type Rect
 } from './geometria'
 
+/** Cada cuánto se vuelve a pedir a Windows que Orbe esté encima de todo. */
+export const INTERVALO_ENCIMA_MS = 3000
+
 /** Controla la ventana flotante: creación, colapsar/expandir, arrastre y posición recordada. */
 export class VentanaOrbe {
   readonly ventana: BrowserWindow
@@ -74,6 +77,10 @@ export class VentanaOrbe {
     this.ventana.on('blur', () => this.reafirmarEncima())
     this.ventana.on('show', () => this.reafirmarEncima())
     screen.on('display-metrics-changed', () => this.reafirmarEncima())
+    // Plegado y sin tocarlo no recibe ninguno de esos eventos: el 17-nov estaba debajo de Chrome y la Terminal
+    // maximizados, con la marca de «encima» puesta, y solo volvió al pedirlo otra vez. Qué lo baja no está verificado.
+    const reafirmador = setInterval(() => this.reafirmarEncima(), INTERVALO_ENCIMA_MS)
+    this.ventana.once('closed', () => clearInterval(reafirmador))
 
     this.ventana.once('ready-to-show', () => this.ventana.showInactive())
     this.ventana.on('show', () => this.avisarVisibilidad(true))
