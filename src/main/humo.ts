@@ -9,7 +9,9 @@ import type { CapturaDemo } from './pantalla/captura-demo'
 import type { OcrDemo } from './pantalla/ocr-demo'
 import type { BusActividad } from './conectores/actividad'
 import type { FuenteDemo } from './pantalla/fuente-demo'
-import type { VentanaOrbe } from './ventana'
+import { INTERVALO_ENCIMA_MS, type VentanaOrbe } from './ventana'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { textosSistema } from '../shared/sistema'
 
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -34,6 +36,34 @@ export interface ExtrasHumo {
  * en humo/ y sale (con código 1 si alguna comprobación falla).
  * Con `real` (`npm run humo:real`) conversa de verdad con Claude a través de la configuración del usuario.
  */
+/**
+ * Pone una ventana normal encima de Orbe, manda a Orbe al fondo con la API de Windows (como cuando Windows lo bajaba
+ * debajo de Chrome) y mira el orden real de las ventanas justo después y pasado el intervalo de reafirmado.
+ */
+async function probarVuelveEncima(orbe: BrowserWindow): Promise<string> {
+  const b = orbe.getBounds()
+  const tapa = new BrowserWindow({ ...b, show: false, frame: false, focusable: false, skipTaskbar: true })
+  tapa.showInactive()
+  await new Promise((r) => setTimeout(r, 300))
+  const hwnd = (w: BrowserWindow): string => w.getNativeWindowHandle().readBigUInt64LE(0).toString()
+  const guion = `Add-Type @'
+using System; using System.Runtime.InteropServices;
+public class Z { [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
+[DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint c); }
+'@
+function Get-Encima { $w = [Z]::GetWindow([IntPtr]${hwnd(tapa)}, 3); while ($w -ne [IntPtr]::Zero) { if ($w -eq [IntPtr]${hwnd(orbe)}) { return 'encima' }; $w = [Z]::GetWindow($w, 3) }; 'debajo' }
+[void][Z]::SetWindowPos([IntPtr]${hwnd(orbe)}, [IntPtr]1, 0, 0, 0, 0, 0x13)
+$a = Get-Encima; Start-Sleep -Milliseconds ${INTERVALO_ENCIMA_MS + 1500}; "antes=$a despues=$(Get-Encima)"`
+  try {
+    const { stdout } = await promisify(execFile)('powershell', ['-NoProfile', '-Command', guion])
+    return stdout.trim()
+  } catch (error) {
+    return String(error)
+  } finally {
+    tapa.destroy()
+  }
+}
+
 export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: ExtrasHumo): Promise<void> {
   const carpeta = join(process.cwd(), 'humo')
   mkdirSync(carpeta, { recursive: true })
@@ -1682,11 +1712,11 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       await esperar(2600)
       informe.fpsReposo = await js('window.__orbeDiagnostico().fps')
 
-      // Que Orbe no desaparezca: Chromium no calcula si está tapado (Windows) y, si se cae el proceso gráfico, el dibujo
-      // se recarga solo y vuelve a verse.
+      // Que Orbe no desaparezca: si Windows lo manda debajo de otra ventana, vuelve a subir solo; y si se cae el proceso
+      // gráfico, el dibujo se recarga y vuelve a verse.
       if (process.platform === 'win32') {
-        const desactivadas = app.commandLine.getSwitchValue('disable-features')
-        comprobar('Chromium no deja de pintar a Orbe por creerlo tapado', desactivadas.includes('CalculateNativeWinOcclusion'), desactivadas)
+        informe.encimaTrasBajarlo = await probarVuelveEncima(orbe.ventana)
+        comprobar('si Windows lo baja, Orbe vuelve a ponerse encima solo', informe.encimaTrasBajarlo === 'antes=debajo despues=encima', informe.encimaTrasBajarlo)
       }
       const recargada = new Promise<boolean>((r) => {
         wc.once('did-finish-load', () => r(true))
