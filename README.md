@@ -378,6 +378,9 @@ Además de conversar, Orbe puede **actuar**: buscar en internet y leer páginas 
 - **Conversaciones largas:** con la API de Claude, la parte antigua se resume sola para no perder el hilo.
 - Está pendiente el navegador controlado (leer páginas, hacer clic y escribir), con sus confirmaciones.
 
+**Si Orbe deja de verse** (sigue abierto pero no se dibuja): desde la 1.27.1 no debería pasar; si pasa, «Salir» en el
+icono junto al reloj y ábrelo de nuevo. Tus datos no se tocan.
+
 ## Actualizaciones
 La app instalada mira la última release de GitHub a los 30 s de arrancar y cada 6 h (API pública, sin cuenta). Si hay
 versión nueva, la descarga sola a la carpeta temporal y comprueba su **SHA-256** con la que publica GitHub (si no coincide,

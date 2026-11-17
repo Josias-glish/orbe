@@ -294,6 +294,11 @@ Esc y flechas en captura sobre window, Tab atrapado). 15 `PASOS` con selector re
 mirada de Orbe por paso. Sale la primera vez en `alAbrirPanel` (localStorage `orbe.tutorial.visto`, ese día sin parte);
 se repite con «tutorial» (`pideTutorial`, sin modelo) o el aparte `tutorial` de Configuración. humo: `pasosTutorial` tras
 el paso 2; `humo:real` marca el visto antes de abrir. `tests/tutorial.test.ts` excluido del typecheck node (usa DOM).
+v1.27.1 (rama `claude/orbe-visible`): Orbe «desaparecía» (15 y 16-nov): proceso vivo, ventana en su sitio y
+visible para Windows, pero sin pintar, sobre una app maximizada; sin cierres en el registro de eventos ni suspensión a
+esa hora. Arreglo: `disable-features=CalculateNativeWinOcclusion` en Windows (index.ts; con `backgroundThrottling: true`
+Chromium dejaba de pintar la ventana transparente que creía tapada; causa probable, no verificada) y `app`
+`child-process-gone` tipo GPU → `recargar(1500)` en ventana.ts. humo: comprueba el interruptor y simula la caída de la GPU.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 

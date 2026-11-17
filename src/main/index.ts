@@ -96,6 +96,11 @@ const modoHumo = process.argv.includes('--smoke')
 // Con --real, la prueba de humo habla con Claude de verdad (gasta unos céntimos de tu plan).
 const humoReal = modoHumo && process.argv.includes('--real')
 
+// Windows: Chromium deja de pintar las ventanas que calcula tapadas por otras, y con la ventana transparente y siempre
+// encima de Orbe se equivoca (sobre todo con otra app maximizada debajo): la ventana seguía «visible» pero vacía hasta
+// reiniciar (visto en el PC del usuario el 15 y el 16-nov). Sin ese cálculo, Orbe se pinta siempre.
+if (process.platform === 'win32') app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+
 // En la prueba de humo el micrófono es uno falso de Chromium (un pitido) y no se pide permiso a nadie.
 if (modoHumo) {
   app.commandLine.appendSwitch('use-fake-device-for-media-stream')

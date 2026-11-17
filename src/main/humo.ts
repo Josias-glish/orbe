@@ -1681,6 +1681,25 @@ export async function ejecutarHumo(orbe: VentanaOrbe, real = false, extras?: Ext
       // En reposo estable el orbe debe quedarse en ~30 fps como máximo.
       await esperar(2600)
       informe.fpsReposo = await js('window.__orbeDiagnostico().fps')
+
+      // Que Orbe no desaparezca: Chromium no calcula si está tapado (Windows) y, si se cae el proceso gráfico, el dibujo
+      // se recarga solo y vuelve a verse.
+      if (process.platform === 'win32') {
+        const desactivadas = app.commandLine.getSwitchValue('disable-features')
+        comprobar('Chromium no deja de pintar a Orbe por creerlo tapado', desactivadas.includes('CalculateNativeWinOcclusion'), desactivadas)
+      }
+      const recargada = new Promise<boolean>((r) => {
+        wc.once('did-finish-load', () => r(true))
+        setTimeout(() => r(false), 8000)
+      })
+      app.emit('child-process-gone', {}, { type: 'GPU', reason: 'crashed', exitCode: 1, name: 'GPU' })
+      informe.recargaTrasGpu = await recargada
+      for (let i = 0; i < 40 && (await js<string>('window.__orbeDiagnostico().figura')) === 'cargando'; i++) await esperar(250)
+      await esperar(800)
+      informe.figuraTrasGpu = await js('window.__orbeDiagnostico().figura')
+      comprobar('si se cae el proceso gráfico, Orbe recarga su dibujo', informe.recargaTrasGpu === true, informe.recargaTrasGpu)
+      comprobar('y vuelve a verse', orbe.estaVisible && informe.figuraTrasGpu !== 'cargando', informe.figuraTrasGpu)
+      await capturar('16-tras-caida-gpu')
     }
   } catch (error) {
     informe.error = String(error)
