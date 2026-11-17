@@ -299,6 +299,14 @@ visible para Windows, pero sin pintar, sobre una app maximizada; sin cierres en 
 esa hora. Arreglo: `disable-features=CalculateNativeWinOcclusion` en Windows (index.ts; con `backgroundThrottling: true`
 Chromium dejaba de pintar la ventana transparente que creía tapada; causa probable, no verificada) y `app`
 `child-process-gone` tipo GPU → `recargar(1500)` en ventana.ts. humo: comprueba el interruptor y simula la caída de la GPU.
+v1.27.2 (rama `claude/orbe-encima`, sale de `claude/orbe-visible`): diagnóstico real del 17-nov: Orbe seguía vivo y
+pintando, con `WS_EX_TOPMOST`, pero **debajo** de Chrome/Terminal maximizados en el orden Z; `SetWindowPos(HWND_TOPMOST)`
+lo devolvía arriba al instante (qué lo baja: no verificado). `reafirmarEncima` solo saltaba con blur/show/pantalla, y
+plegado no recibe ninguno: ahora también cada `INTERVALO_ENCIMA_MS` (3 s) en ventana.ts. `CalculateNativeWinOcclusion`
+**se queda**: sin él, tras bajarlo y subirlo, el humo falló 2 de 2 (captura `UnknownVizError`, recarga tras GPU sin
+llegar); con él pasa. humo `probarVuelveEncima`: ventana normal encima, Orbe a `HWND_BOTTOM` por PowerShell, y
+comprueba el orden real antes y pasado el intervalo. El «se cerró» del 16-nov fue apagar el PC (inicio rápido = cierre
+de sesión) con «Abrir al iniciar sesión» desactivado.
 Sin hacer del documento: preguntar «¿qué estás viendo?» si no hay título, la lista `bloqueadas` editable desde Ajustes y
 el grupo Ajustes → Compañero (se configura en el .env).
 
