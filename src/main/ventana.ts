@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen } from 'electron'
+import { BrowserWindow, app, ipcMain, screen } from 'electron'
 import { join } from 'node:path'
 import { CANALES, type EstadoVentana } from '../shared/tipos'
 import { guardarAjustes, leerAjustes } from './ajustes'
@@ -95,6 +95,13 @@ export class VentanaOrbe {
       this.interactivo = true
       if (!this.ventana.isDestroyed()) this.ventana.setIgnoreMouseEvents(false)
       recargar(1000)
+    })
+    // Si se cae el proceso de la tarjeta gráfica, Chromium lo relanza, pero la ventana transparente puede quedarse sin
+    // pintar: se recarga la página igual que cuando se cae el dibujo.
+    app.on('child-process-gone', (_e, d) => {
+      if (d.type !== 'GPU') return
+      console.error('El proceso gráfico de Orbe se cayó; se recarga el dibujo:', d.reason)
+      recargar(1500)
     })
     this.ventana.webContents.on('did-fail-load', (_e, codigo, descripcion, _url, principal) => {
       if (!principal || codigo === -3) return // -3: carga anulada por otra, no es un fallo
